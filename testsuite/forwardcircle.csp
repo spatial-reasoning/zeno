@@ -1,0 +1,5 @@
+2 # 3 nodes, all identical
+ 0  1 ( ffbb )
+ 1  2 ( ffbb )
+ 2  0 ( ffbb )
+.

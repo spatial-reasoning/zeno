@@ -1,0 +1,16 @@
+syntax: glob
+*~
+*.aux
+*.hi
+*.log
+*.o
+*.out
+*.pdf
+*.swp
+*.zip
+trinitysite/*
+Gqr2SparQ
+SparQ2Gqr
+
+syntax: regexp
+
