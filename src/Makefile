@@ -2,7 +2,7 @@
 # PDF-Dokumentes aus einer LaTeX-Datei.
 
 %: %.hs
-	ghc --make -XDeriveDataTypeable -XRecordWildCards $*.hs -o $*
+	ghc --make $*.hs -o $*
 
 clean:
 	rm -f *.aux *.log *.hi *.o *.out *~

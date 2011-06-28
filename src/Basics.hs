@@ -6,9 +6,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Helpful as H
 
-version = "                                        ."
-authors = "André Scholz (andre.scholz@uni-bremen.de)"
-
 type Entity = String
 type Relation = Set.Set String
 type Constraint = (Entity, Entity, Relation)

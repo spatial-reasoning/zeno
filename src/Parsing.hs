@@ -47,7 +47,7 @@ parseGqrConstraint :: Parser (Entity, Entity, Relation)
 parseGqrConstraint = do
     a <- parseGqrEntity
     b <- parseGqrEntity
-    count 1 (char '(')
+    char '('
     parseGqrWhiteSpace
     c <- sepBy parseGqrEntity parseGqrWhiteSpace
     char ')'
@@ -106,15 +106,12 @@ parseSparqEntity = do
 
 parseSparqConstraint :: Parser Constraint
 parseSparqConstraint = do
-    count 1 (char '(')
-    a <- parseSparqEntity
+    char '('
     parseSparqWhiteSpace
-    count 1 (char '(')
-    c <- sepBy parseSparqEntity parseSparqWhiteSpace
-    count 1 (char ')')
+    a <- parseSparqEntity
+    c <- many1 $ try (parseSparqEntity <* notFollowedBy (char ')'))
     parseSparqWhiteSpace
     b <- parseSparqEntity
-    parseSparqWhiteSpace
     char ')'
     parseSparqWhiteSpace
     return ( map Char.toLower a
@@ -126,11 +123,12 @@ parseSparqNetworkFile :: Parser ConstraintNetwork
 parseSparqNetworkFile = do
     (numOfEnts, desc) <- option (Nothing, Nothing) parseSparqInfo
     parseSparqWhiteSpace
-    count 1 (char '(')
+    char '('
     parseSparqWhiteSpace
     cons <- many1 parseSparqConstraint
     parseSparqWhiteSpace
     char ')'
+    parseSparqWhiteSpace
     return (ConstraintNetwork
                 cons
                 (numOfEnts)

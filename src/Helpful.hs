@@ -1,7 +1,10 @@
 module Helpful where
 
+import Control.Concurrent
 import Data.Maybe (listToMaybe)
 import qualified Data.Set as Set
+import System.Directory
+import System.Random
 
 -- return a list of all subsets of s of size n
 subsetsN :: (Ord a) => Set.Set a -> Int -> [Set.Set a]
@@ -34,4 +37,36 @@ maxFilterSubset :: (Ord a) => ((Set.Set a) -> Bool)
                            -> (Set.Set a)
                            -> Maybe (Set.Set a)
 maxFilterSubset p s = listToMaybe $ filter p $ subsetsLargeToSmall s
+
+createTempDir :: String -> IO FilePath
+createTempDir dirName = do
+    randGen <- newStdGen
+    sysTmpDir <- catch (getTemporaryDirectory) (\_ -> return ".")
+    let tmpDirPrefix = sysTmpDir ++ "/" ++ dirName ++ "_"
+    tmpDir <- nonExistingDirName tmpDirPrefix
+    createDirectory tmpDir
+    return tmpDir
+    where nonExistingDirName prefix = do
+            randint <- randomRIO (1, 9999999 :: Int)
+            let path = prefix ++ show randint
+            fileExists <- doesFileExist path
+            dirExists <- doesDirectoryExist path
+            if (fileExists || dirExists) then nonExistingDirName prefix
+            else return path
+
+_fork1 :: (a -> IO b) -> a -> IO (MVar b)
+_fork1 f x =
+  do
+    cell <- newEmptyMVar
+    forkIO (do { result <- f x; putMVar cell result })
+    return cell
+
+_fork :: (a -> IO b) -> [a] -> IO [MVar b]
+_fork f = mapM (_fork1 f)
+
+_join :: [MVar b] -> IO [b]
+_join = mapM takeMVar
+
+parMapM :: (a -> IO b) -> [a] -> IO [b]
+parMapM f xs = (_fork f xs) >>= _join
 
