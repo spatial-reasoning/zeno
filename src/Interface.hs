@@ -10,8 +10,11 @@ import Basics
 import Export
 import Helpful
 import Parsing
+import Debug.Trace
 
-checkConsistency :: String -> [ConstraintNetwork] -> IO [(Maybe Bool, Bool)]
+checkConsistency :: String
+                 -> [ConstraintNetwork]
+                 -> IO [(Maybe Bool, Maybe Bool)]
 checkConsistency cal nets = bracket
     (do runInteractiveCommand "sparq -i 2> /dev/null")
     (\ (hIn, _, _, _) -> hPutStrLn hIn "quit" )
@@ -47,21 +50,22 @@ checkConsistencyWithSparq :: (Handle, Handle, Handle, ProcessHandle)
 checkConsistencyWithSparq (hIn, hOut, hErr, _) nets = mapM (\ net -> do
     let sparqNet = sparqify net
     hPutStrLn hIn ("a-reasoning * consistency" ++ sparqNet)
-    answer <- waitForSparqsPrompt hOut
-    -- for some reason we get a second prompt from SparQ. Eat it!
     waitForSparqsPrompt hOut
+    -- for some reason we get a second prompt from SparQ. Eat it!
+    answer <- waitForSparqsPrompt hOut
     if isInfixOf "IS SATISFIABLE." answer then
         return $ Just True
     else if isInfixOf "NOT SATISFIABLE." answer then
         return $ Just False
     else if isInfixOf "CANNOT DECIDE." answer then
         return Nothing
-    else do error ("SparQ answered " ++ show answer ++ " on network " ++ sparqNet)
+    else do error ("SparQ answered " ++ show answer ++ " on network "
+                                                    ++ sparqNet)
     ) nets
 
-checkConsistencyWithGqr :: String -> [ConstraintNetwork] -> IO [Bool]
-checkConsistencyWithGqr cal nets = withTemporaryDirectory "Qstrlib" (\tmpDir -> do
-    gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile.csp") nets
+checkConsistencyWithGqr :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
+checkConsistencyWithGqr cal nets = withTemporaryDirectory "Qstrlib-" (\tmpDir -> do
+    gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
     gqrAnswer <- readProcess "gqr" (["c -C", cal] ++ (map fst gqrTempFiles)) ""
@@ -69,7 +73,7 @@ checkConsistencyWithGqr cal nets = withTemporaryDirectory "Qstrlib" (\tmpDir -> 
     return answer)
     where
         zeroOne x
-            | x == '0'  = False
-            | x == '1'  = True
+            | x == '0'  = Just False
+            | x == '1'  = Nothing
             | otherwise = error ("GQR failed")
 

@@ -18,9 +18,9 @@ sparqify net = ";; "
         then Maybe.fromJust (description net)
         else "")
     ++ "\n(\n"
-    ++ unlines [" (a" ++ x ++ " "
+    ++ unlines [" (a" ++ x ++ " ("
                       ++ (concat (List.intersperse " " (Set.toList z)))
-                      ++ " a" ++ y ++ ")"
+                      ++ ") a" ++ y ++ ")"
                | (x,y,z) <- (constraints net)]
     ++ ")\n"
 

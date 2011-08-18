@@ -48,5 +48,8 @@ findIdentity a = H.maxFilterSubset
 
 getNumberOfEntities :: ConstraintNetwork -> Int
 getNumberOfEntities net =
-    length $ List.nub $ concat [ [x,y] | (x,y,z) <- constraints net]
+    length $ List.nub $ concat [ [x,y] | (x,y,z) <- constraints net ]
+
+isQuasiAtomic :: ConstraintNetwork -> Bool
+isQuasiAtomic net = and [ (Set.size x) == 1 | (_,_,x) <- constraints net ]
 

@@ -109,7 +109,12 @@ parseSparqConstraint = do
     char '('
     parseSparqWhiteSpace
     a <- parseSparqEntity
-    c <- many1 $ try (parseSparqEntity <* notFollowedBy (char ')'))
+    c <- choice
+        [ between
+              (char '(' >> parseSparqWhiteSpace)
+              (char ')')
+              (many parseSparqEntity)
+        , many $ try (parseSparqEntity <* notFollowedBy (char ')')) ]
     parseSparqWhiteSpace
     b <- parseSparqEntity
     char ')'
