@@ -2,6 +2,7 @@ module Helpful where
 
 import Control.Concurrent
 import Data.Maybe (listToMaybe)
+import qualified Data.List as List
 import qualified Data.Set as Set
 import System.Directory
 import System.Random
@@ -69,4 +70,10 @@ _join = mapM takeMVar
 
 parMapM :: (a -> IO b) -> [a] -> IO [b]
 parMapM f xs = (_fork f xs) >>= _join
+
+-- The findWithIndex function takes a predicate and a list and returns the pair
+-- of the first element in the list satisfying the predicate and its index, or
+-- Nothing if there is no such element. 
+findWithIndex :: (Num a, Enum a) => (b -> Bool) -> [b] -> Maybe (a, b)
+findWithIndex = (. zip [0..]) . List.find . (. snd)
 

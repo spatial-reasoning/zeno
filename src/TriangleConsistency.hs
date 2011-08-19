@@ -28,7 +28,8 @@ data Term =
 
 instance Show Term where
     show t = case t of
-               Var  (v1, v2, v3) -> "v"++ show v1 ++ "_" ++ show v2 ++ "_" ++ show v3
+               Var  (v1, v2, v3) -> "v" ++ show v1 ++ "_" ++ show v2 ++ "_"
+                                        ++ show v3
                Constant c        -> show c
                Addition s t1     -> (show s) ++ " + " ++ (show t1)
                Negation n        -> "-" ++ show n
@@ -77,7 +78,8 @@ cmpsMap mp =
                    case l of
                      []    -> (x,y)
                      le:[] -> (x, snd le)
-                     _     -> error "Ambigious map, sorry... Programmer was too stupid error"
+                     _     -> error $ "Ambigious map, sorry... Programmer was "
+                                   ++ "too stupid error"
               ) cmps
 
 applySubs :: [Rel] -> [Rel]
@@ -257,42 +259,64 @@ translateToAngles scens =
                (case r of
                  "L" -> Set.fromList $ [Less (Constant 0)  (Var (a,b,c))
                         ,Less (Var (a,b,c)) (Constant 180)
-                        ,Equal (Addition (Var (a,b,c)) (Addition (Var (b,c,a)) (Var (c,a,b))))
-                                   (Constant 180)
+                        ,Equal (Addition
+                                   (Var (a,b,c))
+                                   (Addition
+                                       (Var (b,c,a))
+                                       (Var (c,a,b))))
+                               (Constant 180)
                         ,Equal (Var (a,b,c)) (Negation (Var (a,c,b)))
                         ] -- A B l C
                  "R" -> Set.fromList $ [Less (Var (a,b,c)) (Constant 0)
                         ,Less (Negation (Constant 180)) (Var (a,b,c))
-                        ,Equal (Addition (Var (a,b,c)) (Addition (Var (b,c,a)) (Var (c,a,b))))
+                        ,Equal (Addition
+                                   (Var (a,b,c))
+                                   (Addition
+                                       (Var (b,c,a))
+                                       (Var (c,a,b))))
                                (Negation (Constant 180))
                         ,Equal (Var (a,b,c)) (Negation (Var (a,c,b)))
                         ] -- A B r C
                  "B" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant 180)
                                        ,Equal (Var (b,c,a)) (Constant   0)
                                        ,Equal (Var (c,a,b)) (Constant   0)
-                                       ,Equal (Addition (Var (a,b,c)) (Addition (Var (b,c,a))
-                                               (Var (c,a,b)))) (Constant 180)
+                                       ,Equal (Addition
+                                                  (Var (a,b,c))
+                                                  (Addition
+                                                      (Var (b,c,a))
+                                                      (Var (c,a,b))))
+                                              (Constant 180)
                                        ,Equal (Var (a,b,c)) (Var (a,c,b))
                         ] -- A B b C
                  "F" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
                                        ,Equal (Var (b,c,a)) (Constant 180)
                                        ,Equal (Var (c,a,b)) (Constant   0)
-                                       ,Equal (Addition (Var (a,b,c)) (Addition (Var (b,c,a))
-                                               (Var (c,a,b)))) (Constant 180)
+                                       ,Equal (Addition
+                                                  (Var (a,b,c))
+                                                  (Addition
+                                                      (Var (b,c,a))
+                                                      (Var (c,a,b))))
+                                              (Constant 180)
                                        ,Equal (Var (a,b,c)) (Var (a,c,b))
                         ] -- A B f C
                  "I" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
                                        ,Equal (Var (b,c,a)) (Constant   0)
                                        ,Equal (Var (c,a,b)) (Constant 180)
-                                       ,Equal (Addition (Var (a,b,c)) (Addition (Var (b,c,a))
-                                               (Var (c,a,b)))) (Constant 180)
+                                       ,Equal (Addition
+                                                  (Var (a,b,c))
+                                                  (Addition
+                                                      (Var (b,c,a))
+                                                      (Var (c,a,b))))
+                                              (Constant 180)
                                        ,Equal (Var (a,b,c)) (Var (a,c,b))
                         ] -- A B i C
                )
              `Set.union`
              (
               Set.fold (\acd acc ->
-                  let lst =  filter (\st -> pa st == a && pb st == b && pc st == pc acd) scens
+                  let lst =  filter (\st -> pa st == a
+                                         && pb st == b
+                                         && pc st == pc acd) scens
                   in
                       if lst == []
                       then
@@ -302,29 +326,73 @@ translateToAngles scens =
                           in
                               Set.insert
                                   ( case (rel scen, rel acd, rel abd) of
-                                      ("L", "L", "R") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      ("R", "R", "L") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd))
-                                                                             (Negation (Constant 360)))
-                                      ("B", "B", "F") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      ("B", "B", "I") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      ("B", "L", "R") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      ("L", "B", "R") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                               (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      --("R", "B", "L") -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                      --                         (Addition (Var (pa abd, pb abd, pc abd)) (Constant 360))
-                                      ("R", "R", "B") -> Equal (Addition (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd))) (Constant 360))
-                                                               (Var (pa abd, pb abd, pc abd))
-                                      (_, _, _)       -> Equal (Addition (Var (a,b,c)) (Var (pa acd, pb acd, pc acd)))
-                                                                     (Var (pa abd, pb abd, pc abd)) )
+                                      ("L", "L", "R") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Constant 360))
+                                      ("R", "R", "L") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Negation (Constant 360)))
+                                      ("B", "B", "F") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Constant 360))
+                                      ("B", "B", "I") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Constant 360))
+                                      ("B", "L", "R") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Constant 360))
+                                      ("L", "B", "R") -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Addition
+                                              (Var (pa abd, pb abd, pc abd))
+                                              (Constant 360))
+                                      --("R", "B", "L") -> Equal
+                                      --    (Addition
+                                      --        (Var (a,b,c))
+                                      --        (Var (pa acd, pb acd, pc acd)))
+                                      --    (Addition
+                                      --        (Var (pa abd, pb abd, pc abd))
+                                      --        (Constant 360))
+                                      ("R", "R", "B") -> Equal
+                                          (Addition
+                                             (Addition
+                                                (Var (a,b,c))
+                                                (Var (pa acd, pb acd, pc acd)))
+                                             (Constant 360))
+                                          (Var (pa abd, pb abd, pc abd))
+                                      (_, _, _)       -> Equal
+                                          (Addition
+                                              (Var (a,b,c))
+                                              (Var (pa acd, pb acd, pc acd)))
+                                          (Var (pa abd, pb abd, pc abd)) )
                                   acc
                   )
                   Set.empty
-                  ( Set.filter (\s -> pa s == a && pb s == c && pc s /= b) $ Set.fromList scens )
+                  ( Set.filter (\s -> pa s == a
+                                   && pb s == c
+                                   && pc s /= b) $ Set.fromList scens )
              )
              `Set.union` lst
         ) Set.empty scens
@@ -332,51 +400,67 @@ translateToAngles scens =
 -- Some output stuff
 getVariables :: [Equation] -> [Variable]
 getVariables equs =
-    Set.toList $ foldl (\x y -> (getVariablesHE y) `Set.union` x) Set.empty equs
+    Set.toList $ foldl (\x y -> Set.union
+                                    (getVariablesHE y)
+                                    x)
+                       Set.empty equs
        where
          getVariablesTE trm =
              case trm of
                Var v          -> Set.singleton v
                Constant _     -> Set.empty
-               Addition t1 t2 -> (getVariablesTE t1) `Set.union` (getVariablesTE t2)
+               Addition t1 t2 -> Set.union
+                                     (getVariablesTE t1)
+                                     (getVariablesTE t2)
                Negation t     -> (getVariablesTE t)
                _              -> error "Nope!"
          getVariablesHE equ =
              case equ of
-               Equal t1 t2 -> (getVariablesTE t1) `Set.union` (getVariablesTE t2)
-               Less  t1 t2 -> (getVariablesTE t1) `Set.union` (getVariablesTE t2)
-               LE    t1 t2 -> (getVariablesTE t1) `Set.union` (getVariablesTE t2)
+               Equal t1 t2 -> Set.union (getVariablesTE t1) (getVariablesTE t2)
+               Less  t1 t2 -> Set.union (getVariablesTE t1) (getVariablesTE t2)
+               LE    t1 t2 -> Set.union (getVariablesTE t1) (getVariablesTE t2)
 
 showSMT :: [Equation] -> [Char]
 showSMT lst =
     let
         tr   = map showSMTEq lst
-        vars = foldl (++) "" $ map (\(x,y,z) -> ":extrafuns ((" ++ "v" ++ show x ++ "_" ++ show y ++ "_" ++
-                                                show z ++ " Real))\n") $ getVariables lst
+        vars = foldl (++) "" $
+                   map (\(x,y,z) -> ":extrafuns ((" ++ "v"
+                                                    ++ show x ++ "_"
+                                                    ++ show y ++ "_"
+                                                    ++ show z ++ " Real))\n")
+                   $ getVariables lst
     in
-      "(benchmark Triangles \n\n" ++
-      ":logic QF_AUFLIA\n\n" ++
-      vars ++ "\n\n:formula\n" ++
-      (if length tr > 1 then
-          foldl (\x y -> "(and \n" ++ x ++ " " ++ y ++ ")\n") (head tr) $  tail tr
-        else
-          if length tr > 0 then
-              head tr
-            else
-                "") ++ "\n)"
-        where
-          showSMTEq eq =
-              case eq of
-                Equal t1 t2 -> "(= " ++ showSMTT t1 ++ " " ++ showSMTT t2 ++ ")"
-                Less  t1 t2 -> "(< " ++ showSMTT t1 ++ " " ++ showSMTT t2 ++ ")"
-                LE    t1 t2 -> "(<= " ++ showSMTT t1 ++ " " ++ showSMTT t2 ++ ")"
+        "(benchmark Triangles \n\n" ++
+        ":logic QF_AUFLIA\n\n" ++
+        vars ++ "\n\n:formula\n" ++
+        (if length tr > 1 then
+            foldl (\x y -> "(and \n" ++ x ++ " " ++ y ++ ")\n")
+                  (head tr)
+                  (tail tr)
+         else if length tr > 0 then
+            head tr
+         else
+            "") ++ "\n)"
+    where
+        showSMTEq eq =
+            case eq of
+                Equal t1 t2 -> "(= " ++ showSMTT t1 ++ " "
+                                     ++ showSMTT t2 ++ ")"
+                Less  t1 t2 -> "(< " ++ showSMTT t1 ++ " "
+                                     ++ showSMTT t2 ++ ")"
+                LE    t1 t2 -> "(<= " ++ showSMTT t1 ++ " "
+                                      ++ showSMTT t2 ++ ")"
 
-          showSMTT t =
-              case t of
-                Var (v1,v2,v3) -> "v" ++ show v1 ++ "_" ++ show v2 ++ "_" ++ show v3
+        showSMTT t =
+            case t of
+                Var (v1,v2,v3) -> "v" ++ show v1 ++ "_"
+                                      ++ show v2 ++ "_"
+                                      ++ show v3
                 SVar     s     -> show s
                 Constant c     -> show c
-                Addition t1 t2 -> "(+ " ++ showSMTT t1 ++ " " ++ showSMTT t2 ++ ")"
+                Addition t1 t2 -> "(+ " ++ showSMTT t1 ++ " "
+                                        ++ showSMTT t2 ++ ")"
                 Negation t1    -> "(- 0 " ++ showSMTT t1 ++ ")"
 
 parseOutputSMT :: String

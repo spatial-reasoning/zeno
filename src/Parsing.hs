@@ -3,9 +3,11 @@ module Parsing where
 import Text.ParserCombinators.Parsec
 import Control.Applicative ((<*))
 import Control.Monad (when)
+import qualified Data.List as List
 import qualified Data.Char as Char
 import qualified Data.Set as Set
 import Basics
+import Helpful
 import Debug.Trace
 
 
@@ -43,7 +45,7 @@ parseGqrEntity = do
     parseGqrWhiteSpace
     return a
 
-parseGqrConstraint :: Parser (Entity, Entity, Relation)
+parseGqrConstraint :: Parser Constraint
 parseGqrConstraint = do
     a <- parseGqrEntity
     b <- parseGqrEntity
@@ -52,8 +54,7 @@ parseGqrConstraint = do
     c <- sepBy parseGqrEntity parseGqrWhiteSpace
     char ')'
     parseGqrWhiteSpace
-    return ( map Char.toLower a
-           , map Char.toLower b
+    return ( [map Char.toLower a, map Char.toLower b]
            , Set.fromList [map Char.toLower x | x <- c]
            )
 
@@ -94,7 +95,8 @@ parseSparqWhiteSpace = skipMany ( many1 space <|> parseSparqComment )
 
 parseSparqInfo :: Parser (Maybe Int, Maybe String)
 parseSparqInfo = do
-    x <- try (string ";;" >> skipMany (oneOf " \t") >> many1 digit <* (skipMany (oneOf " \t") >> string "#"))
+    x <- try (string ";;" >> skipMany (oneOf " \t") >>
+             many1 digit <* (skipMany (oneOf " \t") >> string "#"))
     y <- skipMany (oneOf " \t") >> manyTill anyChar eol
     return (Just ((read x) + 1), Just y)
 
@@ -104,23 +106,22 @@ parseSparqEntity = do
     parseSparqWhiteSpace
     return a
 
-parseSparqConstraint :: Parser Constraint
-parseSparqConstraint = do
+parseSparqConstraint :: Int -> Parser Constraint
+parseSparqConstraint n = do
     char '('
     parseSparqWhiteSpace
-    a <- parseSparqEntity
+    a <- count (n-1) parseSparqEntity
     c <- choice
-        [ between
-              (char '(' >> parseSparqWhiteSpace)
-              (char ')')
-              (many parseSparqEntity)
-        , many $ try (parseSparqEntity <* notFollowedBy (char ')')) ]
+             [ between
+                 (char '(' >> parseSparqWhiteSpace)
+                 (char ')')
+                 (many parseSparqEntity)
+             , count 1 parseSparqEntity ]
     parseSparqWhiteSpace
     b <- parseSparqEntity
     char ')'
     parseSparqWhiteSpace
-    return ( map Char.toLower a
-           , map Char.toLower b
+    return ( map (map Char.toLower) (a ++ [b])
            , Set.fromList [map Char.toLower x | x <- c]
            )
 
@@ -130,7 +131,9 @@ parseSparqNetworkFile = do
     parseSparqWhiteSpace
     char '('
     parseSparqWhiteSpace
-    cons <- many1 parseSparqConstraint
+    cons <- choice
+                [ try . many1 $ parseSparqConstraint 2
+                , try . many1 $ parseSparqConstraint 3 ]
     parseSparqWhiteSpace
     char ')'
     parseSparqWhiteSpace
@@ -145,7 +148,8 @@ loadSparqNetworkFile filename = do
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)
-        Right success -> return success
+        Right success ->
+            return success
 
 
 --------------------------

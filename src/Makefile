@@ -5,7 +5,7 @@
 	ghc --make $*.hs -o $*
 
 clean:
-	rm -f *.aux *.log *.hi *.o *.out *~
+	rm -f qstr *.aux *.log *.hi *.o *.out *~
 
 silent:
 	echo "Hier sieht man nur diesen Text."

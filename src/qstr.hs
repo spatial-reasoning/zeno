@@ -14,9 +14,9 @@ authors = "André Scholz (andre.scholz@uni-bremen.de)"
 
 main :: IO ()
 main = do
-    net1 <- loadGqrNetworkFile ("alleq.csp")
-    net2 <- loadSparqNetworkFile ("alleq.spa")
-    net3 <- loadSparqNetworkFile ("alleq.spa")
+    net1 <- loadGqrNetworkFile ("../testsuite/alleq.csp")
+    net2 <- loadSparqNetworkFile ("../testsuite/alleq.spa")
+    net3 <- loadSparqNetworkFile ("../testsuite/alleq.spa")
     let nets = [net1, net2, net3]
     answers <- checkConsistency "dra-80" nets
     print answers

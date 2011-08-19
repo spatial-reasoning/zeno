@@ -8,7 +8,7 @@ import qualified Helpful as H
 
 type Entity = String
 type Relation = Set.Set String
-type Constraint = (Entity, Entity, Relation)
+type Constraint = ([Entity], Relation)
 
 data Naa = Naa  -- NonAssociativeAlgebra
     { baserelations :: Set.Set Relation
@@ -48,8 +48,8 @@ findIdentity a = H.maxFilterSubset
 
 getNumberOfEntities :: ConstraintNetwork -> Int
 getNumberOfEntities net =
-    length $ List.nub $ concat [ [x,y] | (x,y,z) <- constraints net ]
+    length $ List.nub $ concat [ fst x | x <- constraints net ]
 
 isQuasiAtomic :: ConstraintNetwork -> Bool
-isQuasiAtomic net = and [ (Set.size x) == 1 | (_,_,x) <- constraints net ]
+isQuasiAtomic net = and [ (Set.size $ snd x) == 1 | x <- constraints net ]
 

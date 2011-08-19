@@ -5,7 +5,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Maybe as Maybe
 import Basics
-import Parsing
 import Debug.Trace
 
 sparqify :: ConstraintNetwork -> String
@@ -18,10 +17,13 @@ sparqify net = ";; "
         then Maybe.fromJust (description net)
         else "")
     ++ "\n(\n"
-    ++ unlines [" (a" ++ x ++ " ("
-                      ++ (concat (List.intersperse " " (Set.toList z)))
-                      ++ ") a" ++ y ++ ")"
-               | (x,y,z) <- (constraints net)]
+    ++ unlines [" (" ++ (concat (List.intersperse
+                                     " " 
+                                     (map ("a" ++) . init $ x) ) )
+                     ++ " ("
+                     ++ (concat (List.intersperse " " (Set.toList y)))
+                     ++ ") a" ++ last x ++ ")"
+               | (x,y) <- (constraints net)]
     ++ ")\n"
 
 gqrify :: ConstraintNetwork -> String
@@ -36,16 +38,16 @@ gqrify net =
     ++ "\n"
     ++ unlines [" " ++ x ++ " " ++ y ++ " ( "
                   ++ (concat (List.intersperse " " (Set.toList z))) ++ " )" 
-               | (x,y,z) <- enumerate (constraints net)]
+               | ([x,y],z) <- enumerate (constraints net)]
     ++ ".\n"
 
 enumerate :: [Constraint] -> [Constraint]
-enumerate cons = zip3 (enum xs ents) (enum ys ents) zs
+enumerate cons = zip (map enum xs) ys
     where
-        (xs, ys, zs) = unzip3 cons
-        ents = List.union (List.nub xs) ys
-        enum list entis = [ show $ Maybe.fromJust $ List.elemIndex x entis
-                          | x <- list ]
+        (xs, ys) = unzip cons
+        ents = List.nub $ foldl1 List.union [ fst x | x <- cons ]
+        enum list = [ show $ Maybe.fromJust $ List.elemIndex x ents
+                    | x <- list ]
 
 exportToSparQ :: ConstraintNetwork -> FilePath -> IO ()
 exportToSparQ net filename = do
