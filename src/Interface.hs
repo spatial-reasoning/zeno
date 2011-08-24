@@ -7,30 +7,50 @@ import System.IO
 import System.Process
 import System.Unix.Directory
 import Basics
+import Dipole2FlipFlop
 import Export
 import Helpful
 import Parsing
+import qualified TriangleConsistency as TC
 import Debug.Trace
+
+-- SparQ gives Problems at the moment!
+-- checkConsistency :: String
+--                  -> [ConstraintNetwork]
+--                  -> IO [[Maybe Bool]]
+-- checkConsistency cal nets = bracket
+--     (do runInteractiveCommand "sparq -i 2> /dev/null")
+--     (\ (hIn, _, _, _) -> hPutStrLn hIn "quit\n" )
+--     (\ sparq -> do
+--         let (sparqIn, sparqOut, sparqErr, sparqId) = sparq
+--         mapM_ (flip hSetBinaryMode False) [sparqIn, sparqOut]
+--         hSetBuffering sparqIn LineBuffering
+--         hSetBuffering sparqOut NoBuffering
+--         waitForSparqsPrompt sparqOut
+--         hPutStrLn sparqIn ("load-calculus " ++ cal)
+--         waitForSparqsPrompt sparqOut
+--         -- run SparQ
+--         ioSparqAnswers <- CMP.forkExec $ checkConsistencyWithSparq sparq nets
+--         sparqAnswers <- ioSparqAnswers
+--         -- run Gqr
+--         ioGqrAnswers <- CMP.forkExec $ checkConsistencyWithGqr cal nets
+--         gqrAnswers <- ioGqrAnswers
+--         -- run Triangle
+--         ioTriangleAnswers <- CMP.forkExec $ checkTriangleConsistency cal nets
+--         triangleAnswers <- ioTriangleAnswers
+--         return $ transpose [sparqAnswers, gqrAnswers, triangleAnswers] )
 
 checkConsistency :: String
                  -> [ConstraintNetwork]
-                 -> IO [(Maybe Bool, Maybe Bool)]
-checkConsistency cal nets = bracket
-    (do runInteractiveCommand "sparq -i 2> /dev/null")
-    (\ (hIn, _, _, _) -> hPutStrLn hIn "quit" )
-    (\ sparq -> do
-        let (sparqIn, sparqOut, sparqErr, sparqId) = sparq
-        mapM_ (flip hSetBinaryMode False) [sparqIn, sparqOut]
-        hSetBuffering sparqIn LineBuffering
-        hSetBuffering sparqOut NoBuffering
-        waitForSparqsPrompt sparqOut
-        hPutStrLn sparqIn ("load-calculus " ++ cal)
-        waitForSparqsPrompt sparqOut
-        forkSparqAnswers <- CMP.forkExec $ checkConsistencyWithSparq sparq nets
-        forkGqrAnswers <- CMP.forkExec $ checkConsistencyWithGqr cal nets
-        sparqAnswers <- forkSparqAnswers
-        gqrAnswers <- forkGqrAnswers
-        return $ zip sparqAnswers gqrAnswers)
+                 -> IO [[Maybe Bool]]
+checkConsistency cal nets = do
+    -- run Gqr
+    ioGqrAnswers <- CMP.forkExec $ checkConsistencyWithGqr cal nets
+    gqrAnswers <- ioGqrAnswers
+    -- run Triangle
+    ioTriangleAnswers <- CMP.forkExec $ checkTriangleConsistency cal nets
+    triangleAnswers <- ioTriangleAnswers
+    return $ transpose [gqrAnswers, triangleAnswers]
 
 waitForSparqsPrompt :: Handle -> IO String
 waitForSparqsPrompt hOut = do
@@ -64,7 +84,8 @@ checkConsistencyWithSparq (hIn, hOut, hErr, _) nets = mapM (\ net -> do
     ) nets
 
 checkConsistencyWithGqr :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
-checkConsistencyWithGqr cal nets = withTemporaryDirectory "Qstrlib-" (\tmpDir -> do
+checkConsistencyWithGqr cal nets =
+  withTemporaryDirectory "Qstrlib-" (\tmpDir -> do
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
@@ -76,4 +97,9 @@ checkConsistencyWithGqr cal nets = withTemporaryDirectory "Qstrlib-" (\tmpDir ->
             | x == '0'  = Just False
             | x == '1'  = Nothing
             | otherwise = error ("GQR failed")
+
+checkTriangleConsistency :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
+checkTriangleConsistency cal nets = mapM
+    (TC.runTC . convertFlipFlopsForDominik . dipolesToFlipFlops . constraints)
+    nets
 

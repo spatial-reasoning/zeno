@@ -2,7 +2,7 @@
 # PDF-Dokumentes aus einer LaTeX-Datei.
 
 %: %.hs
-	ghc --make $*.hs -o $*
+	ghc --make -O2 -threaded $*.hs -o $*
 
 clean:
 	rm -f qstr *.aux *.log *.hi *.o *.out *~

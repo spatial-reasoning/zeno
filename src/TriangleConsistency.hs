@@ -5,6 +5,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import System.Process
 import Data.Maybe
+import Debug.Trace
 
 type Variable = (Int, Int, Int)
 type Constant = Int
@@ -16,7 +17,7 @@ data Rel = Rel
           , rel :: String
           , pc  :: Int
           }
-          deriving (Eq, Ord)
+          deriving (Eq, Ord, Show)
 
 data Term =
     Var      Variable  |
@@ -49,33 +50,33 @@ instance Show Equation where
           LE    s t -> (show s) ++ " <= " ++ (show t)
 
 subs :: [Rel] -> [Rel]
-subs lst = filter (\x -> rel x == "S"
-                      || rel x == "E"
-                      || rel x == "Dou"
-                      || rel x == "Tri") lst
+subs lst = filter (\x -> rel x == "s"
+                      || rel x == "e"
+                      || rel x == "dou"
+                      || rel x == "tri") lst
 
 createSubsMap :: [Rel] -> Map.Map Int Int
 createSubsMap lst =
       foldl (\x y -> case rel y of
-                       "S"   -> Map.insert (pc y) (pa y) x
-                       "E"   -> Map.insert (pc y) (pb y) x
-                       "Dou" -> Map.insert (pb y) (pa y) x
-                       "Tri" -> Map.insert (pc y) (pa y)
-                           $ Map.insert (pb y) (pa y) x
+                       "s"   -> Map.insert (pc y) (pa y) x
+                       "e"   -> Map.insert (pc y) (pb y) x
+                       "dou" -> Map.insert (pb y) (pa y) x
+                       "tri" -> Map.insert (pc y) (pa y)
+                                    $ Map.insert (pb y) (pa y) x
             ) Map.empty $ subs lst
 
 cmpsMap :: (Ord k) => Map.Map k k -> Map.Map k k
 cmpsMap mp =
     let
-        cmps = map (\(x,y) ->
-                      ((x,y), filter (\(z,_) -> z == y) $ Map.toList mp))
-            $ Map.toList mp
+        cmps = map
+            (\(x,y) -> ((x,y), filter (\(z,_) -> z == y) $ Map.toList mp))
+            ( Map.toList mp )
     in
       if (and $ map (\(_,z) -> z == []) $ cmps) then
           mp
       else
           cmpsMap $ Map.fromList $ map (\((x,y),l) ->
-                   case l of
+                   case (trace "\nblabla\n" $ l) of
                      []    -> (x,y)
                      le:[] -> (x, snd le)
                      _     -> error $ "Ambigious map, sorry... Programmer was "
@@ -100,7 +101,7 @@ applySubs lst =
                }
           ) lst
 
--- Filters out "Tri", "Dou", "S", "E"
+-- Filters out "tri", "dou", "s", "e"
 verifySubs :: [Rel] -> [Maybe Rel]
 verifySubs lst =
     foldl (\y x ->
@@ -111,16 +112,16 @@ verifySubs lst =
                r = rel x
            in
              case r of
-               "Tri" -> if (a == b && b == c) then
+               "tri" -> if (a == b && b == c) then
                             y
                         else Nothing:y
-               "Dou" -> if (a == b && b /= c && a /= c) then
+               "dou" -> if (a == b && b /= c && a /= c) then
                             y
                         else Nothing:y
-               "S"   -> if (a /= b && b /= c && a == c) then
+               "s"   -> if (a /= b && b /= c && a == c) then
                             y
                         else Nothing:y
-               "E"   -> if (a /= b && b == c && a /= c) then
+               "e"   -> if (a /= b && b == c && a /= c) then
                             y
                         else Nothing:y
                _     -> if (a /= b && b /= c && a /= c) then
@@ -142,11 +143,11 @@ invOp rl =
       , pb = a
       , pc = c
       , rel = case r of
-                "R" -> "L"
-                "L" -> "R"
-                "B" -> "F"
-                "I" -> "I"
-                "F" -> "B"
+                "r" -> "l"
+                "l" -> "r"
+                "b" -> "f"
+                "i" -> "i"
+                "f" -> "b"
       }
 
 hmOp :: Rel -> Rel
@@ -163,11 +164,11 @@ hmOp rl =
       , pb = c
       , pc = a
       , rel = case r of
-                "R" -> "R"
-                "L" -> "L"
-                "B" -> "I"
-                "I" -> "F"
-                "F" -> "B"
+                "r" -> "r"
+                "l" -> "l"
+                "b" -> "i"
+                "i" -> "f"
+                "f" -> "b"
       }
 
 hmiOp :: Rel -> Rel
@@ -184,11 +185,11 @@ hmiOp rl =
       , pb = b
       , pc = a
       , rel = case r of
-                "R" -> "L"
-                "L" -> "R"
-                "B" -> "I"
-                "I" -> "B"
-                "F" -> "F"
+                "r" -> "l"
+                "l" -> "r"
+                "b" -> "i"
+                "i" -> "b"
+                "f" -> "f"
       }
 
 scOp :: Rel -> Rel
@@ -205,11 +206,11 @@ scOp rl =
       , pb = c
       , pc = b
       , rel = case r of
-                "R" -> "L"
-                "L" -> "R"
-                "B" -> "B"
-                "I" -> "F"
-                "F" -> "I"
+                "r" -> "l"
+                "l" -> "r"
+                "b" -> "b"
+                "i" -> "f"
+                "f" -> "i"
       }
 
 sciOp :: Rel -> Rel
@@ -226,11 +227,11 @@ sciOp rl =
       , pb = a
       , pc = b
       , rel = case r of
-                "R" -> "R"
-                "L" -> "L"
-                "B" -> "F"
-                "I" -> "B"
-                "F" -> "I"
+                "r" -> "r"
+                "l" -> "l"
+                "b" -> "f"
+                "i" -> "b"
+                "f" -> "i"
       }
 
 addPermutations :: [Rel] -> [Rel]
@@ -257,7 +258,7 @@ translateToAngles scens =
                  r = rel scen
              in
                (case r of
-                 "L" -> Set.fromList $ [Less (Constant 0)  (Var (a,b,c))
+                 "l" -> Set.fromList $ [Less (Constant 0)  (Var (a,b,c))
                         ,Less (Var (a,b,c)) (Constant 180)
                         ,Equal (Addition
                                    (Var (a,b,c))
@@ -267,7 +268,7 @@ translateToAngles scens =
                                (Constant 180)
                         ,Equal (Var (a,b,c)) (Negation (Var (a,c,b)))
                         ] -- A B l C
-                 "R" -> Set.fromList $ [Less (Var (a,b,c)) (Constant 0)
+                 "r" -> Set.fromList $ [Less (Var (a,b,c)) (Constant 0)
                         ,Less (Negation (Constant 180)) (Var (a,b,c))
                         ,Equal (Addition
                                    (Var (a,b,c))
@@ -277,7 +278,7 @@ translateToAngles scens =
                                (Negation (Constant 180))
                         ,Equal (Var (a,b,c)) (Negation (Var (a,c,b)))
                         ] -- A B r C
-                 "B" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant 180)
+                 "b" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant 180)
                                        ,Equal (Var (b,c,a)) (Constant   0)
                                        ,Equal (Var (c,a,b)) (Constant   0)
                                        ,Equal (Addition
@@ -288,7 +289,7 @@ translateToAngles scens =
                                               (Constant 180)
                                        ,Equal (Var (a,b,c)) (Var (a,c,b))
                         ] -- A B b C
-                 "F" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
+                 "f" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
                                        ,Equal (Var (b,c,a)) (Constant 180)
                                        ,Equal (Var (c,a,b)) (Constant   0)
                                        ,Equal (Addition
@@ -299,7 +300,7 @@ translateToAngles scens =
                                               (Constant 180)
                                        ,Equal (Var (a,b,c)) (Var (a,c,b))
                         ] -- A B f C
-                 "I" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
+                 "i" -> Set.fromList $ [Equal (Var (a,b,c)) (Constant   0)
                                        ,Equal (Var (b,c,a)) (Constant   0)
                                        ,Equal (Var (c,a,b)) (Constant 180)
                                        ,Equal (Addition
@@ -326,56 +327,56 @@ translateToAngles scens =
                           in
                               Set.insert
                                   ( case (rel scen, rel acd, rel abd) of
-                                      ("L", "L", "R") -> Equal
+                                      ("l", "l", "r") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Constant 360))
-                                      ("R", "R", "L") -> Equal
+                                      ("r", "r", "l") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Negation (Constant 360)))
-                                      ("B", "B", "F") -> Equal
+                                      ("b", "b", "f") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Constant 360))
-                                      ("B", "B", "I") -> Equal
+                                      ("b", "b", "i") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Constant 360))
-                                      ("B", "L", "R") -> Equal
+                                      ("b", "l", "r") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Constant 360))
-                                      ("L", "B", "R") -> Equal
+                                      ("l", "b", "r") -> Equal
                                           (Addition
                                               (Var (a,b,c))
                                               (Var (pa acd, pb acd, pc acd)))
                                           (Addition
                                               (Var (pa abd, pb abd, pc abd))
                                               (Constant 360))
-                                      --("R", "B", "L") -> Equal
+                                      --("r", "b", "l") -> Equal
                                       --    (Addition
                                       --        (Var (a,b,c))
                                       --        (Var (pa acd, pb acd, pc acd)))
                                       --    (Addition
                                       --        (Var (pa abd, pb abd, pc abd))
                                       --        (Constant 360))
-                                      ("R", "R", "B") -> Equal
+                                      ("r", "r", "b") -> Equal
                                           (Addition
                                              (Addition
                                                 (Var (a,b,c))
@@ -464,18 +465,18 @@ showSMT lst =
                 Negation t1    -> "(- 0 " ++ showSMTT t1 ++ ")"
 
 parseOutputSMT :: String
-               -> IO Bool
+               -> IO (Maybe Bool)
 parseOutputSMT str =
     do
       let   sat = or $ map (\x -> "sat" `List.isPrefixOf` x) $ lines str
       let unsat = or $ map (\x -> "unsat" `List.isPrefixOf` x) $ lines str
       case (sat, unsat) of
-        (True, False) -> return True
-        (False, True) -> return False
+        (True, False) -> return Nothing
+        (False, True) -> return $ Just False
         (_, _)        -> error $ "Help! Yices answered: " ++ str
 
 -- Check for Triangle Consistency
-runTC :: [Rel] -> IO Bool
+runTC :: [Rel] -> IO (Maybe Bool)
 runTC scen =
     do
       let subst    = verifySubs $ applySubs scen
@@ -483,26 +484,25 @@ runTC scen =
       if (failSubs)
        then
           do
-            return False
+            return $ Just False
        else
            if (subst == []) then
-               return True
+               return $ Just True
            else
                do
                  let angles   = translateToAngles $ addPermutations $
                                 map fromJust subst
                  let str      = showSMT angles
-                 writeFile "smt.smt" str
-                 out <- readProcess "yices" ["-smt", "smt.smt"] ""
+                 out <- readProcess "yices" ["-smt"] str
                  suc <- parseOutputSMT out
                  return suc
 
 -- constraint network for testing
 eris :: [Rel]
-eris =  [ Rel 0 1 "L" 2
-        , Rel 0 2 "L" 3
-        , Rel 0 1 "R" 3
-        , Rel 1 2 "R" 3
-        , Rel 2 3 "R" 4
+eris =  [ Rel 0 1 "l" 2
+        , Rel 0 2 "l" 3
+        , Rel 0 1 "r" 3
+        , Rel 1 2 "r" 3
+--        , Rel 1 2 "s" 4
         ]
 
