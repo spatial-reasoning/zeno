@@ -21,7 +21,7 @@ data MyOptions = MyOptions
 -- Customize your options, including help messages, shortened names, etc.
 myProgOpts :: MyOptions
 myProgOpts = MyOptions
-    { infilename = def &= explicit &= name "i" &= name "in" &= help "read file from FN trinaetrn iaetrnia edtrinae dtrina edtriane dtriuane dtiurane dtriuane utirane iutrane "
+    { infilename = def &= explicit &= name "i" &= name "in" &= help "read file from FN"
     , outfilename = def &= explicit &= name "o" &= name "out" &= help "write file to FN"
     }
 

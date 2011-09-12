@@ -11,7 +11,7 @@ sparqify :: ConstraintNetwork -> String
 sparqify net = ";; "
     ++ (if Maybe.isJust (numberOfEntities net)
         then show ((Maybe.fromJust (numberOfEntities net)) - 1)
-        else show ((snd $ listEntities net) - 1))
+        else show ((Set.size $ listEntities $ constraints net) - 1))
     ++ " # "
     ++ (if Maybe.isJust (description net)
         then Maybe.fromJust (description net)
@@ -30,7 +30,7 @@ gqrify :: ConstraintNetwork -> String
 gqrify net =
     (if Maybe.isJust (numberOfEntities net)
         then show (Maybe.fromJust (numberOfEntities net) - 1)
-        else show ((snd $ listEntities net) - 1))
+        else show ((Set.size $ listEntities $ constraints net) - 1))
     ++ " # "
     ++ (if Maybe.isJust (description net)
         then Maybe.fromJust (description net)

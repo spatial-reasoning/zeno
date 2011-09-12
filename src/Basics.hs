@@ -1,6 +1,5 @@
 module Basics where
 
-import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
@@ -9,12 +8,7 @@ import qualified Helpful as H
 
 type Entity = String
 type Relation = Set.Set String
-type Constraint = ([Entity], Relation)
-
---instance Show ([Entity], Relation) where
---    show (ents, rel) = show $
---        List.intersperse " " $ tail ents ++ " (" ++
---        List.intersperse " " $ Set.toList rel ++ ") " ++ last ents
+type Constraint = ([Entity], Relation) -- TODO: Entities must be allowed to be Ints!
 
 data Naa = Naa  -- NonAssociativeAlgebra
     { baserelations :: Set.Set Relation
@@ -53,6 +47,14 @@ enumerate cons = zip (map enum xs) ys
         enum list = [ show $ Maybe.fromJust $ List.elemIndex x ents
                     | x <- list ]
 
+enumerateToInt :: [Constraint] -> [([Int], Relation)]
+enumerateToInt cons = zip (map enum xs) ys
+    where
+        (xs, ys) = unzip cons
+        ents = List.nub $ foldl1 List.union [ fst x | x <- cons ]
+        enum list = [ Maybe.fromJust $ List.elemIndex x ents
+                    | x <- list ]
+
 findIdentity :: Naa -> Maybe Relation
 findIdentity a = H.maxFilterSubset
     (\s -> Set.fold (&&) True
@@ -61,11 +63,9 @@ findIdentity a = H.maxFilterSubset
             (baserelations a)))
     (Set.fold Set.union Set.empty $ baserelations a)
 
-listEntities :: ConstraintNetwork -> ([Entity], Int)
-listEntities net = (ents, length ents)
-    where
-        ents = List.nub $ concat [ fst x | x <- constraints net ]
+listEntities :: Ord a => [([a], Relation)] -> Set.Set a
+listEntities cons = Set.fromList $ concat $ map fst cons
 
-isQuasiAtomic :: ConstraintNetwork -> Bool
-isQuasiAtomic net = and [ (Set.size $ snd x) == 1 | x <- constraints net ]
+isQuasiAtomic :: [Constraint] -> Bool
+isQuasiAtomic cons = and [ (Set.size $ snd x) == 1 | x <- cons ]
 

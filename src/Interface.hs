@@ -100,6 +100,6 @@ checkConsistencyWithGqr cal nets =
 
 checkTriangleConsistency :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
 checkTriangleConsistency cal nets = mapM
-    (TC.runTC . convertFlipFlopsForDominik . dipolesToFlipFlops . constraints)
+    (TC.runTC . convertLR72sForDominik . dipole72sToLRs. constraints)
     nets
 
