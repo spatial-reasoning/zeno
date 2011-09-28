@@ -1,71 +1,151 @@
 module Basics where
 
+-- standard modules
+import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
-import qualified Data.Maybe as Maybe
 import qualified Data.Set as Set
+import Data.Maybe
+-- local modules
 import qualified Helpful as H
 
-type Entity = String
-type Relation = Set.Set String
-type Constraint = ([Entity], Relation) -- TODO: Entities must be allowed to be Ints!
 
-data Naa = Naa  -- NonAssociativeAlgebra
-    { baserelations :: Set.Set Relation
-    , identity      :: Relation
-    , converse      :: Map.Map Relation Relation
-    , composition   :: Map.Map (Relation, Relation) Relation
-    } deriving (Read, Show, Eq)
+data Network a b = Network
+    { nCons :: Map.Map a b          -- Constraints
+    , nDesc :: String               -- Description
+    } deriving (Eq, Ord, Read, Show)
 
-data ConstraintNetwork = ConstraintNetwork
-    { constraints      :: [Constraint]
---    , entities         :: Maybe [Entity]
-    , numberOfEntities :: Maybe Int
-    , description      :: Maybe String
-    } deriving (Read, Show, Eq)
+class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
+    readRel       :: String -> a
+    showRel       :: a -> String
 
-convert :: Naa -> Relation -> Relation
-convert a b = Set.fold Set.union Set.empty $ Set.map
-    ((Map.!) (converse a) . Set.singleton) b
----- for the general case (kept for possible later usage)
---    Set.fold Set.union Set.empty $
---    Set.map ((Map.!) (converse a)) $
---    Set.filter (\x -> Set.isSubsetOf x b) (baserelations a)
+    readRel = read . (map Char.toUpper)
+    showRel = (map Char.toLower) . show
 
-compose :: Naa -> Relation -> Relation -> Relation
-compose a b c = Set.fold Set.union Set.empty $ Set.map
-    (\x -> Set.fold Set.union Set.empty $ Set.map
-        (\y -> (composition a) Map.! (Set.singleton x, Set.singleton y))
-        c)
-    b
+class (Calculus a) => BinaryCalculus a where
+    bcBaserelations :: Set.Set a
+    bcIdentity      :: a
 
-enumerate :: [Constraint] -> [Constraint]
-enumerate cons = zip (map enum xs) ys
+    bcConversion    :: Map.Map a (Set.Set a)
+    bcComposition   :: Map.Map (a, a) (Set.Set a)
+
+    bcConvert       :: Set.Set a -> Set.Set a
+    bcCompose       :: Set.Set a -> Set.Set a -> Set.Set a
+
+    bcBaserelations = Set.fromList [minBound..maxBound]
+
+    bcConvert = Set.fold Set.union Set.empty . Set.map ((Map.!) bcConversion)
+
+    bcCompose set1 set2 = Set.fold Set.union Set.empty $ Set.map
+        (\x -> Set.fold Set.union Set.empty $ Set.map
+            (\y -> bcComposition Map.! (x, y))
+            set2
+        ) set1
+
+class (Calculus a) => TernaryCalculus a where
+    tcInvMap :: Map.Map a (Set.Set a)
+    tcScMap  :: Map.Map a (Set.Set a)
+    tcHomMap :: Map.Map a (Set.Set a)
+
+    tcInv  :: Set.Set a -> Set.Set a
+    tcSc   :: Set.Set a -> Set.Set a
+    tcSci  :: Set.Set a -> Set.Set a
+    tcHom  :: Set.Set a -> Set.Set a
+    tcHomi :: Set.Set a -> Set.Set a
+
+    -- extracts the relation between the given nodes from a given network, even
+    -- if only given implicitly by means of Invers, ShortCut and Homing.
+    tcRelOfAtomic :: (Ord a, Ord b) => Network [b] a -> [b] -> Maybe a
+
+    tcInv  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcInvMap)
+    tcSc   = Set.fold Set.union Set.empty . Set.map ((Map.!) tcScMap)
+    tcHom  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcHomMap)
+    tcSci  = tcInv . tcSc
+    tcHomi = tcInv . tcHom
+
+    tcRelOfAtomic Network {nCons = cons} nodes
+        | isJust inv  = Just $ Set.findMin $ tcInv  $ Set.singleton $ fromJust inv
+        | isJust sc   = Just $ Set.findMin $ tcSc   $ Set.singleton $ fromJust sc
+        | isJust sci  = Just $ Set.findMin $ tcSci  $ Set.singleton $ fromJust sci
+        | isJust hom  = Just $ Set.findMin $ tcHom  $ Set.singleton $ fromJust hom
+        | isJust homi = Just $ Set.findMin $ tcHomi $ Set.singleton $ fromJust homi
+        | otherwise   = Nothing
+        where
+            inv  = Map.lookup (tcNodesInv  nodes) cons
+            sc   = Map.lookup (tcNodesSc   nodes) cons
+            sci  = Map.lookup (tcNodesSci  nodes) cons
+            hom  = Map.lookup (tcNodesHom  nodes) cons
+            homi = Map.lookup (tcNodesHomi nodes) cons
+
+tcNodesInv  :: [b] -> [b]
+tcNodesSc   :: [b] -> [b]
+tcNodesSci  :: [b] -> [b]
+tcNodesHom  :: [b] -> [b]
+tcNodesHomi :: [b] -> [b]
+tcNodesInv  [b, a, c] = [a, b, c]
+tcNodesSc   [a, c, b] = [a, b, c]
+tcNodesSci  [c, a, b] = [a, b, c]
+tcNodesHom  [b, c, a] = [a, b, c]
+tcNodesHomi [c, b, a] = [a, b, c]
+
+
+
+{------------------------------------------------------------------------------
+ - Empty constants
+------------------------------------------------------------------------------}
+
+eNetwork = Network
+    { nCons = Map.empty
+    , nDesc = ""
+    }
+
+
+{------------------------------------------------------------------------------
+ - Some useful functions
+------------------------------------------------------------------------------}
+
+enumerate :: (Ord a, Ord b)
+          => Map.Map [a]   b
+          -> Map.Map [Int] b
+enumerate cons = snd $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
     where
-        (xs, ys) = unzip cons
-        ents = List.nub $ foldl1 List.union [ fst x | x <- cons ]
-        enum list = [ show $ Maybe.fromJust $ List.elemIndex x ents
-                    | x <- list ]
+        collectOneCon ents rel (mapCol, consCol) =
+            let
+                (newMap, newEnts) = List.mapAccumL
+                    (\ m entity -> let mappedEntity = Map.lookup entity m in
+                        case mappedEntity of
+                            Nothing   -> let n = Map.size m in
+                                         (Map.insert entity n m, n)
+                            otherwise -> (m, fromJust mappedEntity)
+                    )
+                    mapCol
+                    ents
+            in
+            ( newMap
+            , Map.insert newEnts rel consCol
+            )
 
-enumerateToInt :: [Constraint] -> [([Int], Relation)]
-enumerateToInt cons = zip (map enum xs) ys
-    where
-        (xs, ys) = unzip cons
-        ents = List.nub $ foldl1 List.union [ fst x | x <- cons ]
-        enum list = [ Maybe.fromJust $ List.elemIndex x ents
-                    | x <- list ]
+nodesIn :: (Ord a) => Network [a] b -> Set.Set a
+nodesIn = Map.foldrWithKey
+    (\nodes _ newSet -> foldl (flip Set.insert) newSet nodes )
+    Set.empty . nCons
 
-findIdentity :: Naa -> Maybe Relation
-findIdentity a = H.maxFilterSubset
-    (\s -> Set.fold (&&) True
-        (Set.map
-            (\x -> (compose a s x == x) && (compose a x s == x))
-            (baserelations a)))
-    (Set.fold Set.union Set.empty $ baserelations a)
+--findIdentity :: Naa -> Maybe Relation
+--findIdentity a = H.maxFilterSubset
+--    (\s -> Set.fold (&&) True
+--        (Set.map
+--            (\x -> (compose a s x == x) && (compose a x s == x))
+--            (bcBaserelations a)))
+--    (Set.fold Set.union Set.empty $ bcBaserelations a)
 
-listEntities :: Ord a => [([a], Relation)] -> Set.Set a
-listEntities cons = Set.fromList $ concat $ map fst cons
+isAtomic :: Network [a] (Set.Set b) -> Bool
+isAtomic = Map.fold (\x y -> y && ( (== 1) $ Set.size x)) True . nCons
 
-isQuasiAtomic :: [Constraint] -> Bool
-isQuasiAtomic cons = and [ (Set.size $ snd x) == 1 | x <- cons ]
+makeAtomic :: (Ord a, Show a, Ord b, Show b)
+           => Network [a] (Set.Set b)
+           -> Network [a] b
+makeAtomic net@Network { nCons = cons }
+    | not $ isAtomic net = error $ (show net) ++ " is not atomic!"
+    | otherwise = net { nCons = Map.map Set.findMin cons }
+
 

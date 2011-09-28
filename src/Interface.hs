@@ -1,22 +1,29 @@
 module Interface where
 
+-- standard modules
 import Control.Exception
 import qualified Control.Monad.Parallel as CMP
 import Data.List
+import qualified Data.Maybe as Maybe
+import qualified Data.Set as Set
 import System.IO
 import System.Process
 import System.Unix.Directory
+-- local modules
 import Basics
-import Dipole2FlipFlop
+import Calculus.Dipole
+import Calculus.FlipFlop
+import Convert
 import Export
 import Helpful
 import Parsing
 import qualified TriangleConsistency as TC
+
 import Debug.Trace
 
 -- SparQ gives Problems at the moment!
 -- checkConsistency :: String
---                  -> [ConstraintNetwork]
+--                  -> [Network]
 --                  -> IO [[Maybe Bool]]
 -- checkConsistency cal nets = bracket
 --     (do runInteractiveCommand "sparq -i 2> /dev/null")
@@ -40,15 +47,20 @@ import Debug.Trace
 --         triangleAnswers <- ioTriangleAnswers
 --         return $ transpose [sparqAnswers, gqrAnswers, triangleAnswers] )
 
+--checkConsistency :: (Calculus a)
+--                 => String
+--                 -> [Network [String] (Set.Set Dipole72)]
+--                 -> IO [[Maybe Bool]]
 checkConsistency :: String
-                 -> [ConstraintNetwork]
+                 -> [Network [String] (Set.Set Dipole72)]
                  -> IO [[Maybe Bool]]
 checkConsistency cal nets = do
     -- run Gqr
     ioGqrAnswers <- CMP.forkExec $ checkConsistencyWithGqr cal nets
     gqrAnswers <- ioGqrAnswers
     -- run Triangle
-    ioTriangleAnswers <- CMP.forkExec $ checkTriangleConsistency cal nets
+    ioTriangleAnswers <- CMP.forkExec $ checkTriangleConsistency cal $
+                             map makeAtomic nets
     triangleAnswers <- ioTriangleAnswers
     return $ transpose [gqrAnswers, triangleAnswers]
 
@@ -64,8 +76,9 @@ waitForSparqsPrompt hOut = do
             return (x:y)
     else error "\nSparQ doesn't respond anymore!\n"
 
-checkConsistencyWithSparq :: (Handle, Handle, Handle, ProcessHandle)
-                          -> [ConstraintNetwork]
+checkConsistencyWithSparq :: (Calculus a)
+                          => (Handle, Handle, Handle, ProcessHandle)
+                          -> [Network [String] (Set.Set a)]
                           -> IO [Maybe Bool]
 checkConsistencyWithSparq (hIn, hOut, hErr, _) nets = mapM (\ net -> do
     let sparqNet = sparqify net
@@ -83,7 +96,10 @@ checkConsistencyWithSparq (hIn, hOut, hErr, _) nets = mapM (\ net -> do
                                                     ++ sparqNet)
     ) nets
 
-checkConsistencyWithGqr :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
+checkConsistencyWithGqr :: (Calculus a)
+                        => String
+                        -> [Network [String] (Set.Set a)]
+                        -> IO [Maybe Bool]
 checkConsistencyWithGqr cal nets =
   withTemporaryDirectory "Qstrlib-" (\tmpDir -> do
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
@@ -98,8 +114,12 @@ checkConsistencyWithGqr cal nets =
             | x == '1'  = Nothing
             | otherwise = error ("GQR failed")
 
-checkTriangleConsistency :: String -> [ConstraintNetwork] -> IO [Maybe Bool]
+checkTriangleConsistency :: String
+                         -> [Network [String] Dipole72]
+                         -> IO [Maybe Bool]
 checkTriangleConsistency cal nets = mapM
-    (TC.runTC . convertLR72sForDominik . dipole72sToLRs. constraints)
+    -- TODO: Catch the improbable case that ff7sToFF5s returns Nothing
+    (TC.runTC . flipFlop5sToDominik . Maybe.fromJust . ff7sToFF5s
+        . dipolesToFlipFlops)
     nets
 

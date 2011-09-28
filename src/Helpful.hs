@@ -8,6 +8,9 @@ import qualified Data.Set as Set
 import System.Directory
 import System.Random
 
+setUnion :: (Ord a) => Set.Set (Set.Set a) -> Set.Set a
+setUnion s = Set.fold Set.union Set.empty s
+
 -- return a list of all subsets of s of size n
 subsetsN :: (Ord a) => Set.Set a -> Int -> [Set.Set a]
 subsetsN s n

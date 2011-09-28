@@ -7,45 +7,34 @@ import qualified Data.Maybe as Maybe
 import Basics
 import Debug.Trace
 
-sparqify :: ConstraintNetwork -> String
-sparqify net = ";; "
-    ++ (if Maybe.isJust (numberOfEntities net)
-        then show ((Maybe.fromJust (numberOfEntities net)) - 1)
-        else show ((Set.size $ listEntities $ constraints net) - 1))
-    ++ " # "
-    ++ (if Maybe.isJust (description net)
-        then Maybe.fromJust (description net)
-        else "")
-    ++ "\n(\n"
-    ++ unlines [" (" ++ (concat (List.intersperse
-                                     " " 
-                                     (map ("a" ++) . init $ x) ) )
+sparqify :: (Calculus a) => Network [String] (Set.Set a) -> String
+sparqify net = ";; description = " ++ nDesc net ++ "\n(\n"
+    ++ unlines [" (" ++ (concat $ List.intersperse " " $
+                            map (("a" ++) . init) x)
                      ++ " ("
-                     ++ (concat (List.intersperse " " (Set.toList y)))
+                     ++ (concat $ List.intersperse " " $
+                            Set.toList $ Set.map showRel y)
                      ++ ") a" ++ last x ++ ")"
-               | (x,y) <- (constraints net)]
+               | (x, y) <- Map.toList $ nCons net
+               ]
     ++ ")\n"
 
-gqrify :: ConstraintNetwork -> String
-gqrify net =
-    (if Maybe.isJust (numberOfEntities net)
-        then show (Maybe.fromJust (numberOfEntities net) - 1)
-        else show ((Set.size $ listEntities $ constraints net) - 1))
-    ++ " # "
-    ++ (if Maybe.isJust (description net)
-        then Maybe.fromJust (description net)
-        else "")
-    ++ "\n"
-    ++ unlines [" " ++ x ++ " " ++ y ++ " ( "
-                  ++ (concat (List.intersperse " " (Set.toList z))) ++ " )" 
-               | ([x,y],z) <- enumerate (constraints net)]
+gqrify :: (Calculus a) => Network [String] (Set.Set a) -> String
+gqrify net = show ((Set.size $ nodesIn net) - 1)
+    ++ " # description = " ++ nDesc net ++ "\n"
+    ++ unlines [" " ++ (concat $ List.intersperse " " $ map show x) ++ " ( "
+                    ++ (concat $ List.intersperse " " $
+                           Set.toList $ Set.map showRel y)
+                    ++ " )" 
+               | (x, y) <- Map.toList $ enumerate $ nCons net
+               ]
     ++ ".\n"
 
-exportToSparQ :: ConstraintNetwork -> FilePath -> IO ()
+exportToSparQ :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
 exportToSparQ net filename = do
     writeFile filename (sparqify net)
 
-exportToGqr :: ConstraintNetwork -> FilePath -> IO ()
+exportToGqr :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
 exportToGqr net filename = do
     writeFile filename (gqrify net)
 
