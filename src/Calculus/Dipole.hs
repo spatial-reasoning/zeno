@@ -4,6 +4,8 @@ module Calculus.Dipole where
 import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Maybe
+
 -- local modules
 import Basics
 
@@ -18,6 +20,7 @@ instance Calculus Dipole24 where
     readRel = read . (++ "24") . (map Char.toUpper)
     showRel = (map Char.toLower) . (take 4) . show
 
+{-------------------------------------------------------------
 instance BinaryCalculus Dipole24 where
     bcIdentity = SESE24
 
@@ -2128,6 +2131,7 @@ instance BinaryCalculus Dipole24 where
         , ( ( SRSL24 , SRSL24 )
           , Set.fromList
                 [ SLSR24, SRSL24 ] ) ]
+------------------------------------------------}
 
 data Dipole72 = BBBB72 | BBFF72 | BEIE72 | BFII72 | BIIF72 | BLRR72
               | BRLL72 | BSEF72 | EBIS72 | EFBS72 | EIFS72 | ELLS72
@@ -2147,6 +2151,7 @@ instance Calculus Dipole72 where
     readRel = read . (++ "72") . (map Char.toUpper)
     showRel = (map Char.toLower) . (take 4) . show
 
+{-------------------------------------------------------------
 instance BinaryCalculus Dipole72 where
     bcIdentity = SESE72
 
@@ -21181,6 +21186,7 @@ instance BinaryCalculus Dipole72 where
         , ( ( SRSL72 , SRSL72 )
           , Set.fromList
                 [ SBSB72, SLSR72, SRSL72 ] ) ]
+-------------------------------------------------------------}
 
 data Dipole80 = BBBB80  | BBFF80  | BEIE80  | BFII80  | BIIF80  | BLRR80
               | BRLL80  | BSEF80  | EBIS80  | EFBS80  | EIFS80  | ELLS80
@@ -21215,6 +21221,7 @@ instance Calculus Dipole80 where
             (a,b) = splitAt 4 $ show rel
             lowerA = map Char.toLower a
 
+{-------------------------------------------------------------
 instance BinaryCalculus Dipole80 where
     bcIdentity = SESE80
 
@@ -45541,6 +45548,8 @@ instance BinaryCalculus Dipole80 where
         , ( ( SRSL80  , SRSL80  )
           , Set.fromList
                 [ SBSB80 , SLSR80 , SRSL80  ] ) ]
+----------------------------------------------------------}
+
 
 
 -- -- dipole-72 relations modulo converts.

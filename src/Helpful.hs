@@ -1,12 +1,19 @@
 module Helpful where
 
 import Control.Concurrent
+import Control.Parallel.Strategies
 import Control.Monad
 import Data.Maybe (listToMaybe)
 import qualified Data.List as List
 import qualified Data.Set as Set
 import System.Directory
 import System.Random
+
+-- Parallel map (n = number of parallel computations)
+mapP n f xs = parBuffer n rseq $ map f xs
+
+-- Parallel lists (n = number of parallel computations)
+pList n xs = parBuffer n rseq $ xs
 
 setUnion :: (Ord a) => Set.Set (Set.Set a) -> Set.Set a
 setUnion s = Set.fold Set.union Set.empty s

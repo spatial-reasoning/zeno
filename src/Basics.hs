@@ -6,6 +6,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
+
 -- local modules
 import qualified Helpful as H
 
@@ -130,6 +131,10 @@ nodesIn = Map.foldrWithKey
     (\nodes _ newSet -> foldl (flip Set.insert) newSet nodes )
     Set.empty . nCons
 
+numberOfNodes :: (Ord a) => Network [a] b -> Int
+numberOfNodes = Set.size . nodesIn
+
+
 --findIdentity :: Naa -> Maybe Relation
 --findIdentity a = H.maxFilterSubset
 --    (\s -> Set.fold (&&) True
@@ -141,11 +146,25 @@ nodesIn = Map.foldrWithKey
 isAtomic :: Network [a] (Set.Set b) -> Bool
 isAtomic = Map.fold (\x y -> y && ( (== 1) $ Set.size x)) True . nCons
 
-makeAtomic :: (Ord a, Show a, Ord b, Show b)
+-- This function only keeps atomic relations and generalizes all other
+-- relations to the general relation.
+makeAtomic :: (Ord a)
            => Network [a] (Set.Set b)
            -> Network [a] b
-makeAtomic net@Network { nCons = cons }
-    | not $ isAtomic net = error $ (show net) ++ " is not atomic!"
-    | otherwise = net { nCons = Map.map Set.findMin cons }
+makeAtomic net@Network { nCons = cons } =
+    net { nCons = Map.foldrWithKey
+            (\nodes rel consAcc ->
+                if Set.size rel == 1 then
+                    Map.insert nodes (Set.findMin rel) consAcc
+                else
+                    consAcc
+            ) Map.empty cons
+        }
+
+makeNonAtomic :: Network [a] b -> Network [a] (Set.Set b)
+makeNonAtomic net@Network { nCons = cons } =
+    net { nCons = Map.map Set.singleton cons }
+
+
 
 

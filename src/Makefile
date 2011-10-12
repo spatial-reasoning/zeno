@@ -1,11 +1,12 @@
-# Kleines Makefile zum Erzeugen eines
-# PDF-Dokumentes aus einer LaTeX-Datei.
+
+qstr:
+	ghc --make -O2 -fspec-constr-count=16 -threaded -fforce-recomp +RTS -N3 --RTS qstr.hs -o qstr
 
 %: %.hs
-	ghc --make -O2 -threaded $*.hs -o $*
+	ghc --make -O2 -fspec-constr-count=16 -threaded -fforce-recomp +RTS -N3 --RTS $*.hs -o $*
 
 all:
-	find . -iname "*.hs" -exec ghc --make -O2 -threaded {} \;
+	find . -iname "*.hs" -exec ghc --make -O2 -fspec-constr-count=16 -threaded -fforce-recomp +RTS -N3 --RTS {} \;
 
 clean:
 	rm -f qstr

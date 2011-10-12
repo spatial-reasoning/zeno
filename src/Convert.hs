@@ -3,13 +3,14 @@ module Convert where
 -- standard modules
 import qualified Data.List as List
 import qualified Data.Map as Map
+import Data.Maybe
 import qualified Data.Set as Set
 -- local modules
 import Basics
 import Calculus.Dipole
 import Calculus.FlipFlop
-import OrientedMatroid
 import qualified TriangleConsistency as TC
+import Helpful
 
 
 {------------------------------------------------------------------------------
@@ -20,7 +21,7 @@ import qualified TriangleConsistency as TC
 -- FlipFlop constraints.
 dipoleToFlipFlop :: [String]
                  -> Dipole72
-                 -> [([String], FlipFlop7)]
+                 -> [([String], FlipFlop)]
 dipoleToFlipFlop [a, b] rel =
     [ ([as, ae, bs], readRel [r1])
     , ([as, ae, be], readRel [r2])
@@ -36,7 +37,7 @@ dipoleToFlipFlop [a, b] rel =
 -- | Converts a Network of Dipole constraints into the corresponding Network of
 -- FlipFlop constraints.
 dipolesToFlipFlops :: Network [String] Dipole72
-                   -> Network [String] FlipFlop7
+                   -> Network [String] FlipFlop
 dipolesToFlipFlops net@Network { nCons = cons } = net
     { nCons = Map.foldrWithKey
         (\nodes rel mapAcc -> foldl (flip $ uncurry Map.insert) mapAcc $
@@ -50,7 +51,7 @@ dipolesToFlipFlops net@Network { nCons = cons } = net
 {------------------------------------------------------------------------------
     FlipFlop-5 to Dominik
 ------------------------------------------------------------------------------}
-flipFlop5sToDominik :: Network [String] FlipFlop5 -> [TC.Rel]
+flipFlop5sToDominik :: Network [String] FlipFlop -> [TC.Rel]
 flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
     (\ [a, b, c] rel ls -> List.insert (TC.Rel a b (showRel rel) c) ls )
     []
@@ -61,10 +62,40 @@ flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
  - FlipFlop to Chirotope
 ------------------------------------------------------------------------------}
 
---convertSingleFF7ToChirotope :: Constraint a FlipFlop7 -> ([Int]
---convertSingleFF7ToChirotope Constraint { conNodes = nodes, conRel = rel } =
-    
-
+flipflop7ToChirotope :: Network [String] FlipFlop
+                     -> Maybe (Network [Int] Int)
+flipflop7ToChirotope net7
+    | isNothing net5 || isNothing net3  = Nothing
+    | otherwise  = Just $ (fromJust net3)
+        { nCons = fst $ Map.foldrWithKey
+                                collectOneCon
+                                (Map.empty, Map.empty)
+                                cons
+        }
+    where
+        collectOneCon nodes rel (consCol, mapCol) =
+            let
+                (newMap, newNodes) = List.mapAccumL
+                    (\ m node -> let mappedNode = Map.lookup node m in
+                        case mappedNode of
+                            Nothing   -> let n = Map.size m in
+                                         (Map.insert node n m, n)
+                            otherwise -> (m, fromJust mappedNode)
+                    )
+                    mapCol
+                    nodes
+                newRel = case rel of
+                    R -> (-1)
+                    I -> 0
+                    L -> 1
+            in
+            ( foldl (flip $ uncurry Map.insert) consCol $
+                [(x, newRel * y) | (x,y) <- kPermutationsWithParity 3 newNodes]
+            , newMap
+            )
+        net5 = ffsToFF5s net7
+        net3 = ff5sToFF3s $ fromJust net5
+        cons = nCons $ fromJust net3
 
 --
 -- convert_single_lr72_to_chirotope :: ([Int], Relation)
