@@ -13,6 +13,8 @@ import Calculus.FlipFlop
 import Convert
 import qualified Helpful as H
 
+import Debug.Trace
+
 --type Assignment = Map.Map [Int] Int
 --data Chirotope = Chirotope (Map.Map [Int] Int)
 --
@@ -139,7 +141,7 @@ isChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
 isChirotopeFlipFlop net
     | isNothing chiroNet  = Just False
     | satisfiesGrassmannPluecker $ nCons $ fromJust chiroNet  =
-        if numberOfNodes net < 9  then
+        if numberOfNodes (fromJust chiroNet) < 9 then
             Just True
         else
             Nothing

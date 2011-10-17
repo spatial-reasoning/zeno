@@ -1,26 +1,20 @@
-module Gqr where
-
-{----- This modules needs to be fixed!!
-
-
+module Parsing.Gqr where
 
 -- standard modules
-import Control.Applicative ((<*))
+--import Control.Applicative ((<*))
 import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
-import qualified Text.Parsec.Language as L
-import Text.Parsec.Perm
+--import qualified Text.Parsec.Language as L
+--import Text.Parsec.Perm
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Token as P
+--import Text.ParserCombinators.Parsec.Token as P
 
 -- local modules
 import Basics
 import Helpful
-import qualified Calculus.FlipFlop as FF
-import Parsing
 
 --import Debug.Trace
 
@@ -32,56 +26,68 @@ eol =   try (string "\n\r")
     <|> string "\r"
     <?> "end of line"
 
-parseGqrComment :: Parser String
-parseGqrComment = do
+parseComment :: Parser String
+parseComment = do
     string "#"
     skipMany (oneOf " \t")
     comment <- manyTill anyChar eol
     return comment
 
-parseGqrWhiteSpace :: Parser ()
-parseGqrWhiteSpace = skipMany ( many1 space <|> parseGqrComment )
+parseWhiteSpace :: Parser ()
+parseWhiteSpace = skipMany ( many1 space <|> parseComment )
 
-parseGqrInfo :: Parser (Maybe Int, Maybe String)
-parseGqrInfo = do
-    x <- try (skipMany (oneOf " \t") >> many1 digit <* (skipMany (oneOf " \t") >> string "#"))
-    y <- skipMany (oneOf " \t") >> manyTill anyChar eol
-    return (Just ((read x) + 1), Just y)
+parseInfo :: Parser (Int, String, String)
+parseInfo = do
+    x <- skipMany (oneOf " \t") >> many1 digit
+    y <- optionMaybe
+            (try ( skipMany (oneOf " \t") >> char '#' >>
+                skipMany (oneOf " \t") >>
+                manyTill anyChar (try (lookAhead (choice [string "#", eol]))) )
+            )
+    z <- optionMaybe
+            (try ( char '#' >> skipMany (oneOf " \t") >>
+                manyTill anyChar (try (lookAhead eol)) )
+            )
+    manyTill (oneOf " \t") eol
+    return ( (read x) + 1
+           , fromMaybe (nDesc eNetwork) y
+           , fromMaybe (nCalc eNetwork) z )
 
-parseGqrEntity :: Parser String
-parseGqrEntity = do
-    parseGqrWhiteSpace
+parseEntity :: Parser String
+parseEntity = do
+    parseWhiteSpace
     a <- many1 (noneOf " .,:;()#\t\n\r")
-    parseGqrWhiteSpace
+    parseWhiteSpace
     return a
 
-parseGqrConstraint :: Parser Constraint
-parseGqrConstraint = do
-    a <- parseGqrEntity
-    b <- parseGqrEntity
+parseConstraint :: Parser ([String], Set.Set String)
+parseConstraint = do
+    a <- parseEntity
+    b <- parseEntity
     char '('
-    parseGqrWhiteSpace
-    c <- sepBy parseGqrEntity parseGqrWhiteSpace
+    parseWhiteSpace
+    c <- sepBy parseEntity parseWhiteSpace
     char ')'
-    parseGqrWhiteSpace
+    parseWhiteSpace
     return ( [map Char.toLower a, map Char.toLower b]
            , Set.fromList [map Char.toLower x | x <- c]
            )
 
-parseGqrNetworkFile :: Parser ConstraintNetwork
-parseGqrNetworkFile = do
-    (numOfEnts, desc) <- option (Nothing, Nothing) parseGqrInfo
-    parseGqrWhiteSpace
-    constraints <- many1 parseGqrConstraint
-    return (ConstraintNetwork constraints numOfEnts desc)
+parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
+parseNetwork = do
+    (numOfNodes, desc, calc) <- parseInfo
+    parseWhiteSpace
+    cons <- many1 parseConstraint
+    return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
+                    , nDesc = desc
+                    , nCalc = calc
+                    , nNumOfNodes = Just numOfNodes }
 
-loadGqrNetworkFile :: FilePath -> IO ConstraintNetwork
-loadGqrNetworkFile filename = do
-    network <- parseFromFile parseGqrNetworkFile filename
+loadNetwork :: (Calculus a) => FilePath -> IO (Network [String] (Set.Set a))
+loadNetwork filename = do
+    network <- parseFromFile parseNetwork filename
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)
         Right success -> return success
 
-
---------------------------}

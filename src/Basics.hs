@@ -12,8 +12,10 @@ import qualified Helpful as H
 
 
 data Network a b = Network
-    { nCons :: Map.Map a b          -- Constraints
-    , nDesc :: String               -- Description
+    { nCons       :: Map.Map a b        -- Constraints
+    , nDesc       :: String             -- Description
+    , nCalc       :: String             -- Name of calculus
+    , nNumOfNodes :: Maybe Int          -- Number of nodes
     } deriving (Eq, Ord, Read, Show)
 
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
@@ -54,17 +56,17 @@ class (Calculus a) => TernaryCalculus a where
     tcHom  :: Set.Set a -> Set.Set a
     tcHomi :: Set.Set a -> Set.Set a
 
-    -- extracts the relation between the given nodes from a given network, even
-    -- if only given implicitly by means of Invers, ShortCut and Homing.
-    tcRelOfAtomic :: (Ord a, Ord b) => Network [b] a -> [b] -> Maybe a
-
     tcInv  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcInvMap)
     tcSc   = Set.fold Set.union Set.empty . Set.map ((Map.!) tcScMap)
     tcHom  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcHomMap)
     tcSci  = tcInv . tcSc
     tcHomi = tcInv . tcHom
 
-    tcRelOfAtomic Network {nCons = cons} nodes
+    -- TODO: Should this be here?
+    -- extracts the relation between the given nodes from a given network, even
+    -- if only given implicitly by means of Invers, ShortCut and Homing.
+    tcRelOfAtomic :: (Ord a, Ord b) => Map.Map [b] a -> [b] -> Maybe a
+    tcRelOfAtomic cons nodes
         | isJust inv  = Just $ Set.findMin $ tcInv  $ Set.singleton $ fromJust inv
         | isJust sc   = Just $ Set.findMin $ tcSc   $ Set.singleton $ fromJust sc
         | isJust sci  = Just $ Set.findMin $ tcSci  $ Set.singleton $ fromJust sci
@@ -77,6 +79,17 @@ class (Calculus a) => TernaryCalculus a where
             sci  = Map.lookup (tcNodesSci  nodes) cons
             hom  = Map.lookup (tcNodesHom  nodes) cons
             homi = Map.lookup (tcNodesHomi nodes) cons
+
+    -- TODO: Should this be here?
+    insertCon :: (Ord b)
+              => [b] -> a -> Map.Map [b] (Maybe a) -> Map.Map [b] (Maybe a)
+    insertCon nodes rel cons
+        | isNothing relInCons    = Map.insert nodes (Just rel) cons
+        | relInCons == Just rel  = cons
+        | otherwise              = Map.insert nodes Nothing cons
+        where
+            relInCons = tcRelOfAtomic (Map.map fromJust cons) nodes
+
 
 tcNodesInv  :: [b] -> [b]
 tcNodesSc   :: [b] -> [b]
@@ -98,6 +111,8 @@ tcNodesHomi [c, b, a] = [a, b, c]
 eNetwork = Network
     { nCons = Map.empty
     , nDesc = ""
+    , nCalc = ""
+    , nNumOfNodes = Nothing
     }
 
 
@@ -108,23 +123,64 @@ eNetwork = Network
 enumerate :: (Ord a, Ord b)
           => Map.Map [a]   b
           -> Map.Map [Int] b
-enumerate cons = snd $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
+enumerate cons =
+    snd $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
     where
-        collectOneCon ents rel (mapCol, consCol) =
+        collectOneCon nodes rel (mapCol, consCol) =
             let
-                (newMap, newEnts) = List.mapAccumL
-                    (\ m entity -> let mappedEntity = Map.lookup entity m in
-                        case mappedEntity of
+                (newMap, newNodes) = List.mapAccumL
+                    (\ m node -> let mappedNode = Map.lookup node m in
+                        case mappedNode of
                             Nothing   -> let n = Map.size m in
-                                         (Map.insert entity n m, n)
-                            otherwise -> (m, fromJust mappedEntity)
+                                         (Map.insert node n m, n)
+                            otherwise -> (m, fromJust mappedNode)
                     )
                     mapCol
-                    ents
+                    nodes
             in
             ( newMap
-            , Map.insert newEnts rel consCol
+            , Map.insert newNodes rel consCol
             )
+
+enumerate2 :: (Ord a, Ord b)
+           => Map.Map [a]   b
+           -> (Map.Map [Int] b, Map.Map Int a)
+enumerate2 cons = (newCons, enumeration)
+    where
+        (_, newCons, enumeration) = Map.foldrWithKey
+                                        collectOneCon
+                                        (Map.empty, Map.empty, Map.empty)
+                                        cons
+        collectOneCon nodes rel (mapCol, consCol, enumCol) =
+            let
+                ((newMap, newEnum), newNodes) = List.mapAccumL
+                    (\ (m, e) node -> let mappedNode = Map.lookup node m in
+                        case mappedNode of
+                            Nothing   -> let n = Map.size m in
+                                ((Map.insert node n m, Map.insert n node e), n)
+                            otherwise -> ((m, e), fromJust mappedNode)
+                    )
+                    (mapCol, enumCol)
+                    nodes
+            in
+            ( newMap
+            , Map.insert newNodes rel consCol
+            , newEnum
+            )
+
+unenumerate :: (Ord a)
+            => Map.Map Int a
+            -> Map.Map [Int] b
+            -> Map.Map [a] b
+unenumerate enumeration cons = Map.mapKeys (map (enumeration Map.!)) cons
+
+unenumerateFromString :: (Ord a)
+                      => Map.Map Int a
+                      -> Map.Map [String] b
+                      -> Map.Map [a] b
+unenumerateFromString enumeration cons =
+    Map.mapKeys (map ( (enumeration Map.!) . read )) cons
+
 
 nodesIn :: (Ord a) => Network [a] b -> Set.Set a
 nodesIn = Map.foldrWithKey

@@ -1,7 +1,8 @@
 module Parsing.Qstrlib where
 
 -- standard modules
-import Control.Applicative ((<*))
+--import Control.Applicative ((<*))
+import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.Parsec.Language as L
@@ -12,8 +13,6 @@ import Text.ParserCombinators.Parsec.Token as P
 -- local modules
 import Basics
 import Helpful
-import qualified Calculus.FlipFlop as FF
-import Parsing
 
 --import Debug.Trace
 
@@ -31,6 +30,7 @@ qstrWhiteSpace = P.whiteSpace qstrLexer
 qstrIdent      = P.identifier qstrLexer
 qstrSymbol     = P.symbol qstrLexer
 qstrString     = P.stringLiteral qstrLexer
+qstrNatural    = P.natural qstrLexer
 qstrParens     = P.parens qstrLexer
 
 qstrConstraint = do
@@ -38,31 +38,37 @@ qstrConstraint = do
     b <- qstrParens (many1 qstrIdent)
     return (a,b)
 
-qstrNetwork = many1 qstrConstraint
+qstrNetwork = many1 $ try $ qstrConstraint
 
-parseNetworkFileRaw :: Parser (String, String, [([String], [String])])
-parseNetworkFileRaw = qstrWhiteSpace >> permute ( tuple
-    <$$> (qstrSymbol "calculus =" >> qstrString)
-    <||> (qstrSymbol "description =" >> qstrString)
-    <||> (qstrSymbol "network =" >> qstrNetwork) )
+parseNetworkRaw :: Parser (String, String, [([String], [String])], Maybe Int)
+parseNetworkRaw = qstrWhiteSpace >> permute
+    ( tuple
+        <$$> try (qstrSymbol "calculus =" >> qstrString)
+        <||> try (qstrSymbol "description =" >> qstrString)
+        <||> try (qstrSymbol "network =" >> qstrNetwork)
+        <|?> ( Nothing , (Just . fromIntegral) `liftM` try (qstrSymbol "number of nodes =" >>
+                                           qstrNatural) )
+    )
     where
-        tuple a b c = (a,b,c)
+        tuple a b c d = (a,b,c,d)
 
-parseNetworkFile :: (Calculus a) => Parser (NetworkFile a)
-parseNetworkFile = do
-    (calc, desc, net) <- parseNetworkFileRaw
+parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
+parseNetwork = do
+    (calc, desc, net, numOfNodes) <- parseNetworkRaw
     let parsedNet = eNetwork
             { nCons = Map.fromList
                           [ (x, Set.fromList (map readRel y))
                           | (x, y) <- net
                           ]
             , nDesc = desc
+            , nCalc = calc
+            , nNumOfNodes = numOfNodes
             }
-    return (eNetworkFile { nfCalculus = calc, nfNetwork = parsedNet })
+    return parsedNet
 
-loadNetworkFile :: (Calculus a) => FilePath -> IO (NetworkFile a)
-loadNetworkFile filename = do
-    network <- parseFromFile parseNetworkFile filename
+loadNetwork :: (Calculus a) => FilePath -> IO (Network [String] (Set.Set a))
+loadNetwork filename = do
+    network <- parseFromFile parseNetwork filename
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)

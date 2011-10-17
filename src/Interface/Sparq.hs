@@ -4,6 +4,7 @@ module Interface.Sparq where
 import Control.Exception
 import qualified Data.Maybe as Maybe
 import Data.List
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.IO
 import System.IO.Unsafe
@@ -16,7 +17,10 @@ import Basics
 import Parsing.Sparq
 import Export
 
+-- Debugging and Timing
+--import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import Debug.Trace
+
 
 
 {------------------------------------------------------------------------------
@@ -39,13 +43,38 @@ readToPrompt hOut = do
     sparqResponds <- hWaitForInput hOut (100000)
     if sparqResponds then do
         x <- hGetChar hOut
-        if x == '>' then do
-            y <- hGetChar hOut
-            if y == ' ' then do
-                return "> "
+        if x == 's' then do
+            x <- hGetChar hOut
+            if x == 'p' then do
+                x <- hGetChar hOut
+                if x == 'a' then do
+                    x <- hGetChar hOut
+                    if x == 'r' then do
+                        x <- hGetChar hOut
+                        if x == 'q' then do
+                            x <- hGetChar hOut
+                            if x == '>' then do
+                                x <- hGetChar hOut
+                                if x == ' ' then do
+                                    return "sparq> "
+                                else do
+                                    y <- readToPrompt hOut
+                                    return ("sparq>" ++ (x:y))
+                            else do
+                                y <- readToPrompt hOut
+                                return ("sparq" ++ (x:y))
+                        else do
+                            y <- readToPrompt hOut
+                            return ("spar" ++ (x:y))
+                    else do
+                        y <- readToPrompt hOut
+                        return ("spa" ++ (x:y))
+                else do
+                    y <- readToPrompt hOut
+                    return ("sp" ++ (x:y))
             else do
-                z <- readToPrompt hOut
-                return ([x, y] ++ z)
+                y <- readToPrompt hOut
+                return ("s" ++ (x:y))
         else do
             y <- readToPrompt hOut
             return (x:y)
@@ -62,20 +91,20 @@ readOneLine hOut = do
  - Use SparQ standalone to calculate A-Closure and such things
 ------------------------------------------------------------------------------}
 
-{-# NOINLINE algebraicClosure #-}
 algebraicClosure :: (Calculus a)
                  => String
                  -> Network [String] (Set.Set a)
-                 -> (Maybe Bool, Network [String] (Set.Set a))
-algebraicClosure cal net = doInSparq $
-    (\ (hIn, hOut, hErr, hId) -> do
-        hPutStrLn hIn (trace ("constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify net) $ "constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify net)
-        sparqModified <- readOneLine hOut
-        sparqNewNet <- readToPrompt hOut
-        let modified = case sparqModified of
-                "Modified network."   -> Just True
-                "Unmodified network." -> Just False
-                "Not consistent." -> Nothing
+                 -> (Maybe Bool, Bool, Network [String] (Set.Set a))
+algebraicClosure cal net = unsafePerformIO $
+    if Map.null $ nCons net then do
+        return $ (Just True, False, net)
+    else do
+        answer <- readProcess "sparq" ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net] ""
+        let (sparqModified, (_:sparqNewNet)) = break (== '\n') answer
+        let (consistent, modified) = case sparqModified of
+                "Modified network."   -> (Nothing, True)
+                "Unmodified network." -> (Nothing, False)
+                "Not consistent." -> (Just False, False)
                 _ -> error $ "SparQ answered in an unexpected way.\n\
                              \Expected: Modified network.\n\
                              \      OR: Unmodified Network.\n\
@@ -88,34 +117,35 @@ algebraicClosure cal net = doInSparq $
                                     \Actual answer: " ++ sparqNewNet
                 Right success -> success
         case modified of
-            Nothing    -> return (modified, net)
-            Just False -> return (modified, net)
-            Just True  -> return (modified, net {nCons = nCons newNet})
-    )
+            False -> return (consistent, modified, net)
+            True  -> return (consistent, modified, net {nCons = nCons newNet})
+{-# NOINLINE algebraicClosure #-}
 
 
-{-# NOINLINE algebraicReasoning #-}
 algebraicReasoning :: (Calculus a)
                    => String
                    -> Network [String] (Set.Set a)
                    -> Maybe Bool
-algebraicReasoning cal net = doInSparq $
-    (\ (hIn, hOut, hErr, hId) -> do
-        let sparqNet = sparqify net
-        hPutStrLn hIn ("a-reasoning " ++ cal ++ " consistency " ++ sparqNet)
-        answer <- readToPrompt hOut
+algebraicReasoning cal net = unsafePerformIO $
+    if Map.null $ nCons net then do
+        return $ Just True
+    else do
+        let sparqNet = sparqify True net
+--        start <- getCurrentTime
+        answer <- readProcess "sparq" ["a-reasoning " ++ cal ++ " consistency " ++ sparqNet] ""
+--        end <- getCurrentTime
+--        print $ show (end `diffUTCTime` start) ++ " elapsed."
         if isInfixOf "IS SATISFIABLE." answer then do
-            return $ Just True
+            return $ Just $ trace (sparqNet ++ "\n\n" ++ answer) $ True
         else if isInfixOf "NOT SATISFIABLE." answer then do
             return $ Just False
         else if isInfixOf "CANNOT DECIDE." answer then do
             return Nothing
         else do error ("SparQ answered " ++ show answer ++ " on network "
                                                         ++ sparqNet)
-    )
+{-# NOINLINE algebraicReasoning #-}
 
 
-{-# NOINLINE algebraicClosures #-}
 algebraicClosures :: (Calculus a)
                   => String
                   -> [Network [String] (Set.Set a)]
@@ -124,25 +154,28 @@ algebraicClosures cal nets = doInSparq $
     (\ (hIn, hOut, hErr, hId) -> do
         hPutStrLn hIn ("load-calculus " ++ cal)
         readToPrompt hOut
-        mapM (\ net -> do
-            hPutStrLn hIn ("constraint-reasoning * a-closure " ++ sparqify net)
-            sparqModified <- readOneLine hOut
-            readToPrompt hOut
-            let modified = case sparqModified of
-                    "Modified network."   -> Just True
-                    "Unmodified network." -> Just False
-                    "Not consistent." -> Nothing
-                    _ -> error $ "SparQ answered in an unexpected way.\n\
-                                 \Expected: Modified network.\n\
-                                 \      OR: Unmodified Network.\n\
-                                 \      OR: Not consistent.\n\
-                                 \Actual answer: \"" ++ sparqModified ++ "\""
-            return modified
-            ) nets
+        mapM (\ net ->
+            if Map.null $ nCons net then do
+                return $ Just True
+            else do
+                hPutStrLn hIn ("constraint-reasoning * a-closure " ++ sparqify True net)
+                sparqModified <- readOneLine hOut
+                readToPrompt hOut
+                let consistent = case sparqModified of
+                        "Modified network."   -> Nothing
+                        "Unmodified network." -> Nothing
+                        "Not consistent." -> Just False
+                        _ -> error $ "SparQ answered in an unexpected way.\n\
+                                     \Expected: Modified network.\n\
+                                     \      OR: Unmodified Network.\n\
+                                     \      OR: Not consistent.\n\
+                                     \Actual answer: \"" ++ sparqModified ++ "\""
+                return consistent
+                ) nets
     )
+{-# NOINLINE algebraicClosures #-}
 
 
-{-# NOINLINE algebraicReasonings #-}
 algebraicReasonings :: (Calculus a)
                     => String
                     -> [Network [String] (Set.Set a)]
@@ -151,20 +184,27 @@ algebraicReasonings cal nets = doInSparq $
     (\ (hIn, hOut, hErr, hId) -> do
         hPutStrLn hIn ("load-calculus " ++ cal)
         readToPrompt hOut
-        mapM (\ net -> do
-            let sparqNet = sparqify net
-            hPutStrLn hIn ("a-reasoning * consistency " ++ sparqNet)
-            answer <- readToPrompt hOut
-            if isInfixOf "IS SATISFIABLE." answer then do
+        mapM (\ net ->
+            if Map.null $ nCons net then do
                 return $ Just True
-            else if isInfixOf "NOT SATISFIABLE." answer then do
-                return $ Just False
-            else if isInfixOf "CANNOT DECIDE." answer then do
-                return Nothing
-            else do error ("SparQ answered " ++ show answer ++ " on network "
-                                                            ++ sparqNet)
-            ) nets
+            else do
+                let sparqNet = sparqify True net
+--                start <- getCurrentTime
+                hPutStrLn hIn ("a-reasoning * consistency " ++ sparqNet)
+                answer <- readToPrompt hOut
+--                end <- getCurrentTime
+--                print $ show (end `diffUTCTime` start) ++ " elapsed."
+                if isInfixOf "IS SATISFIABLE." answer then do
+                    return $ Just True
+                else if isInfixOf "NOT SATISFIABLE." answer then do
+                    return $ Just False
+                else if isInfixOf "CANNOT DECIDE." answer then do
+                    return Nothing
+                else do error ("SparQ answered " ++ show answer ++ " on network "
+                                                                ++ sparqNet)
+                ) nets
     )
+{-# NOINLINE algebraicReasonings #-}
 
 
 {-- Server version (is not well suited for our purpose) -----------------------
@@ -218,7 +258,7 @@ algebraicClosure cal net = unsafePerformIO $ bracket
     (do connectToSparq)
     (close)
     (\ sparq -> do
-        writeBlock sparq ("constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify net ++ "\n")
+        writeBlock sparq ("constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net ++ "\n")
         sparqModified <- readOneLine sparq
         sparqNewNet <- readOneLine sparq
         close sparq
@@ -251,7 +291,7 @@ algebraicReasoning cal net = unsafePerformIO $ bracket
     (do trace "\nConnecting.\n" $ connectToSparq)
     (trace "Closing.\n" $ close)
     (\ sparq -> do
-        let sparqNet = sparqify net
+        let sparqNet = sparqify True net
         trace "writing to sparq.\n" $ writeBlock sparq $ "a-reasoning " ++ cal ++ " consistency " ++ sparqNet ++ "\n"
         -- for some reason we get a second prompt from SparQ. Eat it!
         answer <- trace "reading from sparq.\n" $ readToPrompt sparq

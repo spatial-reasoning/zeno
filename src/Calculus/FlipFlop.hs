@@ -1,5 +1,3 @@
--- TODO: Add dou and tri to the calculi ?
-
 module Calculus.FlipFlop where
 
 -- standard modules
@@ -15,7 +13,15 @@ import Interface.Sparq
 data FlipFlop = L | R | B | S | I | E | F | D | T
     deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
-instance Calculus FlipFlop
+instance Calculus FlipFlop where
+    readRel = read . catchDouTri . (map Char.toUpper)
+        where
+            catchDouTri "DOU" = "D"
+            catchDouTri "TRI" = "T"
+            catchDouTri x = x
+    showRel D = "dou"
+    showRel T = "tri"
+    showRel x = (map Char.toLower) $ show x
 
 instance TernaryCalculus FlipFlop where
     tcInvMap = Map.fromList
@@ -62,15 +68,14 @@ fflip B = F
 fflip I = I
 
 
--- Fixme: Take care of D and T !
 ffsToFF5s :: (Ord a)
-           => Network [a] FlipFlop
-           -> Maybe (Network [a] FlipFlop)
+          => Network [a] FlipFlop
+          -> Maybe (Network [a] FlipFlop)
 ffsToFF5s net@Network { nCons = cons }
     | not $ Map.null $ Map.filterWithKey
-          (\ [a, b, c] _ -> a == c || b == c)
+          (\ [a, b, c] rel -> a == c || b == c || isNothing rel)
           newCons  = Nothing
-    | otherwise = Just $ net{ nCons = newCons }
+    | otherwise = Just $ net{ nCons = Map.map fromJust newCons }
     where
         newCons = fst $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
         collectOneCon nodes@[a, b, c] rel (newConsCol, mapCol)
@@ -83,11 +88,10 @@ ffsToFF5s net@Network { nCons = cons }
             | rel == T  = ( newConsCol
                           , Map.insert c (applyMap mapCol a) $
                             Map.insert b (applyMap mapCol a) mapCol )
-            | otherwise  = ( Map.insert
-                                 (map (applyMap mapCol) nodes)
-                                 rel
-                                 newConsCol
+            | otherwise  = ( insertCon mappedNodes rel newConsCol 
                            , mapCol )
+            where
+                mappedNodes = map (applyMap mapCol) nodes
         applyMap m node = Map.findWithDefault node node m
 
 -- Convert Back, Inline and Front to Inline.
@@ -101,46 +105,59 @@ bifToI x = x
 ff5sToFF3s :: Network [String] FlipFlop
            -> Maybe (Network [String] FlipFlop)
 ff5sToFF3s nnnet
-    | isNothing changed || isNothing nnet  = Nothing
+    | consistent == Just False || isNothing nnet  = Nothing
     | otherwise  = Just $ net
-        { nCons = fst $ Map.foldrWithKey
-                                collectOneCon
-                                (Map.empty, nodesIn net)
-                                (nCons net)
-        }
+        -- insertCon never returns Nothing since the network is algebraically
+        -- closed.
+        { nCons = Map.map fromJust $ fst $ Map.foldrWithKey
+                                               collectOneCon
+                                               (Map.empty, nodesIn net)
+                                               (nCons net) }
     where
         -- TODO: How to best handle the problem of conversion from atomic to nonatomic and back?
-        (changed, aClosedNnnet) = algebraicClosure "ff" $ makeNonAtomic nnnet
+        (consistent, _, aClosedNnnet) =
+            algebraicClosure "ff" $ makeNonAtomic nnnet
         nnet = ffsToFF5s $ makeAtomic $ aClosedNnnet
             { nCons = Map.map (Set.map bifToI) $ nCons aClosedNnnet }
-        net = fromJust nnet
+        net@Network { nCons = cons } = fromJust nnet
         collectOneCon [a, b, c] rel (consAcc, nodesAcc)
             | rel == L || rel == R  =
-                ( Map.insert [a, b, c] rel consAcc
+                ( insertCon [a, b, c] rel consAcc
                 , nodesAcc )
             | rel == B  =
-                ( foldl (flip $ uncurry Map.insert) consAcc
+                ( foldl (flip $ uncurry insertCon) consAcc
+                    ( [ ([a, b, d], flipper L)               -- HERE WE HAVE
+                      , ([d, a, c], flipper R) ]             -- TO FILTER THE
+                      ++                                     -- THE DUPLICATES
+                      if new then
+                          inlineNodes
+                      else
+                          []
+                    )
+                , newNodesAcc )
+            | rel == I  =
+                ( foldl (flip $ uncurry insertCon) consAcc
                     ( [ ([a, b, d], flipper L)
-                      , ([d, a, c], flipper R) ]
+                      , ([d, a, c], flipper L)
+                      , ([d, b, c], flipper R) ]
                       ++
                       if new then
                           inlineNodes
                       else
                           []
                     )
-
-                , newNodesAcc )
-            | rel == I  =
-                ( foldl (flip $ uncurry Map.insert) consAcc
-                    [ ([a, b, d], flipper L)
-                    , ([d, a, c], flipper L)
-                    , ([d, b, c], flipper R) ]
                 , newNodesAcc
                 )
             | rel == F  =
-                ( foldl (flip $ uncurry Map.insert) consAcc
-                    [ ([a, b, d], flipper L)
-                    , ([d, b, c], flipper L) ]
+                ( foldl (flip $ uncurry insertCon) consAcc
+                    ( [ ([a, b, d], flipper L)
+                      , ([d, b, c], flipper L) ]
+                      ++
+                      if new then
+                          inlineNodes
+                      else
+                          []
+                    )
                 , newNodesAcc
                 )
             where
@@ -150,10 +167,10 @@ ff5sToFF3s nnnet
                     | isJust rightD = (fst $ fromJust rightD, fflip, False)
                     | otherwise     = (newD           , id   , True)
                 leftD = Set.minView $ Set.filter
-                    (\node -> tcRelOfAtomic net [a, b, node] == Just L)
+                    (\node -> tcRelOfAtomic cons [a, b, node] == Just L)
                     nodesAcc
                 rightD = Set.minView $ Set.filter
-                    (\node -> tcRelOfAtomic net [a, b, node] == Just R)
+                    (\node -> tcRelOfAtomic cons [a, b, node] == Just R)
                     nodesAcc
                 -- if we could generalize the generation of newD we wouldn't be
                 -- restricted to Strings as the type of the nodes.
@@ -161,30 +178,30 @@ ff5sToFF3s nnnet
                 inlineNodes = Set.fold (\x pairAcc -> Set.fold (\y pairAcc2 ->
                     if
                          (x /= y)
-                      && (    (    tcRelOfAtomic net [a, b, x] == Just B
-                                && (    (    tcRelOfAtomic net [a, b, y] == Just B
-                                          && tcRelOfAtomic net [x, y, a] == Just F
-                                          && tcRelOfAtomic net [x, y, b] == Just F )
+                      && (    (    tcRelOfAtomic cons [a, b, x] == Just B
+                                && (    (    tcRelOfAtomic cons [a, b, y] == Just B
+                                          && tcRelOfAtomic cons [x, y, a] == Just F
+                                          && tcRelOfAtomic cons [x, y, b] == Just F )
                                      || y == a
-                                     || tcRelOfAtomic net [a, b, y] == Just I
+                                     || tcRelOfAtomic cons [a, b, y] == Just I
                                      || y == b
-                                     || tcRelOfAtomic net [a, b, y] == Just F ))
+                                     || tcRelOfAtomic cons [a, b, y] == Just F ))
                            || (    x == a
-                                && (    tcRelOfAtomic net [a, b, y] == Just I
+                                && (    tcRelOfAtomic cons [a, b, y] == Just I
                                      || y == b
-                                     || tcRelOfAtomic net [a, b, y] == Just F ))
-                           || (    tcRelOfAtomic net [a, b, x] == Just I
-                                && (    (    tcRelOfAtomic net [a, b, y] == Just I
-                                          && tcRelOfAtomic net [x, y, a] == Just B
-                                          && tcRelOfAtomic net [x, y, b] == Just F )
+                                     || tcRelOfAtomic cons [a, b, y] == Just F ))
+                           || (    tcRelOfAtomic cons [a, b, x] == Just I
+                                && (    (    tcRelOfAtomic cons [a, b, y] == Just I
+                                          && tcRelOfAtomic cons [x, y, a] == Just B
+                                          && tcRelOfAtomic cons [x, y, b] == Just F )
                                      || y == b
-                                     || tcRelOfAtomic net [a, b, y] == Just F ))
+                                     || tcRelOfAtomic cons [a, b, y] == Just F ))
                            || (    x == b
-                                && tcRelOfAtomic net [a, b, y] == Just F )
-                           || (    tcRelOfAtomic net [a, b, x] == Just F
-                                && tcRelOfAtomic net [a, b, y] == Just F
-                                && tcRelOfAtomic net [x, y, a] == Just B
-                                && tcRelOfAtomic net [x, y, b] == Just B ))
+                                && tcRelOfAtomic cons [a, b, y] == Just F )
+                           || (    tcRelOfAtomic cons [a, b, x] == Just F
+                                && tcRelOfAtomic cons [a, b, y] == Just F
+                                && tcRelOfAtomic cons [x, y, a] == Just B
+                                && tcRelOfAtomic cons [x, y, b] == Just B ))
                     then
                         insert ([x, y, d], flipper L) pairAcc2
                     else

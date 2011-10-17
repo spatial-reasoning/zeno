@@ -1,7 +1,7 @@
 module Export where
 
 -- standard modules
-import qualified Data.List as List
+import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Maybe as Maybe
@@ -11,33 +11,49 @@ import Basics
 
 --import Debug.Trace
 
-sparqify :: (Calculus a) => Network [String] (Set.Set a) -> String
-sparqify net = ";; description = " ++ nDesc net ++ "\n(\n"
-    ++ unlines [" (" ++ (concat $ List.intersperse " " $ init x)
-                     ++ " ("
-                     ++ (concat $ List.intersperse " " $
-                            Set.toList $ Set.map showRel y)
-                     ++ ") " ++ last x ++ ")"
-               | (x, y) <- Map.toList $ nCons net
-               ]
-    ++ ")"
+--qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
+--qstrify net = 
 
-gqrify :: (Calculus a) => Network [String] (Set.Set a) -> String
-gqrify net = show ((Set.size $ nodesIn net) - 1)
-    ++ " # description = " ++ nDesc net ++ "\n"
-    ++ unlines [" " ++ (concat $ List.intersperse " " $ map show x) ++ " ( "
-                    ++ (concat $ List.intersperse " " $
-                           Set.toList $ Set.map showRel y)
-                    ++ " )" 
-               | (x, y) <- Map.toList $ enumerate $ nCons net
-               ]
-    ++ ".\n"
+sparqify :: (Calculus a) => Bool -> Network [String] (Set.Set a) -> String
+sparqify oneLine net = desc ++ "(" ++ sep1
+    ++ intercalate sep2 ["(" ++ (concat $ intersperse " " $ init x)
+                             ++ " ("
+                             ++ (concat $ intersperse " " $
+                                    Set.toList $ Set.map showRel y)
+                             ++ ") " ++ last x ++ ")"
+                       | (x, y) <- Map.toList $ nCons net
+                       ]
+    ++ sep3 ++ ")"
+  where
+    (sep1, sep2, sep3) = if oneLine then
+                             ("", " ", "")
+                         else
+                             ("\n ", "\n ", "\n")
+    desc = if oneLine then
+               ""
+           else
+               ";; description = " ++ nDesc net ++ "\n"
+
+gqrify :: (Calculus a) => Network [String] (Set.Set a) -> (String, Map.Map Int String)
+gqrify net =
+    ( show ((Set.size $ nodesIn net) - 1)
+        ++ " # description = " ++ nDesc net ++ "\n"
+        ++ unlines [" " ++ (concat $ intersperse " " $ map show x) ++ " ( "
+                        ++ (concat $ intersperse " " $
+                               Set.toList $ Set.map showRel y)
+                        ++ " )" 
+                   | (x, y) <- Map.toList numCons
+                   ]
+        ++ ".\n"
+    , enumeration )
+    where
+        (numCons, enumeration) = enumerate2 $ nCons net
 
 exportToSparQ :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
 exportToSparQ net filename = do
-    writeFile filename (sparqify net ++ "\n")
+    writeFile filename (sparqify False net ++ "\n")
 
 exportToGqr :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
 exportToGqr net filename = do
-    writeFile filename (gqrify net)
+    writeFile filename (fst $ gqrify net)
 

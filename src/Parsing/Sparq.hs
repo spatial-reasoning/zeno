@@ -11,7 +11,6 @@ import Text.ParserCombinators.Parsec
 
 -- local modules
 import Basics
-import Parsing
 
 --import Debug.Trace
 
@@ -33,12 +32,23 @@ parseComment = do
 parseWhiteSpace :: Parser ()
 parseWhiteSpace = skipMany ( many1 space <|> parseComment )
 
-parseInfo :: Parser (Maybe Int, Maybe String)
+parseInfo :: Parser (Maybe Int, Maybe String, Maybe String)
 parseInfo = do
-    x <- try (string ";;" >> skipMany (oneOf " \t") >>
-             many1 digit <* (skipMany (oneOf " \t") >> string "#"))
-    y <- skipMany (oneOf " \t") >> manyTill anyChar eol
-    return (Just ((read x) + 1), Just y)
+    x <- skipMany (oneOf " \t") >> string ";;" >> skipMany (oneOf " \t") >>
+             many1 digit
+    y <- optionMaybe
+            (try ( skipMany (oneOf " \t") >> char '#' >>
+                skipMany (oneOf " \t") >>
+                manyTill anyChar (try (lookAhead (choice [string "#", eol]))) )
+            )
+    z <- optionMaybe
+            (try ( char '#' >> skipMany (oneOf " \t") >>
+                manyTill anyChar (try (lookAhead eol)) )
+            )
+    manyTill (oneOf " \t") eol
+    return ( Just ( (read x) + 1 )
+           , y
+           , z )
 
 parseEntity :: Parser String
 parseEntity = do
@@ -67,7 +77,7 @@ parseConstraint n = do
 
 parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
 parseNetwork = do
-    (numOfEnts, desc) <- option (Nothing, Nothing) parseInfo
+    (numOfNodes, desc, calc) <- option (Nothing, Nothing, Nothing) parseInfo
     parseWhiteSpace
     char '('
     parseWhiteSpace
@@ -78,16 +88,13 @@ parseNetwork = do
     char ')'
     parseWhiteSpace
     return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
-                    , nDesc = fromMaybe "" desc }
-    
-parseNetworkFile :: (Calculus a) => Parser (NetworkFile a)
-parseNetworkFile = do
-    net <- parseNetwork
-    return eNetworkFile { nfNetwork = net }
+                    , nDesc = fromMaybe (nDesc eNetwork) desc
+                    , nCalc = fromMaybe (nCalc eNetwork) calc
+                    , nNumOfNodes = numOfNodes }
 
-loadNetworkFile :: (Calculus a) => FilePath -> IO (NetworkFile a)
-loadNetworkFile filename = do
-    network <- parseFromFile parseNetworkFile filename
+loadNetwork :: (Calculus a) => FilePath -> IO (Network [String] (Set.Set a))
+loadNetwork filename = do
+    network <- parseFromFile parseNetwork filename
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)
