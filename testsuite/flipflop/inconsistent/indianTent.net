@@ -1,0 +1,13 @@
+calculus = "flipflop-7"
+description = "Indian Tent"
+number of nodes = 4
+#number of nodes = 7
+network =
+    a b c (l)
+    a b d (r)
+    b c d (r)
+    a c d (l)
+# for debugging:
+#    a b e (l)
+#    a b f (l)
+#    a b g (l)

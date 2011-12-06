@@ -12,102 +12,48 @@ import Calculus.Dipole
 import Calculus.FlipFlop
 import Convert
 import qualified Helpful as H
+import Interface.LpSolve
+--import Interface.Clp
 
 import Debug.Trace
 
 --type Assignment = Map.Map [Int] Int
 --data Chirotope = Chirotope (Map.Map [Int] Int)
---
---fromMap :: Map.Map a b -> Chirotope
---fromMap m
---    | isChirotope m = Chirotope m
---    | otherwise = error "huhu"
-
--- Here the Grassmann-Plücker condition is only checked for triples that are
--- already in the map! Triples not in the map are supposed to fullfil the
--- condition, which is not always true. So this function gives false positives.
-isNoChirotope :: Map.Map [Int] Int -> Bool
-isNoChirotope m
-    | Set.isSubsetOf elems (Set.fromList [(-1), 0, 1])
-        && elems /= Set.singleton 0
-        && and (map ((== rank) . length) keys)
-        && domain == [0..(length domain) - 1]
---        && notElem Nothing ( map (flip Map.lookup m) permuts )
-        && ( and $ map
-               ( \(x:xs) -> foldl
-                   (\z y ->
-                       z && ((m Map.! (fst y)) == (snd y) * (m Map.! (fst x)))
-                   ) True xs
-               ) $
-               filter ((flip Map.member m) . fst . head) permutsAndParities
-           )
-        && and grassmannPluecker
-        = False
-    | otherwise = True
-    where
-        keys = Map.keys m
-        elems = Set.fromList $ Map.elems m
-        rank = length $ head keys
-        domain = sort $ nub $ concat keys
-        permutsAndParities =
-            map (H.kPermutationsWithParity rank) $ H.kCombinations rank domain
---        permutsAndParities = H.kPermutationsWithParity rank domain
---        permuts = map fst permutsAndParities
-        grassmannPluecker =
-            [ (\x -> (elem (-1) x && elem 1 x) || x == [0,0,0])
-                [ (Map.!) m (x ++ [a,b]) * (Map.!) m (x ++ [c,d])
-                , (Map.!) m (x ++ [a,c]) * (Map.!) m (x ++ [b,d]) * (-1)
-                , (Map.!) m (x ++ [a,d]) * (Map.!) m (x ++ [b,c])
-                ]
-            | xy <- H.kCombinations (rank + 2) domain
-            , let (x,[a,b,c,d]) = splitAt (rank - 2) xy
-            , Map.member (x ++ [a,b]) m -- filter the ones in the map.
-            , Map.member (x ++ [c,d]) m
-            , Map.member (x ++ [a,c]) m
-            , Map.member (x ++ [b,d]) m
-            , Map.member (x ++ [a,d]) m
-            , Map.member (x ++ [c,b]) m
-            ]
-
--- Test by backtracking. First check whether the function isNoChirotope
--- rejects the Map, if not then fix one open relation and all its permutations
--- and start again. Stop when one full assignment is found or when no
--- assignment is possible.
---isChirotope :: Map [Int] Int -> Bool
---isChirotope m
---    | isNoChirotope m  = False
---    | otherwise  =
---
---isChirotope_worker :: Map [Int] Int -> [([Int], Int)] -> [[Int]] -> Bool
---isChirotope_worker m cPermutsAndParities cCombinations = 
 
 
-
--- Assume that the simpler conditions testet in isChirotope are already
--- satisfied (e.g. because of preprocessing). Only check whether
--- Grassmann-Pluecker can be satisfied.
+-- Assume that the simpler conditions are already satisfied (e.g. because of
+-- preprocessing). Only check whether Grassmann-Pluecker can be satisfied.
+-- Requires that the number of nodes is at least rank + 2 .
 satisfiesGrassmannPluecker :: Map.Map [Int] Int -> Bool
 satisfiesGrassmannPluecker m
     | null keys  = True
     | otherwise  =
-        satisfiesGrassmannPluecker_worker remainingPermutsWithParities m
+        satisfiesGrassmannPluecker_worker missingPermutsWithParities m
     where
         keys = Map.keys m
         rank = length $ head keys
-        domain = [0..(length $ nub $ concat keys) - 1]
-        remainingPermutsWithParities = map
+        sizeOfDomain = length $ nub $ concat keys
+        domain = [0..sizeOfDomain - 1]
+        missingPermutsWithParities = map
             (H.kPermutationsWithParity rank)
             (filter (flip Map.notMember m) $ H.kCombinations rank domain)
-        combis2 = H.kCombinations (rank + 2) domain
-        satisfiesGrassmannPluecker_worker remainingPwPs wM
-            | and [ (\x -> (elem (-1) x && elem 1 x) || x == [0,0,0])
+        -- This could be done wiser, so we don't have to split the list again
+        -- below! See at function realizable.
+        combis = foldl
+            (\acc x -> (acc ++) $ map (x ++) $ H.kCombinations 4 (domain \\ x)
+            ) [] (H.kCombinations (rank - 2) domain)
+        satisfiesGrassmannPluecker_worker missingPwPs wM
+            | and [ (\y -> (elem (-1) y && elem 1 y) || y == [0,0,0])
                      [ (Map.!) wM (x ++ [a,b]) * (Map.!) wM (x ++ [c,d])
                      , (Map.!) wM (x ++ [a,c]) * (Map.!) wM (x ++ [b,d]) * (-1)
                      , (Map.!) wM (x ++ [a,d]) * (Map.!) wM (x ++ [b,c])
                      ]
-                  | xy <- combis2
+                  | xy <- combis
                   , let (x,[a,b,c,d]) = splitAt (rank - 2) xy
                   -- filter the ones in the map.
+                      -- FIXME: Here we could also drop
+                      -- those triples, that have been tested in the last
+                      -- backtracking step!
                   , Map.member (x ++ [a,b]) wM
                   , Map.member (x ++ [c,d]) wM
                   , Map.member (x ++ [a,c]) wM
@@ -115,42 +61,278 @@ satisfiesGrassmannPluecker m
                   , Map.member (x ++ [a,d]) wM
                   , Map.member (x ++ [c,b]) wM
                   ]
-              = if remainingPwPs == [] then
+              = if missingPwPs == [] then
                     True
                 else
-                    or $ concat $ map
-                        (\x -> map
-                            (\newSign -> satisfiesGrassmannPluecker_worker
-                                (delete x remainingPwPs)
-                                (foldl (flip $ uncurry Map.insert) wM
-                                    [ (y, newSign * z) | (y, z) <- x ]
-                                )
+                    let
+                        -- Some optimizations might be helpful at this place.
+                        x:pwps = missingPwPs
+                    in
+                    or $ map
+                        (\newSign -> satisfiesGrassmannPluecker_worker
+                            pwps
+                            (foldl (flip $ uncurry Map.insert) wM
+                                [ (y, newSign * z) | (y, z) <- x ]
                             )
-                            [(-1), 0, 1]
                         )
-                        remainingPwPs
+                        [(-1), 0, 1]
             | otherwise  = False
 
+
+-- Assume that the simpler conditions (e.g. that m is alternating and not zero)
+-- are already satisfied. Only check whether the third chirotope axiom can be
+-- satisfied and whether the chirotope is acyclic.
+-- TODO: Can we save time by using the fact that the map is alternating?
+isAcyclicChirotope :: Map.Map [Int] Int 
+                   ->(Map.Map [Int] Int
+                   -> [[Int]]
+                   -> Int
+                   -> [Int]
+                   -> Bool
+                  )-> Bool
+isAcyclicChirotope m f
+    | null keys  = True
+--    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
+    | otherwise  =
+        isAcyclicChirotope_worker missingPermutsWithParities (Map.toList m) m
+  where
+    keys = Map.keys m
+    rank = length $ head keys
+    domain = nub $ concat keys
+    missingPermutsWithParities = map
+        (H.kPermutationsWithParity rank)
+        (filter (flip Map.notMember m) $ H.kCombinations rank domain)
+    applyMap k m =
+        -- ein unechtes Triple hat Orientierung Null
+        -- TODO: teste ob das unechte triple nicht doch in der Map ist!
+        if H.hasDuplicates k then
+            Just 0
+        else
+            Map.lookup k m
+    isAcyclicChirotope_worker missingPwPs newCons wM
+        | satisfiesThirdAxiom newCons wM && isAcyclic wM  =
+            if missingPwPs == [] then
+                -- here we can add a function to run on all full
+                -- chirotopes, e.g. the function "is_realizable" !
+--                True
+                f wM keys rank domain
+            else
+              let
+                -- Some optimizations might be helpful at this place.
+                x:stillMissingPwPs = missingPwPs
+              in
+                or $ map
+                    (\newSign ->
+                      let
+                        newConstraints = [ (y, newSign * z) | (y, z) <- x ]
+                      in
+--                        trace (
+--                                "\nassigning " ++ show x ++ " to " ++ show newSign ++ "\n"
+--                                ++
+--                                "length of missing constraints: " ++ (show $ length stillMissingPwPs)
+--                                "a"
+--                              ) $
+                        isAcyclicChirotope_worker
+                            stillMissingPwPs
+                            newConstraints $
+                            foldl (flip $ uncurry Map.insert) wM newConstraints
+                    ) [(-1), 0, 1]
+        | otherwise  = False
+    satisfiesThirdAxiom newCons m =
+      let
+        nonzeroNewCons = filter (\(x,y) -> y /= 0 ) newCons
+        nonzeroM = Map.filter (/= 0) m
+      in
+        ( foldl
+            (\acc (nodes@(x:tailNodes), rel) -> (acc &&) $ Map.foldrWithKey
+                (\nodes2 rel2 acc2 -> (acc2 &&) $
+                    or [ case applyMap (y:tailNodes) m of
+                           Nothing -> True
+                           Just 0 ->  False
+                           Just rel3 -> case applyMap (lefty ++ x:righty) m of
+                               Nothing -> True
+                               Just 0 -> False
+                               Just rel4 -> rel * rel2 == rel3 * rel4
+                       | y <- nodes2
+                       , let (lefty, _:righty) = break (== y) nodes2
+                       ]
+                ) True nonzeroM
+            ) True nonzeroNewCons
+        ) &&
+        ( Map.foldrWithKey
+            (\nodes@(x:tailNodes) rel acc ->
+                (acc &&) $ foldl
+                    (\acc2 (nodes2, rel2) -> (acc2 &&) $ or
+                        [ case applyMap (y:tailNodes) m of
+                            Nothing -> True
+                            Just 0 ->  False
+                            Just rel3 -> case applyMap (lefty ++ x:righty) m of
+                                Nothing -> True
+                                Just 0 -> False
+                                Just rel4 -> rel * rel2 == rel3 * rel4
+                        | y <- nodes2
+                        , let (lefty, _:righty) = break (== y) nodes2
+                        ]
+                    ) True nonzeroNewCons
+            ) True nonzeroM
+        )
+    -- TODO: Can we just generate those quadruples of which a corresponding
+    -- triple has been added in the last backtracking step?
+-- Complicated repaired version:
+    isAcyclic m = not $ any (\[x,y] -> (null x && (not $ null y))
+                                    || (null y && (not $ null x))
+                            ) $ circuits m
+    circuits m = map fst $ mapMaybe
+        (\combi ->
+          let
+            subCombis = [ ( delete node combi
+                          , ( node, fromJust $ elemIndex node combi )
+                          )
+                        | node <- combi ]
+          in
+            maybe Nothing
+              (Just . foldl
+                    (\([posAcc, negAcc], (subCombi, (node, index)):rSubCombis) rel ->
+                        case (-1)^index * rel of
+                            (-1) -> ([node:posAcc, negAcc], rSubCombis)
+                            1    -> ([posAcc, node:negAcc], rSubCombis)
+                            0    -> ([posAcc, negAcc], rSubCombis)
+                            _    -> error $ "This is not a chirotope!" ++
+                                            show m
+                    ) ([[],[]] , subCombis)
+               ) $ mapM (flip Map.lookup m) $ map fst subCombis
+        ) $ H.kCombinations (rank + 1) domain
+-- Simple repaired version:
+--    isAcyclic m =
+--      let
+--        combis = H.kCombinations (rank + 1) domain
+--        circuits = [ (positiveCircuitOf x m, negativeCircuitOf x m) | x <- combis ] 
+--      in
+--        not $ any (\(x,y) -> ( null x && not (null y) )
+--                          || ( null y && not (null x) )
+--                  ) circuits
+--    negativeCircuitOf z m = filter
+--        (\x -> maybe True
+--            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
+--            Map.lookup (delete x z) m
+--        ) z
+--    positiveCircuitOf z m = filter
+--        (\x -> maybe True
+--            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
+--            Map.lookup (delete x z) m
+--        ) z
+-- Original buggy version:
+--    isAcyclic m = not $ any null
+--        [ negativeCircuitOf x m
+--        | x <- H.kCombinations (rank + 1) domain
+--        ]
+--    negativeCircuitOf z m = filter
+--        (\x -> maybe True
+--            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
+--            Map.lookup (delete x z) m
+--        ) z
+
+
+-- search for a bi-quadratic final polynomial via translation into a
+-- Linear Programming Problem. Only works for uniform chirotopes.
+-- The chirotope axioms are not checked.
+hasNoBiquadraticFinalPolynomial :: Map.Map [Int] Int
+                                 -> [[Int]]
+                                 -> Int
+                                 -> [Int]
+                                 -> Bool
+hasNoBiquadraticFinalPolynomial m keys rank domain =
+    case zeroObjective lpInput of
+        Nothing    -> False
+        Just True  -> False
+        Just False -> True
+  where
+    lpInput = ("max: s ;\n" ++) $ concatMap
+        (\[a,b,c,d] ->    "v_" ++ showBracket a ++
+                       " + v_" ++ showBracket b ++
+                       " - v_" ++ showBracket c ++
+                       " - v_" ++ showBracket d ++ " + s <= 0 ;\n"
+        ) absoluteQuadratics
+--    lpInput = (++ "END") $ ("MIN\n    -s\nST\n" ++) $ concatMap
+--        (\[a,b,c,d] -> "    v_" ++ showBracket a ++
+--                        " + v_" ++ showBracket b ++
+--                        " - v_" ++ showBracket c ++
+--                        " - v_" ++ showBracket d ++ " + s <= 0\n"
+--        ) absoluteQuadratics
+    showBracket = concat . map show
+    absoluteQuadratics = map
+        (\(x, [a,b,c,d]) -> [ sort $ x ++ [a,b]
+                            , sort $ x ++ [c,d]
+                            , sort $ x ++ [a,c]
+                            , sort $ x ++ [b,d] ]
+        ) $ filter
+            (\(x, [a,b,c,d]) -> chi (x ++ [a,b]) * chi (x ++ [c,d]) > 0 &&
+                                chi (x ++ [a,c]) * chi (x ++ [b,d]) > 0 &&
+                                chi (x ++ [a,d]) * chi (x ++ [b,c]) > 0
+            ) $ foldl
+                (\acc x -> (acc ++) $
+                    map (\y -> (x,y)) $ H.kPermutations 4 (domain \\ x)
+                ) [] (H.kCombinations (rank - 2) domain)
+    chi = (Map.!) m
+--    keys = Map.keys m
+--    rank = length $ head keys
+--    domain = nub $ concat keys
+
+hasBiquadraticFinalPolynomial :: Map.Map [Int] Int
+                               -> [[Int]]
+                               -> Int
+                               -> [Int]
+                               -> Bool
+hasBiquadraticFinalPolynomial a b c d =
+    not $ hasNoBiquadraticFinalPolynomial a b c d
 
 
 {------------------------------------------------------------------------------
  - Test for FlipFlop and Dipole Networks
 ------------------------------------------------------------------------------}
 
-isChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
-isChirotopeFlipFlop net
-    | isNothing chiroNet  = Just False
-    | satisfiesGrassmannPluecker $ nCons $ fromJust chiroNet  =
+isAcyclicChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeFlipFlop net
+    | maybe False
+            (\x -> isAcyclicChirotope (nCons x) (\_ _ _ _ -> True))
+            chiroNet  =
         if numberOfNodes (fromJust chiroNet) < 9 then
             Just True
         else
             Nothing
     | otherwise  = Just False
-    where
-        chiroNet = flipflop7ToChirotope net
+  where
+    chiroNet = flipflop7ToChirotope net
 
 
-isChirotopeDipole72 :: Network [String] Dipole72 -> Maybe Bool
-isChirotopeDipole72 = isChirotopeFlipFlop . dipolesToFlipFlops
+isAcyclicChirotopeDipole72 :: Network [String] Dipole72 -> Maybe Bool
+isAcyclicChirotopeDipole72 net
+    | isNothing ffNet  = Nothing
+    | otherwise  = isAcyclicChirotopeFlipFlop $ fromJust ffNet
+  where
+    ffNet = dipolesToFlipFlops net
+
+
+isAcyclicChirotopeWithoutBPFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeWithoutBPFlipFlop net
+    | maybe False (\x -> isAcyclicChirotope
+                             (nCons x)
+                             hasNoBiquadraticFinalPolynomial
+                  ) chiroNet  =
+        if numberOfNodes (fromJust chiroNet) < 9 then
+            Just True
+        else
+            Nothing
+    | otherwise  = Just False
+  where
+    chiroNet = flipflop7ToChirotope net
+
+
+isAcyclicChirotopeWithoutBPDipole72 :: Network [String] Dipole72 -> Maybe Bool
+isAcyclicChirotopeWithoutBPDipole72 net
+    | isNothing ffNet  = Nothing
+    | otherwise  = isAcyclicChirotopeWithoutBPFlipFlop $ fromJust ffNet
+  where
+    ffNet = dipolesToFlipFlops net
 
 

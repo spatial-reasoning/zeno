@@ -136,13 +136,13 @@ algebraicReasoning cal net = unsafePerformIO $
 --        end <- getCurrentTime
 --        print $ show (end `diffUTCTime` start) ++ " elapsed."
         if isInfixOf "IS SATISFIABLE." answer then do
-            return $ Just $ trace (sparqNet ++ "\n\n" ++ answer) $ True
+            return $ Just True
         else if isInfixOf "NOT SATISFIABLE." answer then do
             return $ Just False
         else if isInfixOf "CANNOT DECIDE." answer then do
             return Nothing
-        else do error ("SparQ answered " ++ show answer ++ " on network "
-                                                        ++ sparqNet)
+        else error ("SparQ answered " ++ show answer ++ " on network "
+                                                     ++ sparqNet)
 {-# NOINLINE algebraicReasoning #-}
 
 
@@ -288,11 +288,11 @@ algebraicReasoning :: (Calculus a)
                    -> Network [String] (Set.Set a)
                    -> Maybe Bool
 algebraicReasoning cal net = unsafePerformIO $ bracket
-    (do trace "\nConnecting.\n" $ connectToSparq)
-    (trace "Closing.\n" $ close)
+    (do connectToSparq)
+    (close)
     (\ sparq -> do
         let sparqNet = sparqify True net
-        trace "writing to sparq.\n" $ writeBlock sparq $ "a-reasoning " ++ cal ++ " consistency " ++ sparqNet ++ "\n"
+        writeBlock sparq $ "a-reasoning " ++ cal ++ " consistency " ++ sparqNet ++ "\n"
         -- for some reason we get a second prompt from SparQ. Eat it!
         answer <- trace "reading from sparq.\n" $ readToPrompt sparq
         if isInfixOf "IS SATISFIABLE." answer then do

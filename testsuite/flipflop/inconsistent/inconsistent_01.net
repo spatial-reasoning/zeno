@@ -1,0 +1,7 @@
+calculus = "flipflop-7"
+description = "4 nodes, inconsistent, a very simple inconsistent network."
+number of nodes = 4
+network =
+    a b c (l)
+    b c d (f)
+    a b d (r)

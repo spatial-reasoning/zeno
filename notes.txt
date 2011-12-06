@@ -1,0 +1,10 @@
+In the function "isAcyclicChirotopeFlipFlop" if we only check that the given
+map is acyclic we get pretty good answers and save a lot of time!
+
+
+
+   Fix tcInsert on various places!!
+  ----------------------------------
+
+
+

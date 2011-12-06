@@ -10,7 +10,7 @@ import System.Directory
 import System.Random
 
 -- Parallel map (n = number of parallel computations)
-mapP n f xs = parBuffer n rseq $ map f xs
+mapP n f xs = map f xs `using` parBuffer n rseq
 
 -- Parallel lists (n = number of parallel computations)
 pList n xs = parBuffer n rseq $ xs
@@ -82,6 +82,11 @@ _join = mapM takeMVar
 parMapM :: (a -> IO b) -> [a] -> IO [b]
 parMapM f xs = (_fork f xs) >>= _join
 
+
+hasDuplicates :: (Eq a) => [a] -> Bool
+hasDuplicates [] = False
+hasDuplicates (x:xs) = elem x xs || hasDuplicates xs
+
 -- The findWithIndex function takes a predicate and a list and returns the pair
 -- of the first element in the list satisfying the predicate and its index, or
 -- Nothing if there is no such element. 
@@ -139,6 +144,4 @@ kPermutationsWithParity k x =
 --             interleave' _ []     r = (ts, r)
 --             interleave' f (y:ys) r = let (us,zs) = interleave' (f . (y:)) ys r
 --                                      in  (y:us, f (t:y:us) : zs)
-
-
 

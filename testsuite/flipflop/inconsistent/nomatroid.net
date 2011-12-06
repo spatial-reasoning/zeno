@@ -1,0 +1,9 @@
+calculus = "flipflop-7"
+description = "No matroid"
+number of nodes = 5
+network =
+    a b c (l)
+    a d e (l)
+    a b e (i)
+    a c e (i)
+    

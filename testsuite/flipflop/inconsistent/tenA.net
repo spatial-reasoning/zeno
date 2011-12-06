@@ -1,0 +1,15 @@
+calculus = "flipflop-3"
+description = "inconsistent."
+number of nodes = 10
+network =
+    1 3 6 (i)
+    1 4 8 (i)
+    2 3 5 (i)
+    2 4 7 (i)
+    1 2 9 (i)
+    6 8 9 (i)
+    5 7 9 (i)
+    3 4 0 (i)
+    5 6 0 (i)
+    7 8 0 (i)
+

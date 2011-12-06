@@ -4,7 +4,7 @@ module Export where
 import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.Maybe as Maybe
+import Data.Maybe
 
 -- local modules
 import Basics
@@ -14,6 +14,38 @@ import Basics
 --qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
 --qstrify net = 
 
+showAtomicNet :: (Show b) => Network [String] b -> String
+showAtomicNet net@Network { nCons = cons
+                    , nDesc = desc
+                    , nCalc = calc
+                    , nNumOfNodes = numOfNodes
+                    } = 
+    "calculus = " ++ show calc ++ "\ndescription = " ++ show desc ++
+    (maybe "" (("\nnumber of nodes = " ++) . show) numOfNodes) ++
+    "\nnetwork =\n" ++ 
+    ( unlines $ map
+        (\(nodes, rel) ->
+            "    " ++ (intercalate " " nodes) ++ " ( " ++ show rel ++ " )"
+        ) $ Map.toList cons
+    )
+
+showNonAtomicNet :: (Show b) => Network [String] (Set.Set b) -> String
+showNonAtomicNet net@Network { nCons = cons
+                    , nDesc = desc
+                    , nCalc = calc
+                    , nNumOfNodes = numOfNodes
+                    } = 
+    "calculus = " ++ show calc ++ "\ndescription = " ++ show desc ++
+    (maybe "" (("\nnumber of nodes = " ++) . show) numOfNodes) ++
+    "\nnetwork =\n" ++ 
+    ( unlines $ map
+        (\(nodes, rels) ->
+            "    " ++ (intercalate " " nodes) ++ " ( " ++
+            (concatMap show $ Set.toList rels) ++
+            " )"
+        ) $ Map.toList cons
+    )
+
 sparqify :: (Calculus a) => Bool -> Network [String] (Set.Set a) -> String
 sparqify oneLine net = desc ++ "(" ++ sep1
     ++ intercalate sep2 ["(" ++ (concat $ intersperse " " $ init x)
@@ -21,8 +53,8 @@ sparqify oneLine net = desc ++ "(" ++ sep1
                              ++ (concat $ intersperse " " $
                                     Set.toList $ Set.map showRel y)
                              ++ ") " ++ last x ++ ")"
-                       | (x, y) <- Map.toList $ nCons net
-                       ]
+                        | (x, y) <- Map.toList $ nCons net
+                        ]
     ++ sep3 ++ ")"
   where
     (sep1, sep2, sep3) = if oneLine then
@@ -49,8 +81,8 @@ gqrify net =
     where
         (numCons, enumeration) = enumerate2 $ nCons net
 
-exportToSparQ :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
-exportToSparQ net filename = do
+exportToSparq :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
+exportToSparq net filename = do
     writeFile filename (sparqify False net ++ "\n")
 
 exportToGqr :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()

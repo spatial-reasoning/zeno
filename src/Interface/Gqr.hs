@@ -26,9 +26,17 @@ algebraicClosure cal net = unsafePerformIO $
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
-    gqrAnswer <- readProcess "gqr" (["c -C", cal, fst gqrTempFile]) ""
-    let (fstline, gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
-    let consistent = zeroOne $ last $ init fstline
+    gqrAnswer <- readProcess "gqr" (["c -C", cal, "-S", fst gqrTempFile]) ""
+    let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
+    let consistent = zeroOne $ last fstline
+          where
+            zeroOne x
+                | x == '0'  = False
+                | x == '1'  = True
+                | otherwise = error ("GQR answered in an unexpected way.\n\
+                                     \Expected answer: Gqr information on \
+                                     \consistency of a network.\n\
+                                     \Actual answer  : " ++ gqrAnswer)
     let parsedNet = case parse parseNetwork "" gqrNewNet of
             Left err -> error $ "Gqr answered in an unexpected way.\n\
                                 \Expected: a Gqr network definition.\n\
@@ -41,11 +49,6 @@ algebraicClosure cal net = unsafePerformIO $
     else do
         return (Just False, net)
   )
-  where
-      zeroOne x
-          | x == '0'  = False
-          | x == '1'  = True
-          | otherwise = error ("GQR failed")
 
 algebraicClosures :: (Calculus a)
                   => String
@@ -58,11 +61,14 @@ algebraicClosures cal nets = unsafePerformIO $
     mapM_ (hClose . snd) gqrTempFiles
     gqrAnswer <- readProcess "gqr" (["c -C", cal] ++ (map fst gqrTempFiles)) ""
     let answer = map zeroOne [ last x | x <- lines gqrAnswer, head x == '#' ]
+          where
+            zeroOne x
+                | x == '0'  = Just False
+                | x == '1'  = Nothing
+                | otherwise = error ("GQR answered in an unexpected way.\n\
+                                     \Expected answer: Gqr information on \
+                                     \consistency of a network.\n\
+                                     \Actual answer  : " ++ gqrAnswer)
     return answer
   )
-  where
-      zeroOne x
-          | x == '0'  = Just False
-          | x == '1'  = Nothing
-          | otherwise = error ("GQR failed")
 

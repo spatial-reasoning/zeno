@@ -14,12 +14,20 @@ import qualified TriangleConsistency as TC
 --import Debug.Trace
 
 
-checkConsistency :: Basics.Network [String] Dipole72
+checkConsistency :: Network [String] FlipFlop
                  -> Maybe Bool
 checkConsistency net7
     | isNothing net5  = Just False
     | otherwise  = unsafePerformIO $
                        TC.runTC $ flipFlop5sToDominik $ fromJust net5
     where
-        net5 = ffsToFF5s $ dipolesToFlipFlops net7
+        net5 = ffsToFF5s net7
+
+checkConsistencyDipole72 :: Network [String] Dipole72
+                         -> Maybe Bool
+checkConsistencyDipole72 net
+    | isNothing ffNet  = Nothing
+    | otherwise  = checkConsistency $ fromJust ffNet
+  where
+    ffNet = dipolesToFlipFlops net
 
