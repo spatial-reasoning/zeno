@@ -14,7 +14,7 @@ import Basics
 --qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
 --qstrify net = 
 
-showAtomicNet :: (Show b) => Network [String] b -> String
+showAtomicNet :: (Calculus b) => Network [String] b -> String
 showAtomicNet net@Network { nCons = cons
                     , nDesc = desc
                     , nCalc = calc
@@ -25,11 +25,11 @@ showAtomicNet net@Network { nCons = cons
     "\nnetwork =\n" ++ 
     ( unlines $ map
         (\(nodes, rel) ->
-            "    " ++ (intercalate " " nodes) ++ " ( " ++ show rel ++ " )"
+            "    " ++ (intercalate " " nodes) ++ " ( " ++ showRel rel ++ " )"
         ) $ Map.toList cons
     )
 
-showNonAtomicNet :: (Show b) => Network [String] (Set.Set b) -> String
+showNonAtomicNet :: (Calculus b) => Network [String] (Set.Set b) -> String
 showNonAtomicNet net@Network { nCons = cons
                     , nDesc = desc
                     , nCalc = calc
@@ -41,7 +41,7 @@ showNonAtomicNet net@Network { nCons = cons
     ( unlines $ map
         (\(nodes, rels) ->
             "    " ++ (intercalate " " nodes) ++ " ( " ++
-            (concatMap show $ Set.toList rels) ++
+            (concatMap showRel $ Set.toList rels) ++
             " )"
         ) $ Map.toList cons
     )

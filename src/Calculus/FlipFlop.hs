@@ -75,7 +75,7 @@ ffsToFF5s :: (Ord a, Show a)
           -> Maybe (Network [a] FlipFlop)
 ffsToFF5s net@Network { nCons = cons }
     | not $ Map.null $ Map.filterWithKey
-          (\ [a, b, c] rel -> a == c || b == c || Set.null rel)
+          (\ [a, b, c] rel -> a == b || a == c || b == c || Set.null rel)
           newCons  = Nothing
     | otherwise = Just $ net{ nCons = Map.map Set.findMin newCons }
   where
@@ -111,8 +111,8 @@ ff5sToFF3s :: Network [String] FlipFlop
            -> Maybe (Network [String] FlipFlop)
 ff5sToFF3s nnnet
     | consistent == Just False || isNothing nnet
-                               || elem Nothing (Map.elems newCons)  = Nothing
-    | otherwise  = Just $ net { nCons = Map.map fromJust newCons }
+                               || elem Set.empty (Map.elems newCons)  = Nothing
+    | otherwise  = Just $ makeAtomic $ net { nCons = newCons }
   where
     newCons = fst $ Map.foldrWithKey
                         collectOneCon
@@ -125,13 +125,13 @@ ff5sToFF3s nnnet
     net@Network { nCons = cons } = fromJust nnet
     collectOneCon [a, b, c] rel (consAcc, nodesAcc)
         | rel == L || rel == R  =
-            ( tcInsertAtomic [a, b, c] rel consAcc
+            ( tcInsert [a, b, c] (Set.singleton rel) consAcc
             , nodesAcc )
         | rel == B  =
-            ( foldl (flip $ uncurry tcInsertAtomic) consAcc
-                ( [ ([a, b, c],         I)
-                  , ([a, b, d], flipper L)
-                  , ([d, a, c], flipper R) ]
+            ( foldl (flip $ uncurry tcInsert) consAcc
+                ( [ ([a, b, c], Set.singleton I)
+                  , ([a, b, d], Set.singleton $ flipper L)
+                  , ([d, a, c], Set.singleton $ flipper R) ]
                   ++
                   if new then
                       inlineNodes
@@ -140,11 +140,11 @@ ff5sToFF3s nnnet
                 )
             , newNodesAcc )
         | rel == I  =
-            ( foldl (flip $ uncurry tcInsertAtomic) consAcc
-                ( [ ([a, b, c],         I)
-                  , ([a, b, d], flipper L)
-                  , ([d, a, c], flipper L)
-                  , ([d, b, c], flipper R) ]
+            ( foldl (flip $ uncurry tcInsert) consAcc
+                ( [ ([a, b, c], Set.singleton I)
+                  , ([a, b, d], Set.singleton $ flipper L)
+                  , ([d, a, c], Set.singleton $ flipper L)
+                  , ([d, b, c], Set.singleton $ flipper R) ]
                   ++
                   if new then
                       inlineNodes
@@ -154,10 +154,10 @@ ff5sToFF3s nnnet
             , newNodesAcc
             )
         | rel == F  =
-            ( foldl (flip $ uncurry tcInsertAtomic) consAcc
-                ( [ ([a, b, c],         I)
-                  , ([a, b, d], flipper L)
-                  , ([d, b, c], flipper L) ]
+            ( foldl (flip $ uncurry tcInsert) consAcc
+                ( [ ([a, b, c], Set.singleton I)
+                  , ([a, b, d], Set.singleton $ flipper L)
+                  , ([d, b, c], Set.singleton $flipper L) ]
                   ++
                   if new then
                       inlineNodes
@@ -173,11 +173,19 @@ ff5sToFF3s nnnet
             | isJust rightD = (fst $ fromJust rightD, fflip, False)
             | otherwise     = (newD                 , id   , True)
         leftD = Set.minView $ Set.filter
-            (\node -> tcRelOfAtomic (Map.union cons $ Map.map fromJust consAcc) [a, b, node] == Just L)
-            nodesAcc
+            (\node ->
+                tcRelOf
+                    (Map.union (Map.map Set.singleton cons) consAcc)
+                    [a, b, node]
+                == (Just $ Set.singleton L)
+            ) nodesAcc
         rightD = Set.minView $ Set.filter
-            (\node -> tcRelOfAtomic (Map.union cons $ Map.map fromJust consAcc) [a, b, node] == Just R)
-            nodesAcc
+            (\node ->
+                tcRelOf
+                    (Map.union (Map.map Set.singleton cons) consAcc)
+                    [a, b, node]
+                == (Just $ Set.singleton R)
+            ) nodesAcc
         -- if we could generalize the generation of newD we wouldn't be
         -- restricted to Strings as the type of the nodes.
 --        newD = concat $ Set.toList nodesAcc
@@ -185,7 +193,6 @@ ff5sToFF3s nnnet
             Set.map
                 (read . drop 5 :: String -> Int) $
                 Set.filter (("eris_" ==) . take 5) nodesAcc
-        -- FIXME: THIS FUNCTION NEEDS TO BE LOOKED AT !
         inlineNodes = Set.fold (\x pairAcc -> Set.fold (\y pairAcc2 ->
             if
                  (x /= y)
@@ -214,7 +221,7 @@ ff5sToFF3s nnnet
                         && tcRelOfAtomic cons [x, y, a] == Just B
                         && tcRelOfAtomic cons [x, y, b] == Just B ))
             then
-                insert ([x, y, d], flipper L) pairAcc2
+                ([x, y, d], Set.singleton $ flipper L):pairAcc2
             else
                 pairAcc2
             ) pairAcc nodesAcc ) [] nodesAcc

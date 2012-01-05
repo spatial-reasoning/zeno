@@ -1,10 +1,37 @@
-In the function "isAcyclicChirotopeFlipFlop" if we only check that the given
-map is acyclic we get pretty good answers and save a lot of time!
+als rückgabewert nehmen wir
+
+Map #knoten
+    ( #getestete netzwerke
+    , optimale dichte (bis jetzt)
+    , Map dichte
+         ( Map algorithmus
+             ( #ja
+             , #nein
+             , #vielleicht
+             , Map Int Int -- wie oft auf welchem platz (geschwindigkeit)
+             , durchschnittliche geschwindigkeit (auch bei weißnicht)
+             )
+         )
+    )
 
 
 
-   Fix tcInsert on various places!!
-  ----------------------------------
+Wir wollen (für je 10 Netzwerke) je #Knoten und Dichte wissen:
+
+ • wieviele (in prozent?) der bekanntermaßen (nicht) realisierbaren netzwerke hat das verfahren erkannt?
+ • wie oft war der algorithmus auf welchem platz im geschwindigkeitsvergleich?
+   – nur wenn es eine klare Antwort gegeben hat!
+ • durchschnittliche geschwindigkeit bis zur antwort.
+
+
+Speichere Netwerke, die interessante eigenschaften haben:
+
+ • 
+
+
+1000 netzwerke pro anzahl knoten
 
 
 
+Diedrich wegen Ternärer Algebraic Closure fragen.
+fix timeout of algebraic reasoning.

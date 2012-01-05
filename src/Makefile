@@ -1,8 +1,15 @@
 
+compareAndAdjust:
+	ghc --make -O2 -fspec-constr-count=16 -threaded -rtsopts compareAndAdjust.hs -o compareAndAdjust
+#	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all -fforce-recomp compareAndAdjust.hs -o compareAndAdjust
+#	ghc --make -O2 -fspec-constr-count=16 -threaded -rtsopts -prof compare.hs -o compare
+#	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all compareRandomNetworks.hs -o compareRandomNetworks
+
 compareRandomNetworks:
 	ghc --make -O2 -fspec-constr-count=16 -threaded -rtsopts compareRandomNetworks.hs -o compareRandomNetworks
 #	ghc --make -O2 -fspec-constr-count=16 -threaded -rtsopts -prof compare.hs -o compare
-#	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof compare.hs -o compare
+#	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all -fforce-recomp compareRandomNetworks.hs -o compareRandomNetworks
+#	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all compareRandomNetworks.hs -o compareRandomNetworks
 
 compareGivenNetworks:
 	ghc --make -O2 -fspec-constr-count=16 -threaded -rtsopts compareGivenNetworks.hs -o compareGivenNetworks

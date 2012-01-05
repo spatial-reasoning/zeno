@@ -73,7 +73,7 @@ dipolesToFlipFlops net@Network { nCons = cons }
 ------------------------------------------------------------------------------}
 flipFlop5sToDominik :: Network [String] FlipFlop -> [T.Rel]
 flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
-    (\ [a, b, c] rel ls -> insert (T.Rel a b (showRel rel) c) ls )
+    (\ [a, b, c] rel ls -> (T.Rel a b (showRel rel) c):ls )
     []
     (enumerate cons)
 

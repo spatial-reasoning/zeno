@@ -58,12 +58,12 @@ randomConnectedAtomicNetwork rank domain syze density = do
                             ) $ zip3 combis rels rolls
                     return ( (consAcc ++) $
                                if null newCons then
-                                   [(node:randomCombi, head $ rels)]
+                                   [(randomCombi ++ [node], head $ rels)]
                                else
                                    newCons
-                           , node:nodesAcc
+                           , nodesAcc ++ [node]
                            )
-                ) ([], (reverse $ map show [1..rank - 1])) [rank..syze]
+                ) ([], (map show [1..rank - 1])) [rank..syze]
     return $ eNetwork { nDesc = "Random Network", nCons = cons }
 
 

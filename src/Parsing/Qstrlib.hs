@@ -52,23 +52,33 @@ parseNetworkRaw = qstrWhiteSpace >> permute
     where
         tuple a b c d = (a,b,c,d)
 
-parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
-parseNetwork = do
+--parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
+parseNetwork insertCon = do
     (calc, desc, net, numOfNodes) <- parseNetworkRaw
     let parsedNet = eNetwork
-            { nCons = Map.fromList
-                          [ (x, Set.fromList (map readRel y))
-                          | (x, y) <- net
-                          ]
+            { nCons = foldl
+                (\acc (nodes, rel) ->
+                    insertCon nodes rel acc
+                ) Map.empty [(x, Set.fromList (map readRel y)) | (x, y) <- net]
             , nDesc = desc
             , nCalc = calc
             , nNumOfNodes = numOfNodes
             }
     return parsedNet
 
-loadNetwork :: (Calculus a) => FilePath -> IO (Network [String] (Set.Set a))
-loadNetwork filename = do
-    network <- parseFromFile parseNetwork filename
+loadBinaryNetwork :: (BinaryCalculus a)
+                  => FilePath -> IO (Network [String] (Set.Set a))
+loadBinaryNetwork filename = do
+    network <- parseFromFile (parseNetwork bcInsert) filename
+    case network of
+        Left error -> do
+            fail $ "parse error in " ++ filename ++ " at " ++ show(error)
+        Right success -> return success
+
+loadTernaryNetwork :: (TernaryCalculus a)
+                   => FilePath -> IO (Network [String] (Set.Set a))
+loadTernaryNetwork filename = do
+    network <- parseFromFile (parseNetwork tcInsert) filename
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)

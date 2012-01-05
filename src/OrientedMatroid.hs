@@ -90,15 +90,20 @@ isAcyclicChirotope :: Map.Map [Int] Int
                    -> [Int]
                    -> Bool
                   )-> Bool
-isAcyclicChirotope m f
+--                   -> [Bool]             -- TWOINONE
+                   -> Bool
+isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
+--    | null keys  = [True, True]          -- TWOINONE
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
+    | not $ isAcyclic (Map.toList m) m  = False
     | otherwise  =
-        isAcyclicChirotope_worker missingPermutsWithParities (Map.toList m) m
+        isAcyclicChirotope_worker missingPermutsWithParities [] m
   where
     keys = Map.keys m
     rank = length $ head keys
     domain = nub $ concat keys
+--    combis = H.kCombinations (rank + 1) domain
     missingPermutsWithParities = map
         (H.kPermutationsWithParity rank)
         (filter (flip Map.notMember m) $ H.kCombinations rank domain)
@@ -110,17 +115,21 @@ isAcyclicChirotope m f
         else
             Map.lookup k m
     isAcyclicChirotope_worker missingPwPs newCons wM
-        | satisfiesThirdAxiom newCons wM && isAcyclic wM  =
+        | satisfiesThirdAxiom newCons wM &&
+          ( onlyTestTheGivenMapForAcyclicity || isAcyclic (take 1 newCons) wM )
+           =
             if missingPwPs == [] then
                 -- here we can add a function to run on all full
                 -- chirotopes, e.g. the function "is_realizable" !
 --                True
                 f wM keys rank domain
+--                [True, f wM keys rank domain]          -- TWOINONE
             else
               let
                 -- Some optimizations might be helpful at this place.
                 x:stillMissingPwPs = missingPwPs
               in
+--                map or $ transpose $ map          -- TWOINONE
                 or $ map
                     (\newSign ->
                       let
@@ -137,10 +146,11 @@ isAcyclicChirotope m f
                             newConstraints $
                             foldl (flip $ uncurry Map.insert) wM newConstraints
                     ) [(-1), 0, 1]
+--        | otherwise  = [False, False]            -- TWOINONE
         | otherwise  = False
     satisfiesThirdAxiom newCons m =
       let
-        nonzeroNewCons = filter (\(x,y) -> y /= 0 ) newCons
+        nonzeroNewCons = filter (\(_,x) -> x /= 0 ) newCons
         nonzeroM = Map.filter (/= 0) m
       in
         ( foldl
@@ -179,59 +189,66 @@ isAcyclicChirotope m f
     -- TODO: Can we just generate those quadruples of which a corresponding
     -- triple has been added in the last backtracking step?
 -- Complicated repaired version:
-    isAcyclic m = not $ any (\[x,y] -> (null x && (not $ null y))
-                                    || (null y && (not $ null x))
-                            ) $ circuits m
-    circuits m = map fst $ mapMaybe
-        (\combi ->
-          let
-            subCombis = [ ( delete node combi
-                          , ( node, fromJust $ elemIndex node combi )
-                          )
-                        | node <- combi ]
-          in
-            maybe Nothing
-              (Just . foldl
-                    (\([posAcc, negAcc], (subCombi, (node, index)):rSubCombis) rel ->
-                        case (-1)^index * rel of
-                            (-1) -> ([node:posAcc, negAcc], rSubCombis)
-                            1    -> ([posAcc, node:negAcc], rSubCombis)
-                            0    -> ([posAcc, negAcc], rSubCombis)
-                            _    -> error $ "This is not a chirotope!" ++
-                                            show m
-                    ) ([[],[]] , subCombis)
-               ) $ mapM (flip Map.lookup m) $ map fst subCombis
-        ) $ H.kCombinations (rank + 1) domain
--- Simple repaired version:
+--    isAcyclic m = not $ any (\[x,y] -> (null x && (not $ null y))
+--                                    || (null y && (not $ null x))
+--                            ) $ circuits m
+--    circuits m = map fst $ mapMaybe
+--        (\combi ->
+--          let
+--            subCombis = [ ( delete node combi
+--                          , ( node, fromJust $ elemIndex node combi )
+--                          )
+--                        | node <- combi ]
+--          in
+--            maybe Nothing
+--              (Just . foldl
+--                    (\([posAcc, negAcc], (subCombi, (node, index)):rSubCombis) rel ->
+--                        case (-1)^index * rel of
+--                            (-1) -> ([node:posAcc, negAcc], rSubCombis)
+--                            1    -> ([posAcc, node:negAcc], rSubCombis)
+--                            0    -> ([posAcc, negAcc], rSubCombis)
+--                            _    -> error $ "This is not a chirotope!" ++
+--                                            show m
+--                    ) ([[],[]] , subCombis)
+--               ) $ mapM (flip Map.lookup m) $ map fst subCombis
+--        ) $ H.kCombinations (rank + 1) domain
+---- Simple repaired version:
 --    isAcyclic m =
 --      let
---        combis = H.kCombinations (rank + 1) domain
 --        circuits = [ (positiveCircuitOf x m, negativeCircuitOf x m) | x <- combis ] 
 --      in
 --        not $ any (\(x,y) -> ( null x && not (null y) )
 --                          || ( null y && not (null x) )
 --                  ) circuits
---    negativeCircuitOf z m = filter
---        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
---            Map.lookup (delete x z) m
---        ) z
 --    positiveCircuitOf z m = filter
 --        (\x -> maybe True
 --            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
 --            Map.lookup (delete x z) m
 --        ) z
--- Original buggy version:
---    isAcyclic m = not $ any null
---        [ negativeCircuitOf x m
---        | x <- H.kCombinations (rank + 1) domain
---        ]
 --    negativeCircuitOf z m = filter
 --        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
+--            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
 --            Map.lookup (delete x z) m
 --        ) z
-
+-- Faster version only testing the newly inserted triples :
+    isAcyclic newCons m = {-# SCC "isAcyclic" #-}
+      let
+        positiveCircuitOf z = filter
+            (\x -> maybe True
+                (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
+                Map.lookup (delete x z) m
+            ) z
+        negativeCircuitOf z = filter
+            (\x -> maybe True
+                (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
+                Map.lookup (delete x z) m
+            ) z
+        combis = [ insert y x | (x,_) <- newCons, y <- domain, not $ elem y x ]
+        circuits = [ (positiveCircuitOf c, negativeCircuitOf c) | c <- combis ]
+      in
+        not $ any (\(x,y) -> ( null x && not (null y) )
+                          || ( null y && not (null x) )
+                  ) circuits
 
 -- search for a bi-quadratic final polynomial via translation into a
 -- Linear Programming Problem. Only works for uniform chirotopes.
@@ -259,7 +276,7 @@ hasNoBiquadraticFinalPolynomial m keys rank domain =
 --                        " - v_" ++ showBracket c ++
 --                        " - v_" ++ showBracket d ++ " + s <= 0\n"
 --        ) absoluteQuadratics
-    showBracket = concat . map show
+    showBracket = intercalate "_" . map show
     absoluteQuadratics = map
         (\(x, [a,b,c,d]) -> [ sort $ x ++ [a,b]
                             , sort $ x ++ [c,d]
@@ -291,12 +308,12 @@ hasBiquadraticFinalPolynomial a b c d =
  - Test for FlipFlop and Dipole Networks
 ------------------------------------------------------------------------------}
 
-isAcyclicChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
-isAcyclicChirotopeFlipFlop net
-    | maybe False
-            (\x -> isAcyclicChirotope (nCons x) (\_ _ _ _ -> True))
-            chiroNet  =
-        if numberOfNodes (fromJust chiroNet) < 9 then
+isAcyclicChirotopeFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeFlipFlop sloppy net
+--    | (isJust chiroNet &&) $ head $ isAcyclicChirotope      -- TWOINONE
+    | (isJust chiroNet &&) $ isAcyclicChirotope
+        (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) sloppy =
+        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
             Just True
         else
             Nothing
@@ -305,21 +322,20 @@ isAcyclicChirotopeFlipFlop net
     chiroNet = flipflop7ToChirotope net
 
 
-isAcyclicChirotopeDipole72 :: Network [String] Dipole72 -> Maybe Bool
-isAcyclicChirotopeDipole72 net
+isAcyclicChirotopeDipole72 :: Bool -> Network [String] Dipole72 -> Maybe Bool
+isAcyclicChirotopeDipole72 sloppy net
     | isNothing ffNet  = Nothing
-    | otherwise  = isAcyclicChirotopeFlipFlop $ fromJust ffNet
+    | otherwise  = isAcyclicChirotopeFlipFlop sloppy $ fromJust ffNet
   where
     ffNet = dipolesToFlipFlops net
 
 
-isAcyclicChirotopeWithoutBPFlipFlop :: Network [String] FlipFlop -> Maybe Bool
-isAcyclicChirotopeWithoutBPFlipFlop net
-    | maybe False (\x -> isAcyclicChirotope
-                             (nCons x)
-                             hasNoBiquadraticFinalPolynomial
-                  ) chiroNet  =
-        if numberOfNodes (fromJust chiroNet) < 9 then
+isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeWithoutBPFlipFlop sloppy net
+--    | (isJust chiroNet &&) $ last $ isAcyclicChirotope          -- TWOINONE
+    | (isJust chiroNet &&) $ isAcyclicChirotope
+        (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
+        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
             Just True
         else
             Nothing
@@ -328,11 +344,32 @@ isAcyclicChirotopeWithoutBPFlipFlop net
     chiroNet = flipflop7ToChirotope net
 
 
-isAcyclicChirotopeWithoutBPDipole72 :: Network [String] Dipole72 -> Maybe Bool
-isAcyclicChirotopeWithoutBPDipole72 net
+isAcyclicChirotopeWithoutBPDipole72 :: Bool -> Network [String] Dipole72 -> Maybe Bool
+isAcyclicChirotopeWithoutBPDipole72 sloppy net
     | isNothing ffNet  = Nothing
-    | otherwise  = isAcyclicChirotopeWithoutBPFlipFlop $ fromJust ffNet
+    | otherwise  = isAcyclicChirotopeWithoutBPFlipFlop sloppy $ fromJust ffNet
   where
     ffNet = dipolesToFlipFlops net
 
+{-       TWOINONE
+isAcyclicChirotopePlainAndWithoutBPFlipFlop :: Network [String] FlipFlop -> [Maybe Bool]
+isAcyclicChirotopePlainAndWithoutBPFlipFlop net
+    | isNothing chiroNet  = [Just False, Just False]
+    | numberOfNodes (fromJust chiroNet) < 9  = map Just answers
+    | otherwise  = map trueToNothing answers
+  where
+    chiroNet = flipflop7ToChirotope net
+    answers = isAcyclicChirotope
+        (nCons $ fromJust chiroNet)
+        hasNoBiquadraticFinalPolynomial
+    trueToNothing True = Nothing
+    trueToNothing False = Just False
+
+isAcyclicChirotopePlainAndWithoutBPDipole72 :: Network [String] Dipole72 -> [Maybe Bool]
+isAcyclicChirotopePlainAndWithoutBPDipole72 net
+    | isNothing ffNet  = [Nothing, Nothing]
+    | otherwise  = isAcyclicChirotopePlainAndWithoutBPFlipFlop $ fromJust ffNet
+  where
+    ffNet = dipolesToFlipFlops net
+-}
 

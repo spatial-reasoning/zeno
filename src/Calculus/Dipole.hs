@@ -2151,7 +2151,6 @@ instance Calculus Dipole72 where
     readRel = read . (++ "72") . (map Char.toUpper)
     showRel = (map Char.toLower) . (take 4) . show
 
-{-------------------------------------------------------------
 instance BinaryCalculus Dipole72 where
     bcIdentity = SESE72
 
@@ -21186,7 +21185,7 @@ instance BinaryCalculus Dipole72 where
         , ( ( SRSL72 , SRSL72 )
           , Set.fromList
                 [ SBSB72, SLSR72, SRSL72 ] ) ]
--------------------------------------------------------------}
+
 
 data Dipole80 = BBBB80  | BBFF80  | BEIE80  | BFII80  | BIIF80  | BLRR80
               | BRLL80  | BSEF80  | EBIS80  | EFBS80  | EIFS80  | ELLS80

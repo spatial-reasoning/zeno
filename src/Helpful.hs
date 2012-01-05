@@ -3,11 +3,27 @@ module Helpful where
 import Control.Concurrent
 import Control.Parallel.Strategies
 import Control.Monad
+import Control.DeepSeq
 import Data.Maybe (listToMaybe)
 import qualified Data.List as List
 import qualified Data.Set as Set
 import System.Directory
 import System.Random
+
+-- |  'isSorted' returns 'True' if the elements of a list occur in non-descending order,  equivalent to 'isSortedBy' ('<=')
+isSorted :: (Ord a) => [a] -> Bool
+isSorted = isSortedBy (<=)
+
+-- |  'isSortedBy' returns 'True' if the predicate returns true for all adjacent pairs of elements in the list
+isSortedBy :: (a -> a -> Bool) -> [a] -> Bool
+isSortedBy lte = loop
+  where
+    loop []       = True
+    loop [_]      = True
+    loop (x:y:zs) = (x `lte` y) && loop (y:zs)
+
+strictLastArgument :: (NFData a) => (a -> b) -> a -> b
+strictLastArgument x y = x $ (y `deepseq` y)
 
 -- Parallel map (n = number of parallel computations)
 mapP n f xs = map f xs `using` parBuffer n rseq

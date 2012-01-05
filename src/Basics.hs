@@ -1,8 +1,9 @@
 module Basics where
 
 -- standard modules
+import Control.Monad
 import qualified Data.Char as Char
-import List (mapAccumL, sort)
+import List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
@@ -23,11 +24,15 @@ data Network a b = Network
     } deriving (Eq, Ord, Read, Show)
 
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
+    cBaserelations :: Set.Set a
+    cBaserelations = Set.fromList [minBound..maxBound]
+
     readRel       :: String -> a
     showRel       :: a -> String
 
     readRel = read . (map Char.toUpper)
     showRel = (map Char.toLower) . show
+
 
 -- This was a try to implement a general way to handle constraint networks.
 --
@@ -60,7 +65,6 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
 
 
 class (Calculus a) => BinaryCalculus a where
-    bcBaserelations :: Set.Set a
     bcIdentity      :: a
 
     bcConversion    :: Map.Map a (Set.Set a)
@@ -68,8 +72,6 @@ class (Calculus a) => BinaryCalculus a where
 
     bcConvert       :: Set.Set a -> Set.Set a
     bcCompose       :: Set.Set a -> Set.Set a -> Set.Set a
-
-    bcBaserelations = Set.fromList [minBound..maxBound]
 
     bcConvert = Set.fold Set.union Set.empty . Set.map ((Map.!) bcConversion)
 
@@ -80,26 +82,28 @@ class (Calculus a) => BinaryCalculus a where
         ) set1
 
     bcRelOf :: (Ord a, Ord b)
-            => Map.Map [b] (Set.Set a) -> [b]
-            -> ([b] -> [b], Maybe (Set.Set a))
-    bcRelOf cons nodes
-        | isJust rel  = Just (id    , fromJust rel)
-        | isJust conv = Just (revert, fromJust conv)
-        | otherwise   = Nothing
+            => Map.Map [b] (Set.Set a) -> [b] -> Maybe (Set.Set a)
+    bcRelOf cons pair
+        | isNothing sortedRel  = Nothing
+        | pair == sortedPair  = sortedRel
+        | otherwise  = liftM bcConvert sortedRel
       where
-        rel  = Map.lookup nodes cons
-        conv = Map.lookup (reverse nodes) cons
+        sortedPair = sort pair
+        sortedRel  = Map.lookup sortedPair cons
 
     bcInsert :: (Ord b)
              => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
              -> Map.Map [b] (Set.Set a)
-    bcInsert nodes rel cons
-        | isNothing relInCons  = Map.insert nodes rel cons
-        | otherwise  =
-            Map.insert nodes (Set.intersection rel $ fromJust relInCons) cons
---        | otherwise  = error "Craboom!"
+    bcInsert pair rel cons
+        | isNothing relInCons  = Map.insert sortedPair sortedRel cons
+        | otherwise  = Map.insert
+            sortedPair (Set.intersection sortedRel $ fromJust relInCons) cons
       where
-        relInCons = bcRelOf cons nodes
+        relInCons = Map.lookup sortedPair cons
+        sortedPair = sort pair
+        sortedRel
+            | sortedPair == pair  = rel
+            | otherwise           = bcConvert rel
 
 
 class (Calculus a) => TernaryCalculus a where
@@ -119,81 +123,85 @@ class (Calculus a) => TernaryCalculus a where
     tcSci  = tcInv . tcSc
     tcHomi = tcInv . tcHom
 
-    tcNodesInv  :: [b] -> [b]
-    tcNodesSc   :: [b] -> [b]
-    tcNodesSci  :: [b] -> [b]
-    tcNodesHom  :: [b] -> [b]
-    tcNodesHomi :: [b] -> [b]
-    tcNodesInv  [b, a, c] = [a, b, c]
-    tcNodesSc   [a, c, b] = [a, b, c]
-    tcNodesSci  [c, a, b] = [a, b, c]
-    tcNodesHom  [b, c, a] = [a, b, c]
-    tcNodesHomi [c, b, a] = [a, b, c]
-
     -- TODO: Should this be here?
     -- | Extracts the relation between the given nodes from a given network,
     -- even if only given implicitly by means of Invers, ShortCut and Homing.
     tcRelOf :: (Ord a, Ord b)
             => Map.Map [b] (Set.Set a) -> [b] -> Maybe (Set.Set a)
-    tcRelOf cons nodes
-        | isJust rel  = rel
-        | isJust inv  = Just $ tcInv  $ fromJust inv
-        | isJust sc   = Just $ tcSc   $ fromJust sc
-        | isJust sci  = Just $ tcSci  $ fromJust sci
-        | isJust hom  = Just $ tcHom  $ fromJust hom
-        | isJust homi = Just $ tcHomi $ fromJust homi
-        | otherwise   = Nothing
+    tcRelOf cons triple
+        | isNothing sortedRel  = Nothing
+        | triple == sortedTriple  = sortedRel
+        | triple == tcTripleInv  sortedTriple  = liftM tcInv  sortedRel
+        | triple == tcTripleSc   sortedTriple  = liftM tcSc   sortedRel
+        | triple == tcTripleSci  sortedTriple  = liftM tcSci  sortedRel
+        | triple == tcTripleHom  sortedTriple  = liftM tcHom  sortedRel
+        | triple == tcTripleHomi sortedTriple  = liftM tcHomi sortedRel
       where
-        rel  = Map.lookup nodes cons
-        inv  = Map.lookup (tcNodesInv  nodes) cons
-        sc   = Map.lookup (tcNodesSc   nodes) cons
-        sci  = Map.lookup (tcNodesSci  nodes) cons
-        hom  = Map.lookup (tcNodesHom  nodes) cons
-        homi = Map.lookup (tcNodesHomi nodes) cons
+        sortedTriple = sort triple
+        sortedRel = Map.lookup sortedTriple cons
 
     -- TODO: Should this be here?
     -- | Extracts the relation between the given nodes from a given network,
     -- even if only given implicitly by means of Invers, ShortCut and Homing.
     tcRelOfAtomic :: (Ord a, Ord b) => Map.Map [b] a -> [b] -> Maybe a
-    tcRelOfAtomic cons nodes
-        | isJust rel  = rel
-        | isJust inv  = Just $ Set.findMin $ tcInv  $ Set.singleton $ fromJust inv
-        | isJust sc   = Just $ Set.findMin $ tcSc   $ Set.singleton $ fromJust sc
-        | isJust sci  = Just $ Set.findMin $ tcSci  $ Set.singleton $ fromJust sci
-        | isJust hom  = Just $ Set.findMin $ tcHom  $ Set.singleton $ fromJust hom
-        | isJust homi = Just $ Set.findMin $ tcHomi $ Set.singleton $ fromJust homi
-        | otherwise   = Nothing
+    tcRelOfAtomic cons triple
+        | isNothing sortedRel  = Nothing
+        | triple == sortedTriple  = sortedRel
+        | triple == tcTripleInv  sortedTriple  = unsortRelWith tcInv
+        | triple == tcTripleSc   sortedTriple  = unsortRelWith tcSc
+        | triple == tcTripleSci  sortedTriple  = unsortRelWith tcSci
+        | triple == tcTripleHom  sortedTriple  = unsortRelWith tcHom
+        | triple == tcTripleHomi sortedTriple  = unsortRelWith tcHomi
       where
-        rel  = Map.lookup nodes cons
-        inv  = Map.lookup (tcNodesInv  nodes) cons
-        sc   = Map.lookup (tcNodesSc   nodes) cons
-        sci  = Map.lookup (tcNodesSci  nodes) cons
-        hom  = Map.lookup (tcNodesHom  nodes) cons
-        homi = Map.lookup (tcNodesHomi nodes) cons
+        sortedTriple = sort triple
+        sortedRel  = Map.lookup sortedTriple cons
+        unsortRelWith f
+            | Set.size unsortedRel > 1  = Nothing
+            | otherwise  = Just $ Set.findMin unsortedRel
+          where
+            unsortedRel = f $ Set.singleton $ fromJust sortedRel
 
     -- TODO: Should this be here?
     tcInsert :: (Ord b)
              => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
              -> Map.Map [b] (Set.Set a)
-    tcInsert nodes rel cons
-        | isNothing relInCons  = Map.insert nodes rel cons
-        | otherwise  =
-            Map.insert nodes (Set.intersection rel $ fromJust relInCons) cons
---        | otherwise  = error "Craboom!"
+    tcInsert triple rel cons
+        | isNothing relInCons  = Map.insert sortedTriple sortedRel cons
+        | otherwise  = Map.insert
+            sortedTriple (Set.intersection sortedRel $ fromJust relInCons) cons
       where
-        relInCons = tcRelOf cons nodes
+        relInCons = Map.lookup sortedTriple cons
+        sortedTriple = sort triple
+        sortedRel
+            | sortedTriple == triple  = rel
+            | sortedTriple == tcTripleInv  triple  = tcInv  rel
+            | sortedTriple == tcTripleSc   triple  = tcSc   rel
+            | sortedTriple == tcTripleSci  triple  = tcSci  rel
+            | sortedTriple == tcTripleHom  triple  = tcHom  rel
+            | sortedTriple == tcTripleHomi triple  = tcHomi rel
 
---    -- TODO: Should this be here?
-    tcInsertAtomic :: (Ord b)
-                   => [b] -> a -> Map.Map [b] (Maybe a)
-                   -> Map.Map [b] (Maybe a)
-    tcInsertAtomic nodes rel cons
-        | isNothing relInCons    = Map.insert nodes (Just rel) cons
-        | relInCons == Just rel  = cons
-        | otherwise              = Map.insert nodes Nothing cons
---        | otherwise              = error "Craboom!"
-      where
-        relInCons = tcRelOfAtomic (Map.map fromJust cons) nodes
+
+tcTripleInv  :: [b] -> [b]
+tcTripleSc   :: [b] -> [b]
+tcTripleSci  :: [b] -> [b]
+tcTripleHom  :: [b] -> [b]
+tcTripleHomi :: [b] -> [b]
+tcTripleInv  [a, b, c] = [b, a, c]
+tcTripleSc   [a, b, c] = [a, c, b]
+tcTripleSci  [a, b, c] = [c, a, b]
+tcTripleHom  [a, b, c] = [b, c, a]
+tcTripleHomi [a, b, c] = [c, b, a]
+
+tcTripleInvInv  :: [b] -> [b]
+tcTripleScInv   :: [b] -> [b]
+tcTripleSciInv  :: [b] -> [b]
+tcTripleHomInv  :: [b] -> [b]
+tcTripleHomiInv :: [b] -> [b]
+tcTripleInvInv  [b, a, c] = [a, b, c]
+tcTripleScInv   [a, c, b] = [a, b, c]
+tcTripleSciInv  [c, a, b] = [a, b, c]
+tcTripleHomInv  [b, c, a] = [a, b, c]
+tcTripleHomiInv [c, b, a] = [a, b, c]
 
 
 {------------------------------------------------------------------------------
