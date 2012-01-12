@@ -2,6 +2,7 @@
 module Main where
 
 -- standard modules
+import qualified Control.Exception as CE
 import Control.Monad
 import Control.Parallel.Strategies
 import Data.List
@@ -25,7 +26,6 @@ import Parsing.Qstrlib
 import Testsuite
 import Testsuite.Random
 import Helpful
-import Helpful.TimeOut
 
 -- Debugging and Timing
 import Debug.Trace
@@ -43,7 +43,7 @@ data Options = Options { optNumOfNets  :: Int
 
 defaultOptions = Options
     { optNumOfNets = def
-        &= opt (10 :: Int)
+        &= opt (100 :: Int)
         &= explicit
         &= name "n"
         &= name "networks"
@@ -111,151 +111,181 @@ type Benchmark = Map.Map Int   -- maps number of nodes to the following attribut
 main = do
     hSetBuffering stdout NoBuffering
     Options{..} <- cmdArgs defaultOptions
-    markTheBench optNumOfNets optTimeout Map.empty
+    startBenchString <- catch
+        (readFile "RESULTS.BENCHMARK")
+        (\e -> do
+            putStrLn "Starting a new Benchmarking...\n"
+            return "fromList []"
+        )
+    let startBenchRead = reads startBenchString
+    startBench <- if startBenchRead == [] || (snd $ head startBenchRead) /= "" then do
+                          putStrLn "Starting a new Benchmarking...\n"
+                          return Map.empty
+                      else
+                          return $ fst $ head startBenchRead
+    markTheBench optNumOfNets optTimeout startBench
 
 markTheBench n t bench = do
-    myExit <- timeout 1 getLine
-    if maybe False (isInfixOf "q") myExit then
-     return ()
+    let numOfNodes = head $ filter
+            (\a -> maybe True (\(a,_,_) -> a < n) $ Map.lookup a bench
+            ) [5..]
+    let (nOfTestedNets, dens) = maybe
+            ( maybe (0, 0.2) (\(_,a,_) -> (0, a)) $ Map.lookup (numOfNodes - 1) bench )
+            (\(x,a,b) ->
+                (\(c,d,e,_,_) ->
+                  let
+                    -- if all methods time out try to generate more inconsistent networks.
+                    sicnum = if c + d + e == 0 then
+                                 1
+                             else
+                                 fromIntegral $ signum $ d + e - c
+                  in
+                    (x, min 1 $ max 0 $ a + sicnum * 0.02)
+                ) $ (Map.!) b a
+            ) $ Map.lookup numOfNodes bench
+    (nets, results) <- checkNetworks 10 t numOfNodes dens
+    saveSpecialNets nets results numOfNodes dens
+    putStrLn $ "\n                               === NEW TEST ===\n\n" ++
+        " Number of Nodes: " ++ show numOfNodes ++
+        " | Number of tested networks: " ++ show (nOfTestedNets + 10) ++
+        " | Density: " ++ show dens ++ "\n\n" ++ showResults results
+    let newBench = foldl
+          (\ben result ->
+            let
+              plainResult = map (snd . snd) result
+              false = elem (Just (Just False)) plainResult
+              true  = elem (Just (Just True)) plainResult
+              nothing = elem (Just Nothing) plainResult
+              (a, b, c, d, totalResult) = case (false, true, nothing) of
+                  (True, True, _)      -> saveIncorrectResults nets results
+                  (True, False, _)     -> (1, 0, 0, 0, Just (Just False))
+                  (False, True, _)     -> (0, 1, 0, 0, Just (Just True))
+                  (False, False, True) -> (0, 0, 1, 0, Just Nothing)
+                  otherwise            -> (0, 0, 0, 1, Nothing)
+              sortedDescs = map fst $ sortBy
+                  (\(_,(x,_)) (_,(y,_)) -> compare x y) $
+                  filter ((totalResult ==) . snd . snd) result
+              newDensList =
+                  ( a, b, c, d
+                  , Map.fromList $ map
+                      (\(desc, (tyme, answer)) ->
+                          let
+                              descIndex = (1 +) $ fromJust $ elemIndex
+                                  desc sortedDescs
+                              (e, f, g, h, m) = case answer of
+                                  Just (Just False) ->
+                                      ( 1, 0, 0, 0
+                                      , Map.singleton
+                                          (Just False, descIndex) 1
+                                      )
+                                  Just (Just True) ->
+                                      ( 0, 1, 0, 0
+                                      , Map.singleton
+                                          (Just True, descIndex) 1
+                                      )
+                                  Just Nothing ->
+                                      ( 0, 0, 1, 0
+                                      , if totalResult == Just Nothing then
+                                          Map.singleton
+                                            (Nothing, descIndex) 1
+                                        else
+                                          Map.empty
+                                      )
+                                  Nothing -> (0, 0, 0, 1, Map.empty)
+                          in
+                          ( desc, (e, f, g, h, m, tyme) )
+                      ) result
+                  )
+            in
+              case Map.lookup numOfNodes ben of
+                  Nothing -> Map.insert numOfNodes
+                      ( 1
+                      , dens
+                      , Map.singleton dens newDensList
+                      ) ben
+                  Just (bN, bD, bM) -> Map.insert numOfNodes
+                      ( bN + 1
+                      , dens
+                      , case Map.lookup dens bM of
+                            Nothing -> Map.insert dens newDensList bM
+                            Just (dn, dy, du, dt, dm) -> Map.insert dens
+                                ( dn + a, dy + b, du + c, dt + d
+                                , foldl
+                                    (\acc (desc, (tyme, answer)) ->
+                                      let
+                                        (e, f, g, h, m, oldTyme) =
+                                            (Map.!) dm desc
+                                        descIndex =
+                                            (1 +) $ fromJust $ elemIndex
+                                                desc sortedDescs
+                                        newM = Map.insertWith (+)
+                                            (fromJust answer, descIndex) 1 m
+                                        (nE, nF, nG, nH, nM) = case answer of
+                                            Just (Just False) ->
+                                                (e + 1, f, g, h, newM)
+                                            Just (Just True) ->
+                                                (e, f + 1, g, h, newM)
+                                            Just Nothing ->
+                                                ( e, f, g + 1, h
+                                                , if totalResult == Just Nothing then
+                                                      newM
+                                                  else
+                                                      m
+                                                )
+                                            otherwise ->
+                                                (e, f, g, h + 1, m)
+                                      in
+                                        Map.insert
+                                            desc
+                                            ( nE, nF, nG, nH, nM
+                                            , let
+                                                efgh = fromIntegral $ e + f + g + h
+                                              in
+                                                (oldTyme * efgh + tyme) /
+                                                (efgh + 1)
+                                            ) dm
+                                    ) dm result
+                                ) bM
+                      ) ben
+          ) bench results
+    writeFile "RESULTS.BENCHMARK" $ show newBench
+    appendFile "RESULTS.NETS" $ show nets ++ "\n"
+    appendFile "RESULTS.RESULTS" $ show results ++ "\n"
+    myExit <- timeout 100 getLine
+    if maybe False (isInfixOf "q") myExit then do
+        return ()
     else do
-     let numOfNodes = head $ filter
-             (\a -> maybe True (\(a,_,_) -> a < 1000) $ Map.lookup a bench
-             ) [6..]
-     let dens = maybe
-             ( maybe 0.2 (\(_,a,_) -> a) $ Map.lookup (numOfNodes - 1) bench )
-             (\(_,a,b) ->
-                 (\(c,d,e,_,_) ->
-                   let
-                     -- if all methods time out try to generate more inconsistent networks.
-                     sicnum = if c + d + e == 0 then
-                                  1
-                              else
-                                  fromIntegral $ signum $ d + e - c
-                   in
-                     min 1 $ max 0 $ a + sicnum * 0.02
-                 ) $ (Map.!) b a
-             ) $ Map.lookup numOfNodes bench
-     (nets, results) <- checkNetworks n t numOfNodes dens
-     putStrLn $ "\n                               === NEW TEST ===\n\n" ++
-         "                   Number of Nodes: " ++ show numOfNodes ++
-         " | Density: " ++ show dens ++ "\n\n" ++ showResults nets results
-     let newBench = foldl
-           (\ben result ->
-             let
-               plainResult = map (snd . snd) result
-               false = elem (Just (Just False)) plainResult
-               true  = elem (Just (Just True)) plainResult
-               nothing = elem (Just Nothing) plainResult
-               (a, b, c, d, totalResult) = case (false, true, nothing) of
-                   (True, True, _)      -> saveIncorrectResults nets results
-                   (True, False, _)     -> (1, 0, 0, 0, Just (Just False))
-                   (False, True, _)     -> (0, 1, 0, 0, Just (Just True))
-                   (False, False, True) -> (0, 0, 1, 0, Just Nothing)
-                   otherwise            -> (0, 0, 0, 1, Nothing)
-               sortedDescs = map fst $ sortBy
-                   (\(_,(x,_)) (_,(y,_)) -> compare x y) $
-                   filter ((totalResult ==) . snd . snd) result
-               newDensList =
-                   ( a, b, c, d
-                   , Map.fromList $ map
-                       (\(desc, (tyme, answer)) ->
-                           let
-                               descIndex = (1 +) $ fromJust $ elemIndex
-                                   desc sortedDescs
-                               (e, f, g, h, m) = case answer of
-                                   Just (Just False) ->
-                                       ( 1, 0, 0, 0
-                                       , Map.singleton
-                                           (Just False, descIndex) 1
-                                       )
-                                   Just (Just True) ->
-                                       ( 0, 1, 0, 0
-                                       , Map.singleton
-                                           (Just True, descIndex) 1
-                                       )
-                                   Just Nothing ->
-                                       ( 0, 0, 1, 0
-                                       , if totalResult == Just Nothing then
-                                           Map.singleton
-                                             (Nothing, descIndex) 1
-                                         else
-                                           Map.empty
-                                       )
-                                   Nothing -> (0, 0, 0, 1, Map.empty)
-                           in
-                           ( desc, (e, f, g, h, m, tyme) )
-                       ) result
-                   )
-             in
-               case Map.lookup numOfNodes ben of
-                   Nothing -> Map.insert numOfNodes
-                       ( n
-                       , dens
-                       , Map.singleton dens newDensList
-                       ) ben
-                   Just (bN, bD, bM) -> Map.insert numOfNodes
-                       ( bN + 1
-                       , dens
-                       , case Map.lookup dens bM of
-                             Nothing -> Map.insert dens newDensList bM
-                             Just (dn, dy, du, dt, dm) -> Map.insert dens
-                                 ( dn + a, dy + b, du + c, dt + d
-                                 , foldl
-                                     (\acc (desc, (tyme, answer)) ->
-                                       let
-                                         (e, f, g, h, m, oldTyme) =
-                                             (Map.!) dm desc
-                                         descIndex =
-                                             (1 +) $ fromJust $ elemIndex
-                                                 desc sortedDescs
-                                         newM = Map.insertWith (+)
-                                             (fromJust answer, descIndex) 1 m
-                                         (nE, nF, nG, nH, nM) = case answer of
-                                             Just (Just False) ->
-                                                 (e + 1, f, g, h, newM)
-                                             Just (Just True) ->
-                                                 (e, f + 1, g, h, newM)
-                                             Just Nothing ->
-                                                 ( e, f, g + 1, h
-                                                 , if totalResult == Just Nothing then
-                                                       newM
-                                                   else
-                                                       m
-                                                 )
-                                             otherwise ->
-                                                 (e, f, g, h + 1, m)
-                                       in
-                                         Map.insert
-                                             desc
-                                             ( nE, nF, nG, nH, nM
-                                             , let
-                                                 efgh = fromIntegral $ e + f + g + h
-                                               in
-                                                 (oldTyme * efgh + tyme) /
-                                                 (efgh + 1)
-                                             ) dm
-                                     ) dm result
-                                 ) bM
-                       ) ben
-           ) bench results
-     save newBench
-     markTheBench n t newBench
-
-save :: Benchmark -> IO ()
-save b = writeFile "RESULTS.BENCHMARK" $ show b
---save b = putStrLn $ "RESULTS.BENCHMARK" ++ show b
+        markTheBench n t newBench
 
 saveIncorrectResults nets answers = unsafePerformIO $ do
-    appendFile "RESULTS.ERROR" $ showNets nets ++ showResults nets answers
---    writeFile "RESULTS.ERROR" $ showResults nets answers
+    appendFile "RESULTS.ERROR" $ showNets nets ++ showResults answers
+--    writeFile "RESULTS.ERROR" $ showResults answers
     error $ "Results contradict each other. Results saved to " ++
-            "RESULTS.BENCHMARK and RESULTS.ERROR"
+            "RESULTS.ERROR"
+
+saveSpecialNets nets results numOfNodes dens = do
+    let (sNets, sResults) = unzip $ filter
+            (\(_, result) ->
+                 (elem (length $ filter (\(_, (_, answer)) -> answer == Just (Just False)) result) [1,2])
+              || ( (length $ filter (\(_, (_, answer)) -> answer == Just (Just False)) result) > 0 &&
+                   elem (length $ filter (\(_, (_, answer)) -> answer == Just Nothing) result) [1,2]
+                 )
+            ) $ zip nets results
+    if not $ null sNets then
+        appendFile "RESULTS.SPECIAL" $ showNets sNets ++
+            "\n Number of Nodes: " ++ show numOfNodes ++
+            " | Density: " ++ show dens ++ "\n\n" ++
+            showResults sResults
+    else
+        return ()
+
 
 checkNetworks n t k d = do
     nets <- replicateM n $ liftM makeNonAtomic $ randomConnectedAtomicNetwork 3 [L, R, F, B, I] k d
-    let funs =
+    let funs = 
             [ ("Algebraic Closure", (\(x,_,_) -> x) . S.algebraicClosure "ff")
---            , ("Algebraic Reasoning", S.algebraicReasoning "ff")
+            , ("Ternary Algebraic Closure", (\(x,_,_) -> x) . S.ternaryAlgebraicClosure "ff")
+            , ("Algebraic Reasoning", S.algebraicReasoning "ff")
             , ("Triangle Consistenty", T.checkConsistency . makeAtomic)
             , ("Chirotope Sloppy", isAcyclicChirotopeFlipFlop True . makeAtomic)
             , ("BFP Sloppy", isAcyclicChirotopeWithoutBPFlipFlop True . makeAtomic)
@@ -275,11 +305,12 @@ showNets nets =
     "\n                               === NEW TEST ===\n\n" ++
     "Networks tested:\n\n" ++ showNetworks nets 1
 
-showResults nets answers =
+showResults answers =
     "                               === RESULTS ===\n\n" ++
     "    #   |" ++
     "   AC   |" ++
---    "   AR   |" ++
+    "  T-AC  |" ++
+    "   AR   |" ++
     "   TC   |" ++
     "  OM s  |" ++
     "  BFPs  |" ++

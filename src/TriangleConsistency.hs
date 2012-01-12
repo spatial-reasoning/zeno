@@ -7,6 +7,9 @@ import System.Process
 import Data.Maybe
 import Debug.Trace
 
+-- local modules
+import Interface.Yices
+
 type Variable = (Int, Int, Int)
 type Constant = Int
 
@@ -493,7 +496,7 @@ runTC scen =
                  let angles   = translateToAngles $ addPermutations $
                                 map fromJust subst
                  let str      = showSMT angles
-                 out <- readProcess "yices" ["-smt"] str
+                 out <- readYices str
                  suc <- parseOutputSMT out
                  return suc
 

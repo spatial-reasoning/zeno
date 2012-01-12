@@ -70,7 +70,7 @@ main = do
 
 
 checkNetworks = do
-    dpNet0 <- loadBinaryNetwork ("bla2.net") :: IO (Network [String] (Set.Set Dipole72))
+--    dpNet0 <- loadBinaryNetwork ("bla2.net") :: IO (Network [String] (Set.Set Dipole72))
     dpNet1 <- loadBinaryNetwork ("../testsuite/dipole/24/alleq.net") :: IO (Network [String] (Set.Set Dipole72))
     dpNet2 <- loadBinaryNetwork ("../testsuite/dipole/24/consistent_01.net") :: IO (Network [String] (Set.Set Dipole72))
     dpNet3 <- loadBinaryNetwork ("../testsuite/dipole/24/inconsistent_01.net") :: IO (Network [String] (Set.Set Dipole72))
@@ -80,13 +80,13 @@ checkNetworks = do
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 12
     let dpNet5 = circleWithTwoCollinearDipolesInside 11
     let dpNets = [
-                   dpNet0
-{-                   dpNet1
-                 , dpNet2
-                 , dpNet3
-                 , dpNet4
-                 , dpNet5  
--}                 ]
+--                   dpNet0
+--                   dpNet1
+--                 , dpNet2
+--                 , dpNet3
+--                 , dpNet4
+--                 , dpNet5  
+                 ]
 
     let ffNet1 = allLeft 8
     ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))

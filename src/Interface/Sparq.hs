@@ -2,6 +2,7 @@ module Interface.Sparq where
 
 -- standard modules
 import Control.Exception
+import Control.Monad
 import qualified Data.Maybe as Maybe
 import Data.List
 import qualified Data.Map as Map
@@ -16,6 +17,7 @@ import Text.Parsec
 import Basics
 import Parsing.Sparq
 import Export
+import Helpful.Process
 
 -- Debugging and Timing
 --import Data.Time.Clock (diffUTCTime, getCurrentTime)
@@ -29,7 +31,12 @@ import Debug.Trace
 
 doInSparq f = unsafePerformIO $ bracket
     (do runInteractiveCommand "sparq -i 2> /dev/null")
-    (\ (hIn, _, _, _) -> hPutStrLn hIn "quit")
+    (\ (hIn, _, _, hProc) -> do
+        hPutStrLn hIn "quit"
+--        terminateProcess hProc
+--        waitForProcess hProc
+--        getProcessExitCode hProc
+    )
     (\ sparq@(hIn, hOut, hErr, hId) -> do
         mapM_ (flip hSetBinaryMode False) [hIn, hOut]
         hSetBuffering hIn LineBuffering
@@ -81,7 +88,9 @@ readToPrompt hOut = do
     else error "\nSparQ doesn't respond anymore!\n"
 
 readOneLine hOut = do
-    sparqResponds <- hWaitForInput hOut (100000)
+    -- Fixme: make this more useful for us, e.g. as a timeout!
+    -- 30 min = 1800000 milliseconds
+    sparqResponds <- hWaitForInput hOut (1800000)
     if sparqResponds then do
         x <- hGetLine hOut
         return x
@@ -95,55 +104,79 @@ algebraicClosure :: (Calculus a)
                  => String
                  -> Network [String] (Set.Set a)
                  -> (Maybe Bool, Bool, Network [String] (Set.Set a))
-algebraicClosure cal net = unsafePerformIO $
-    if Map.null $ nCons net then do
-        return $ (Just True, False, net)
-    else do
-        answer <- readProcess "sparq" ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net] ""
-        let (sparqModified, (_:sparqNewNet)) = break (== '\n') answer
-        let (consistent, modified) = case sparqModified of
-                "Modified network."   -> (Nothing, True)
-                "Unmodified network." -> (Nothing, False)
-                "Not consistent." -> (Just False, False)
-                _ -> error $ "SparQ answered in an unexpected way.\n\
-                             \Expected: Modified network.\n\
-                             \      OR: Unmodified Network.\n\
-                             \      OR: Not consistent.\n\
-                             \Actual answer: \"" ++ sparqModified
-                                                 ++ sparqNewNet ++ "\""
-        let newNet = case parse parseNetwork "" sparqNewNet of
-                Left err -> error $ "SparQ answered in an unexpected way.\n\
-                                    \Expected: a SparQ network definition.\n\
-                                    \Actual answer: " ++ sparqNewNet
-                Right success -> success
-        case modified of
-            False -> return (consistent, modified, net)
-            True  -> return (consistent, modified, net {nCons = nCons newNet})
-{-# NOINLINE algebraicClosure #-}
+algebraicClosure cal net =
+    if Map.null $ nCons net then
+        (Just True, False, net)
+    else case modified of
+        False -> (consistent, modified, net)
+        True  -> (consistent, modified, net {nCons = nCons newNet})
+  where
+    sparqModified:rest = lines $ readSafeProcess "sparq"
+        ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net] ""
+    (consistent, modified) = case sparqModified of
+        "Modified network."   -> (Nothing, True)
+        "Unmodified network." -> (Nothing, False)
+        "Not consistent." -> (Just False, False)
+        _ -> error $ "SparQ answered in an unexpected way.\n\
+                     \Expected: Modified network.\n\
+                     \      OR: Unmodified Network.\n\
+                     \      OR: Not consistent.\n\
+                     \Actual answer: \"" ++ sparqModified
+                                         ++ unlines rest ++ "\""
+    newNet = case parse parseNetwork "" (unlines rest) of
+        Left err -> error $ "SparQ answered in an unexpected way.\n\
+                            \Expected: a SparQ network definition.\n\
+                            \Actual answer: " ++ unlines rest
+        Right success -> success
+
+ternaryAlgebraicClosure :: (Calculus a)
+                        => String
+                        -> Network [String] (Set.Set a)
+                        -> (Maybe Bool, Bool, Network [String] (Set.Set a))
+ternaryAlgebraicClosure cal net =
+    if Map.null $ nCons net then
+        (Just True, False, net)
+    else case modified of
+        False -> (consistent, modified, net)
+        True  -> (consistent, modified, net {nCons = nCons newNet})
+  where
+    sparqModified:rest = lines $ readSafeProcess "sparq"
+        ["constraint-reasoning " ++ cal ++ " ternary-closure " ++ sparqify True net] ""
+    (consistent, modified) = case sparqModified of
+        "Modified network."   -> (Nothing, True)
+        "Unmodified network." -> (Nothing, False)
+        "Not consistent." -> (Just False, False)
+        _ -> error $ "SparQ answered in an unexpected way.\n\
+                     \Expected: Modified network.\n\
+                     \      OR: Unmodified Network.\n\
+                     \      OR: Not consistent.\n\
+                     \Actual answer: \"" ++ sparqModified
+                                         ++ unlines rest ++ "\""
+    newNet = case parse parseNetwork "" (unlines rest) of
+        Left err -> error $ "SparQ answered in an unexpected way.\n\
+                            \Expected: a SparQ network definition.\n\
+                            \Actual answer: " ++ unlines rest
+        Right success -> success
 
 
 algebraicReasoning :: (Calculus a)
                    => String
                    -> Network [String] (Set.Set a)
                    -> Maybe Bool
-algebraicReasoning cal net = unsafePerformIO $
+algebraicReasoning cal net =
     if Map.null $ nCons net then do
-        return $ Just True
-    else do
-        let sparqNet = sparqify True net
---        start <- getCurrentTime
-        answer <- readProcess "sparq" ["a-reasoning " ++ cal ++ " consistency " ++ sparqNet] ""
---        end <- getCurrentTime
---        print $ show (end `diffUTCTime` start) ++ " elapsed."
-        if isInfixOf "IS SATISFIABLE." answer then do
-            return $ Just True
-        else if isInfixOf "NOT SATISFIABLE." answer then do
-            return $ Just False
-        else if isInfixOf "CANNOT DECIDE." answer then do
-            return Nothing
-        else error ("SparQ answered " ++ show answer ++ " on network "
-                                                     ++ sparqNet)
-{-# NOINLINE algebraicReasoning #-}
+        Just True
+    else case answer of
+        "IS SATISFIABLE."  -> Just True
+        "NOT SATISFIABLE." -> Just False
+        "CANNOT DECIDE."   -> Nothing
+        otherwise          -> error ( "SparQ answered " ++
+                                      show answer ++ " on network " ++
+                                      sparqNet )
+  where
+    sparqNet = sparqify True net
+    answer = head $ lines $ readSafeProcess "sparq"
+        ["a-reasoning " ++ cal ++ " consistency " ++ sparqNet] ""
 
 
 algebraicClosures :: (Calculus a)
