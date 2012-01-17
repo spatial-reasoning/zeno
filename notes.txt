@@ -26,12 +26,6 @@ Wir wollen (für je 10 Netzwerke) je #Knoten und Dichte wissen:
 
 Speichere Netwerke, die interessante eigenschaften haben:
 
- • 
+ •
 
-
-1000 netzwerke pro anzahl knoten
-
-
-
-Diedrich wegen Ternärer Algebraic Closure fragen.
-fix timeout of algebraic reasoning.
+1000 netzwerke pro anzahl knoten.
