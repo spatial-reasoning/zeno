@@ -6,15 +6,18 @@ import System.Exit
 import System.IO
 import System.IO.Error
 import System.IO.Unsafe
-import System.Posix.Process
 import System.Posix.Signals
 import System.Process
 import System.Process.Internals
 
-runOnSafeProcessGen :: String -> [String] -> StdStream -> StdStream -> StdStream
-                    -> ( (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle) -> IO a )
-                    -> a
-runOnSafeProcessGen prog args streamIn streamOut streamErr fun = unsafePerformIO $ bracket
+safeCreateProcess :: String -> [String] -> StdStream -> StdStream -> StdStream
+                  -> ( ( Maybe Handle
+                       , Maybe Handle
+                       , Maybe Handle
+                       , ProcessHandle
+                       ) -> IO a )
+                  -> IO a
+safeCreateProcess prog args streamIn streamOut streamErr fun = bracket
     ( do
         h <- createProcess (proc prog args) 
                  { std_in  = streamIn
@@ -23,21 +26,14 @@ runOnSafeProcessGen prog args streamIn streamOut streamErr fun = unsafePerformIO
                  , create_group = True }
         return h
     )
-    (\(_, _, _, ph) -> terminateProcessGroup ph >> waitForProcess ph)
 --    (\(_, _, _, ph) -> interruptProcessGroupOf ph >> waitForProcess ph)
+    (\(_, _, _, ph) -> terminateProcessGroup ph >> waitForProcess ph)
     fun
-{-# NOINLINE runOnSafeProcess #-}
+{-# NOINLINE safeCreateProcess #-}
 
-runOnSafeProcess :: String -> [String]
-                 -> ( (Handle, Handle, Handle) -> IO a )
-                 -> a
-runOnSafeProcess prog args fun =
-    runOnSafeProcessGen prog args CreatePipe CreatePipe CreatePipe
-        (\(Just inh, Just outh, Just errh, _) -> fun (inh, outh, errh) )
-
-readSafeProcess :: String -> [String] -> String -> String
-readSafeProcess prog args str =
-    runOnSafeProcessGen prog args CreatePipe CreatePipe Inherit
+safeReadProcess :: String -> [String] -> String -> IO String
+safeReadProcess prog args str =
+    safeCreateProcess prog args CreatePipe CreatePipe Inherit
       (\(Just inh, Just outh, _, ph) -> do
         hPutStr inh str
         hClose inh
@@ -49,7 +45,16 @@ readSafeProcess prog args str =
         takeMVar outMVar
         hClose outh
         return output
+--        ex <- waitForProcess ph
+--        case ex of
+--            ExitSuccess -> return output
+--            ExitFailure r ->
+--                fail ("spawned process " ++ prog ++ " exit: " ++ show r)
       )
+
+unsafeReadProcess :: String -> [String] -> String -> String
+unsafeReadProcess prog args str =
+    unsafePerformIO $ safeReadProcess prog args str
 
 terminateProcessGroup :: ProcessHandle -> IO ()
 terminateProcessGroup ph = do
@@ -57,8 +62,6 @@ terminateProcessGroup ph = do
     ph_ <- readMVar pmvar
     case ph_ of
         OpenHandle pid -> do  -- pid is a POSIX pid
---            gid <- createProcessGroup pid
             signalProcessGroup 15 pid
---            signalProcess 15 pid
         otherwise -> return ()
 

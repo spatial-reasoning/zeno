@@ -9,7 +9,7 @@ import qualified Data.Set as Set
 import Basics
 import Calculus.Dipole
 import Calculus.FlipFlop
-import qualified TriangleConsistency as T
+import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
 import Helpful
 
 import Debug.Trace
@@ -67,7 +67,7 @@ dipolesToFlipFlops net@Network { nCons = cons }
 --        cons
 --    }
 
- 
+
 {------------------------------------------------------------------------------
     FlipFlop-5 to Dominik
 ------------------------------------------------------------------------------}
@@ -77,7 +77,7 @@ flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
     []
     (enumerate cons)
 
- 
+
 {------------------------------------------------------------------------------
  - FlipFlop to Chirotope
 ------------------------------------------------------------------------------}

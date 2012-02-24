@@ -9,6 +9,7 @@ import qualified Data.Set as Set
 -- local modules
 import Basics
 import Interface.Sparq
+import Helpful.General
 
 import Debug.Trace
 
@@ -16,14 +17,19 @@ data FlipFlop = L | R | B | S | I | E | F | D | T
     deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 instance Calculus FlipFlop where
-    readRel = read . catchDouTri . (map Char.toUpper)
-        where
-            catchDouTri "DOU" = "D"
-            catchDouTri "TRI" = "T"
-            catchDouTri x = x
+    rank _ = 3
+    readRel x = case y of
+        Just z  -> z
+        Nothing -> error $ show x ++ " is not a FlipFlop relation."
+      where
+        y = maybeRead $ catchDouTri $ map Char.toUpper x
+        catchDouTri "DOU" = "D"
+        catchDouTri "TRI" = "T"
+        catchDouTri x = x
     showRel D = "dou"
     showRel T = "tri"
     showRel x = (map Char.toLower) $ show x
+
 
 instance TernaryCalculus FlipFlop where
     tcInvMap = Map.fromList

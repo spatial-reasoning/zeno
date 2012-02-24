@@ -24,7 +24,7 @@ zeroObjective p = case head answer of
                 "Expected Answer: \"Value of objective function: " ++
                 "NUMBER\"\nActual Answer: " ++ lpAnswer
   where
-    lpAnswer = readSafeProcess "lp_solve" [] p
+    lpAnswer = unsafeReadProcess "lp_solve" [] p
     answer = lines lpAnswer
 
 -- old version

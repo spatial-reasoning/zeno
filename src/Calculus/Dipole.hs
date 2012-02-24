@@ -4,10 +4,11 @@ module Calculus.Dipole where
 import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Maybe
+import Data.Maybe
 
 -- local modules
 import Basics
+import Helpful.General
 
 
 data Dipole24 = ELLS24 | ERRS24 | ESES24 | LERE24 | LLLL24 | LLLR24
@@ -17,7 +18,12 @@ data Dipole24 = ELLS24 | ERRS24 | ESES24 | LERE24 | LLLL24 | LLLR24
               deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 instance Calculus Dipole24 where
-    readRel = read . (++ "24") . (map Char.toUpper)
+    rank _ = 2
+    readRel x = case y of
+        Just z  -> z
+        Nothing -> error $ show x ++ " is not a Dipole-24 relation."
+      where
+        y = maybeRead $ (++ "24") $ map Char.toUpper x
     showRel = (map Char.toLower) . (take 4) . show
 
 {-------------------------------------------------------------
@@ -2148,7 +2154,12 @@ data Dipole72 = BBBB72 | BBFF72 | BEIE72 | BFII72 | BIIF72 | BLRR72
               deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 instance Calculus Dipole72 where
-    readRel = read . (++ "72") . (map Char.toUpper)
+    rank _ = 2
+    readRel x = case y of
+        Just z  -> z
+        Nothing -> error $ show x ++ " is not a Dipole-72 relation."
+      where
+        y = maybeRead $ (++ "72") $ map Char.toUpper x
     showRel = (map Char.toLower) . (take 4) . show
 
 instance BinaryCalculus Dipole72 where
@@ -21204,20 +21215,25 @@ data Dipole80 = BBBB80  | BBFF80  | BEIE80  | BFII80  | BIIF80  | BLRR80
               deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 instance Calculus Dipole80 where
-    readRel str = read $ map Char.toUpper a ++ newB
-        where
-            (a,b) = splitAt 4 str
-            newB = case b of
-                "+"       -> "P"
-                "-"       -> "M"
-                otherwise -> map Char.toUpper b
+    rank _ = 2
+    readRel x = case y of
+        Just z  -> z
+        Nothing -> error $ show x ++ " is not a Dipole-80 relation."
+      where
+        y = maybeRead $ map Char.toUpper a ++ b ++ "80"
+        (a,b') = splitAt 4 x
+        b = case b' of
+            "+"       -> "P"
+            "-"       -> "M"
+            otherwise -> map Char.toUpper b'
 
     showRel rel = lowerA ++ case b of
                                 "P"       -> "+"
                                 "M"       -> "-"
                                 otherwise -> b
         where
-            (a,b) = splitAt 4 $ show rel
+            (a,b') = splitAt 4 $ show rel
+            b = take (length b' - 2) b'
             lowerA = map Char.toLower a
 
 {-------------------------------------------------------------

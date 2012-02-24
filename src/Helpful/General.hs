@@ -1,14 +1,25 @@
 module Helpful.General where
 
+import Prelude hiding (catch)
 import Control.Concurrent
+import Control.Exception
 import Control.Parallel.Strategies
 import Control.Monad
 import Control.DeepSeq
-import Data.Maybe (listToMaybe)
+import Data.Char
 import qualified Data.List as List
+import Data.Maybe
 import qualified Data.Set as Set
 import System.Directory
 import System.Random
+
+import Debug.Trace
+
+traceThis a = trace (show a) a
+
+maybeRead :: Read a => String -> Maybe a
+maybeRead =
+    fmap fst . listToMaybe . filter (null . dropWhile isSpace . snd) . reads
 
 -- |  'isSorted' returns 'True' if the elements of a list occur in non-descending order,  equivalent to 'isSortedBy' ('<=')
 isSorted :: (Ord a) => [a] -> Bool
@@ -69,7 +80,7 @@ maxFilterSubset p s = listToMaybe $ filter p $ subsetsLargeToSmall s
 createTempDir :: String -> IO FilePath
 createTempDir dirName = do
     randGen <- newStdGen
-    sysTmpDir <- catch (getTemporaryDirectory) (\_ -> return ".")
+    sysTmpDir <- catch (getTemporaryDirectory) ((\_ -> return ".") :: SomeException -> IO String)
     let tmpDirPrefix = sysTmpDir ++ "/" ++ dirName ++ "_"
     tmpDir <- nonExistingDirName tmpDirPrefix
     createDirectory tmpDir
@@ -115,14 +126,14 @@ interweave x [] = [[x]]
 interweave x yys@(y:ys) = [x:yys] ++ map (y:) (interweave x ys)
 
 -- returns a list of all k-permutations of a list
-kPermutations :: Num a => a -> [a1] -> [[a1]]
+kPermutations :: (Eq a, Num a) => a -> [a1] -> [[a1]]
 kPermutations 0 _ = [[]]
 kPermutations _ [] = []
 kPermutations k (x:xs) = concatMap (interweave x) (kPermutations (k-1) xs)
                          ++ kPermutations k xs
 
 -- combinations (where the order doesn't matter -- and therefore does...)
-kCombinations :: Num a => a -> [a1] -> [[a1]]
+kCombinations :: (Eq a, Num a) => a -> [a1] -> [[a1]]
 kCombinations 0 _ = [[]]
 kCombinations _ [] = []
 kCombinations n (x:xs) = map (x:) (kCombinations (n-1) xs)

@@ -1,4 +1,4 @@
-module TriangleConsistency where
+module DecisionProcedure.FlipFlop.TriangleConsistency where
 
 import qualified Data.Set as Set
 import qualified Data.List as List
@@ -437,6 +437,7 @@ showSMT lst =
     in
         "(benchmark Triangles \n\n" ++
         ":logic QF_AUFLIA\n\n" ++
+--        ":logic QF_LRA\n\n" ++
         vars ++ "\n\n:formula\n" ++
         (if length tr > 1 then
             foldl (\x y -> "(and \n" ++ x ++ " " ++ y ++ ")\n")
@@ -478,6 +479,18 @@ parseOutputSMT str =
         (False, True) -> return $ Just False
         (_, _)        -> error $ "Help! Yices answered: " ++ str
 
+parseOutputSMTpure :: String
+                   -> Maybe Bool
+parseOutputSMTpure str =
+    let
+          sat = or $ map (\x -> "sat" `List.isPrefixOf` x) $ lines str
+          unsat = or $ map (\x -> "unsat" `List.isPrefixOf` x) $ lines str
+    in
+      case (sat, unsat) of
+        (True, False) -> Nothing
+        (False, True) -> Just False
+        (_, _)        -> error $ "Help! Yices answered: " ++ str
+
 -- Check for Triangle Consistency
 runTC :: [Rel] -> IO (Maybe Bool)
 runTC scen =
@@ -496,9 +509,28 @@ runTC scen =
                  let angles   = translateToAngles $ addPermutations $
                                 map fromJust subst
                  let str      = showSMT angles
-                 out <- readYices str
+                 let out = readYices str
                  suc <- parseOutputSMT out
                  return suc
+
+-- Check for Triangle Consistency
+runTCpure :: [Rel] -> Maybe Bool
+runTCpure scen =
+  let
+      subst    = verifySubs $ applySubs scen
+      failSubs = or $ map (== Nothing) subst
+  in
+      if (failSubs) then
+            Just False
+      else if (subst == []) then
+           Just True
+      else
+        let
+            angles   = translateToAngles $ addPermutations $
+                       map fromJust subst
+            str      = showSMT angles
+        in
+            parseOutputSMTpure $ readYices str
 
 -- constraint network for testing
 eris :: [Rel]

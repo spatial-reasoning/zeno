@@ -111,7 +111,7 @@ algebraicClosure cal net =
         False -> (consistent, modified, net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
-    sparqModified:rest = lines $ readSafeProcess "sparq"
+    sparqModified:rest = lines $ unsafeReadProcess "sparq"
         ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
@@ -140,7 +140,7 @@ ternaryAlgebraicClosure cal net =
         False -> (consistent, modified, net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
-    sparqModified:rest = lines $ readSafeProcess "sparq"
+    sparqModified:rest = lines $ unsafeReadProcess "sparq"
         ["constraint-reasoning " ++ cal ++ " ternary-closure " ++ sparqify True net] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
@@ -175,10 +175,10 @@ algebraicReasoning cal net =
                                       sparqNet )
   where
     sparqNet = sparqify True net
-    answer = head $ lines $ readSafeProcess "sparq"
+    answer = head $ lines $ unsafeReadProcess "sparq"
         ["a-reasoning " ++ cal ++ " consistency " ++ sparqNet] ""
 
-
+{-- This needs to be rewritten using "unsafeReadProcess" ----------------------
 algebraicClosures :: (Calculus a)
                   => String
                   -> [Network [String] (Set.Set a)]
@@ -238,7 +238,7 @@ algebraicReasonings cal nets = doInSparq $
                 ) nets
     )
 {-# NOINLINE algebraicReasonings #-}
-
+------------------------------------------------------------------------------}
 
 {-- Server version (is not well suited for our purpose) -----------------------
 

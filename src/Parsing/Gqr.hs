@@ -14,7 +14,7 @@ import Text.ParserCombinators.Parsec
 
 -- local modules
 import Basics
-import Helpful
+--import qualified Helpful as H
 
 --import Debug.Trace
 

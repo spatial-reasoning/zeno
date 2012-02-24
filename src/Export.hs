@@ -79,7 +79,7 @@ gqrify net =
         ++ ".\n"
     , enumeration )
     where
-        (numCons, enumeration) = enumerate2 $ nCons net
+        (numCons, enumeration) = enumerateAndEnumeration $ nCons net
 
 exportToSparq :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
 exportToSparq net filename = do

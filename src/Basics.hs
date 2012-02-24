@@ -3,13 +3,14 @@ module Basics where
 -- standard modules
 import Control.Monad
 import qualified Data.Char as Char
-import List
+import Data.List
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Data.Maybe
+import Data.Ratio
+import qualified Data.Set as Set
 
 -- local modules
-import qualified Helpful as H
+import qualified Helpful.Math as H
 
 -- Debugging and Timing
 import Debug.Trace
@@ -24,14 +25,17 @@ data Network a b = Network
     } deriving (Eq, Ord, Read, Show)
 
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
+    rank :: a -> Int
+
     cBaserelations :: Set.Set a
     cBaserelations = Set.fromList [minBound..maxBound]
 
-    readRel       :: String -> a
-    showRel       :: a -> String
+    readRel :: String -> a
+    showRel :: a -> String
 
     readRel = read . (map Char.toUpper)
     showRel = (map Char.toLower) . show
+    
 
 
 -- This was a try to implement a general way to handle constraint networks.
@@ -215,7 +219,6 @@ eNetwork = Network
     , nNumOfNodes = Nothing
     }
 
-
 {------------------------------------------------------------------------------
  - Some useful functions
 ------------------------------------------------------------------------------}
@@ -227,30 +230,30 @@ enumerate cons =
     snd $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
   where
     collectOneCon nodes rel (mapCol, consCol) =
-        let
-            (newMap, newNodes) = mapAccumL
-                (\ m node -> let mappedNode = Map.lookup node m in
-                    case mappedNode of
-                        Nothing   -> let n = Map.size m in
-                                     (Map.insert node n m, n)
-                        otherwise -> (m, fromJust mappedNode)
-                )
-                mapCol
-                nodes
-        in
+      let
+        (newMap, newNodes) = mapAccumL
+            (\ m node -> let mappedNode = Map.lookup node m in
+                case mappedNode of
+                    Nothing   -> let n = Map.size m in
+                                 (Map.insert node n m, n)
+                    otherwise -> (m, fromJust mappedNode)
+            )
+            mapCol
+            nodes
+      in
         ( newMap
         , Map.insert newNodes rel consCol
         )
 
-enumerate2 :: (Ord a, Ord b)
-           => Map.Map [a]   b
-           -> (Map.Map [Int] b, Map.Map Int a)
-enumerate2 cons = (newCons, enumeration)
+enumerateAndEnumeration :: (Ord a, Ord b)
+                        => Map.Map [a]   b
+                        -> (Map.Map [Int] b, Map.Map Int a)
+enumerateAndEnumeration cons = (numericCons, enumeration)
   where
-    (_, newCons, enumeration) = Map.foldrWithKey
-                                    collectOneCon
-                                    (Map.empty, Map.empty, Map.empty)
-                                    cons
+    (_, numericCons, enumeration) = Map.foldrWithKey
+                                        collectOneCon
+                                        (Map.empty, Map.empty, Map.empty)
+                                        cons
     collectOneCon nodes rel (mapCol, consCol, enumCol) =
         let
             ((newMap, newEnum), newNodes) = mapAccumL
@@ -290,6 +293,16 @@ nodesIn = Map.foldrWithKey
 numberOfNodes :: (Ord a) => Network [a] b -> Int
 numberOfNodes = Set.size . nodesIn
 
+-- number of related tuples divided by number of possible tuples.
+density :: (Ord a) => Network [a] b -> Ratio Int
+density net@Network{nCons = cons}
+--    | Map.null cons = error "An empty network has no density."
+    | Map.null cons = 0  --fixme: This should be something else.
+    | otherwise  = Map.size cons % H.choose size rank
+  where
+    size = numberOfNodes net
+    rank = length $ fst $ fst $ fromJust minElem
+    minElem = Map.minViewWithKey cons
 
 --findIdentity :: Naa -> Maybe Relation
 --findIdentity a = H.maxFilterSubset
@@ -303,7 +316,7 @@ isAtomic :: Network [a] (Set.Set b) -> Bool
 isAtomic = Map.fold (\x y -> y && ( (== 1) $ Set.size x)) True . nCons
 
 -- This function only keeps atomic relations and generalizes all other
--- relations to the general relation.
+-- relations to the universal relation.
 makeAtomic :: (Ord a)
            => Network [a] (Set.Set b)
            -> Network [a] b

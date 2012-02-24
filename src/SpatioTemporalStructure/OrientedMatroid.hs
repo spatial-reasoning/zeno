@@ -1,14 +1,14 @@
-module OrientedMatroid where
+module SpatioTemporalStructure.OrientedMatroid where
 
 -- standard modules
 import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Maybe
+import Data.Maybe
 
 -- local modules
 import Basics
-import Calculus.Dipole
+--import Calculus.Dipole
 import Calculus.FlipFlop
 import Convert
 import qualified Helpful as H
@@ -135,13 +135,13 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                       let
                         newConstraints = [ (y, newSign * z) | (y, z) <- x ]
                       in
---                        trace (
---                                "\nassigning " ++ show x ++ " to " ++ show newSign ++ "\n"
---                                ++
---                                "length of missing constraints: " ++ (show $ length stillMissingPwPs)
---                                "a"
---                              ) $
-                        isAcyclicChirotope_worker
+{-                        trace (
+                                "\nassigning " ++ show x ++ " to " ++ show newSign ++ "\n"
+                                ++
+                                "length of missing constraints: " ++ (show $ length stillMissingPwPs) ++
+                                "a\n\n\n" ++ show wM
+                              ) $
+-}                        isAcyclicChirotope_worker
                             stillMissingPwPs
                             newConstraints $
                             foldl (flip $ uncurry Map.insert) wM newConstraints
@@ -304,6 +304,8 @@ hasBiquadraticFinalPolynomial a b c d =
     not $ hasNoBiquadraticFinalPolynomial a b c d
 
 
+
+-- Fixme: move this into a seperate module
 {------------------------------------------------------------------------------
  - Test for FlipFlop and Dipole Networks
 ------------------------------------------------------------------------------}
@@ -313,7 +315,8 @@ isAcyclicChirotopeFlipFlop sloppy net
 --    | (isJust chiroNet &&) $ head $ isAcyclicChirotope      -- TWOINONE
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) sloppy =
-        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
+--        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
+        if (numberOfNodes (fromJust chiroNet) < 9) && False then
             Just True
         else
             Nothing
@@ -322,6 +325,21 @@ isAcyclicChirotopeFlipFlop sloppy net
     chiroNet = flipflop7ToChirotope net
 
 
+isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeWithoutBPFlipFlop sloppy net
+--    | (isJust chiroNet &&) $ last $ isAcyclicChirotope          -- TWOINONE
+    | (isJust chiroNet &&) $ isAcyclicChirotope
+        (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
+--        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
+        if (numberOfNodes (fromJust chiroNet) < 9) && False then
+            Just True
+        else
+            Nothing
+    | otherwise  = Just False
+  where
+    chiroNet = flipflop7ToChirotope net
+
+{-
 isAcyclicChirotopeDipole72 :: Bool -> Network [String] Dipole72 -> Maybe Bool
 isAcyclicChirotopeDipole72 sloppy net
     | isNothing ffNet  = Nothing
@@ -330,26 +348,14 @@ isAcyclicChirotopeDipole72 sloppy net
     ffNet = dipolesToFlipFlops net
 
 
-isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
-isAcyclicChirotopeWithoutBPFlipFlop sloppy net
---    | (isJust chiroNet &&) $ last $ isAcyclicChirotope          -- TWOINONE
-    | (isJust chiroNet &&) $ isAcyclicChirotope
-        (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
-        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
-            Just True
-        else
-            Nothing
-    | otherwise  = Just False
-  where
-    chiroNet = flipflop7ToChirotope net
-
-
 isAcyclicChirotopeWithoutBPDipole72 :: Bool -> Network [String] Dipole72 -> Maybe Bool
 isAcyclicChirotopeWithoutBPDipole72 sloppy net
     | isNothing ffNet  = Nothing
     | otherwise  = isAcyclicChirotopeWithoutBPFlipFlop sloppy $ fromJust ffNet
   where
     ffNet = dipolesToFlipFlops net
+-}
+
 
 {-       TWOINONE
 isAcyclicChirotopePlainAndWithoutBPFlipFlop :: Network [String] FlipFlop -> [Maybe Bool]

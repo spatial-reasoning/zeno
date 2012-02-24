@@ -2,16 +2,19 @@ module Testsuite.Random where
 
 -- standard modules
 import Control.Monad
-import Control.Monad.Random
+import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Random hiding (shuffle)
+import Data.Random.Distribution.Binomial
+import Data.Random.Extras
+import Data.Ratio
+import Data.RVar
 import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Dipole
-import Calculus.FlipFlop
-import Helpful
+import Helpful.General
 import Helpful.Random
 
 import Debug.Trace
@@ -19,76 +22,86 @@ import Debug.Trace
 
 -- | consistent networks
 
-randomAtomicNetwork :: (Calculus a)
-                          => Int
-                          -> [a]
-                          -> Int
-                          -> IO (Network [String] a)
-randomAtomicNetwork rank domain syze = do
-    gen <- newStdGen
-    let rels = randomsOf domain gen
+randomScenario :: (Calculus a)
+               => Int
+               -> [a]
+               -> Int
+               -> IO (Network [String] a)
+randomScenario rank domain syze = do
+    rels <- randomsOfIO domain
     let cons = Map.fromList $
             zip (kCombinations rank $ map show [1..syze]) rels
     let net = eNetwork { nDesc = "Random Network", nCons = cons }
     return net
 
-randomConnectedAtomicNetwork :: (Calculus a)
-                             => Int
-                             -> [a]
-                             -> Int
-                             -> Float
-                             -> IO (Network [String] a)
-randomConnectedAtomicNetwork rank domain syze density = do
-    cons <- liftM (Map.fromList . fst) $ foldM
-                (\(consAcc, nodesAcc) intNode -> do
-                    gen1 <- newStdGen
-                    gen2 <- newStdGen
-                    gen3 <- newStdGen
-                    let node = show intNode
-                        combis = kCombinations (rank - 1) nodesAcc
-                        rels = randomsOf domain gen1
-                        rolls = randomRs (0, 1) gen2 :: [Float]
-                        randomCombi = fst $ oneOf combis gen3
-                        newCons = mapMaybe
-                            (\(combi, rel, roll) ->
-                                if roll < density then
-                                    Just (combi ++ [node], rel)
-                                else
-                                    Nothing
-                            ) $ zip3 combis rels rolls
-                    return ( (consAcc ++) $
-                               if null newCons then
-                                   [(randomCombi ++ [node], head $ rels)]
-                               else
-                                   newCons
-                           , nodesAcc ++ [node]
-                           )
-                ) ([], (map show [1..rank - 1])) [rank..syze]
+randomAtomicNetworkWithDensity :: (Calculus a)
+                               => Int
+                               -> [a]
+                               -> Int
+                               -> Int
+                               -> IO (Network [String] a)
+randomAtomicNetworkWithDensity rank domain syze numerator = do
+    combis <- sampleRVar $ shuffle $ kCombinations rank $ map show [1..syze]
+    rels <- randomsOfIO domain
+    let cons = Map.fromList $ take numerator $ zip combis rels
     return $ eNetwork { nDesc = "Random Network", nCons = cons }
 
+randomConnectedAtomicNetworkWithDensity :: (Calculus a)
+                                        => Int
+                                        -> [a]
+                                        -> Int
+                                        -> Int
+                                        -> IO (Network [String] a)
+randomConnectedAtomicNetworkWithDensity rank domain syze numerator = do
+    let combis = [ kCombinations (rank - 1) $ map show [1..n]
+                 | n <- [rank - 1..] ]
+    skel <- foldM (\consAcc intNode -> do
+                      let node = show intNode
+                      combi <- oneOfIO $ combis!!(intNode - rank)
+                      rel <- oneOfIO domain
+                      let newCon = [(combi ++ [node], rel)]
+                      return $ consAcc ++ newCon
+                  ) [] [rank..syze]
+    let combisLeft =
+            (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
+    fleshCombis <- sampleRVar $ shuffle combisLeft
+    fleshRels <- randomsOfIO domain
+    let flesh = take (numerator - syze + rank - 1) $ zip fleshCombis fleshRels
+    let cons = Map.fromList $ skel ++ flesh
+    return $ eNetwork { nDesc = "Random Network", nCons = cons }
 
--- | inconsistent networks
+randomAtomicNetworkAroundDensity :: (Calculus a)
+                                 => Int
+                                 -> [a]
+                                 -> Int
+                                 -> Int
+                                 -> Int
+                                 -> IO (Network [String] a, Int)
+randomAtomicNetworkAroundDensity rank domain syze numerator' denomin = do
+    let numerator = fixNumeratorAtEdge numerator' denomin
+    numer <- sampleBinomial numerator denomin
+    net <- randomAtomicNetworkWithDensity rank domain syze numer
+    return (net, numer)
 
-{-
+randomConnectedAtomicNetworkAroundDensity :: (Calculus a)
+                                          => Int
+                                          -> [a]
+                                          -> Int
+                                          -> Int
+                                          -> Int
+                                          -> IO (Network [String] a, Int)
+randomConnectedAtomicNetworkAroundDensity rank domain syze numerator' denomin =
+  do
+    let numerator = fixNumeratorAtEdge numerator' denomin
+    numer <- sampleBinomial numerator denomin
+    net <- randomConnectedAtomicNetworkWithDensity rank domain syze numer
+    return (net, numer)
 
-indianTent :: Int -> Network [String] (Set.Set FlipFlop)
-indianTent n
-    | n < 3      = eNetwork
-    | otherwise  = Network
-        { nDesc = show n ++ " nodes, inconsistent, " ++
-            " following the rule { p_i p_j p_k (l) | 1 <= i < j < k <= " ++
-            show n ++ " } except for p_1 p_2 p_" ++ show n ++ " (r) and\
-            \ p_2 p_3 p_" ++ show n ++ " (r)."
-        , nCalc = "flipflop-3"
-        , nNumOfNodes = Just n
-        , nCons = Map.insert ["0", "1", show $ n - 1] (Set.singleton R) $
-            Map.insert ["1", "2", show $ n - 1] (Set.singleton R) $ Map.fromList $ foldl
-                (\acc i -> (++ acc) $ foldl
-                    (\acc2 j -> (++ acc2) $ map
-                        (\k -> ([show i, show j, show k], Set.singleton L)
-                        ) [j + 1..n - 1]
-                    ) [] [i + 1..n - 2]
-                ) [] [0..n - 3]
-        }
+fixNumeratorAtEdge numerator denomin
+    | numerator == 0        = 0.5
+    | numerator == denomin  = fromIntegral numerator - 0.5
+    | otherwise             = fromIntegral numerator
 
--}
+sampleBinomial numerator denomin = sampleRVar $
+    binomial (denomin :: Int) (numerator / fromIntegral denomin :: Float)
+
