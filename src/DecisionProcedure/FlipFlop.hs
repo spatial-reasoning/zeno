@@ -1,4 +1,4 @@
-module DecisionProcedure.FlipFlop where
+module DecisionProcedure.FlipFlop () where
 
 -- standard modules
 import qualified Data.Set as Set

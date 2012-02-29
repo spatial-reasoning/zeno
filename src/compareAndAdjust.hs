@@ -22,11 +22,9 @@ import Text.Printf
 -- local modules
 import Basics
 import Benchmark
-import Calculus.Dipole
-import Calculus.FlipFlop
+import Calculus.All
 import DecisionProcedure
-import DecisionProcedure.Dipole
-import DecisionProcedure.FlipFlop
+import DecisionProcedure.All
 
 import Debug.Trace
 
@@ -39,6 +37,7 @@ data Options = Options { optMinRange   :: Int
                        , optNumOfNets  :: Int
                        , optTimeout    :: Int
                        , optRelations  :: String
+                       , optCalculus   :: String
 --                       , optNumOfNodes :: Int
 --                       , optDensity    :: Float
                        } deriving (Show, Data, Typeable)
@@ -86,6 +85,13 @@ defaultOptions = Options
         &= name "relations"
         &= typ "Relation(s)"
         &= help "Only use these relations.        (default = \"\")"
+    , optCalculus = ""
+        &= opt ""
+        &= explicit
+        &= name "c"
+        &= name "calculus"
+        &= typ "Calculus"
+        &= help "Use this calculus.              Supported Calculi: Dipole-72, FlipFlop, OPRA-1. (default = \"\")"
 --    , optDensity = def
 --        &= opt (0.5 :: Float)
 --        &= explicit
@@ -119,8 +125,16 @@ instance Show Calc where
 
 allBaseRels = concat
     [ map Calc (Set.toList cBaserelations :: [FlipFlop])
+--    , map Calc (Set.toList cBaserelations :: [Dipole24])
     , map Calc (Set.toList cBaserelations :: [Dipole72])
+--    , map Calc (Set.toList cBaserelations :: [Dipole80])
+    , map Calc (Set.toList cBaserelations :: [OPRA1])
     ]
+
+helperFor str = case map Char.toUpper str of
+    "DIPOLE-72" -> Calc (Set.findMin cBaserelations :: Dipole72)
+    "FLIPFLOP"  -> Calc (Set.findMin cBaserelations :: FlipFlop)
+    "OPRA-1"    -> Calc (Set.findMin cBaserelations :: OPRA1   )
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -129,20 +143,33 @@ main = do
     optionHandler opts
 
 optionHandler opts@Options{..} = do
-    when (null optRelations) (error $ "Which relations should i use?")
     let wordsOptRelations = words optRelations
-    let typeHelperStr = head $ wordsOptRelations
-    let helperLst = filter
-            (\ (Calc a) -> showRel a == map Char.toLower typeHelperStr)
-            allBaseRels
-    when (null helperLst)
-         (error $ "\"" ++ typeHelperStr ++
-                  "\" is not a valid relation in any known calculus.")
-    let boxedTypeHelper = head helperLst
-    unboxAndExec boxedTypeHelper wordsOptRelations opts
+    if null optCalculus then do
+        when (null optRelations)
+             (error $ "Which relations or calculus should i use?")
+        let typeHelperStr = head $ wordsOptRelations
+        let helperLst = filter
+                (\ (Calc a) -> showRel a == map Char.toLower typeHelperStr)
+                allBaseRels
+        when (null helperLst)
+             (error $ "\"" ++ typeHelperStr ++
+                      "\" is not a valid relation in any known calculus.")
+        let boxedTypeHelper = head helperLst
+        unboxAndExec boxedTypeHelper wordsOptRelations opts
+    else if null optRelations then
+        useWholeCalculusAndExec (helperFor optCalculus) opts
+    else
+        unboxAndExec (helperFor optCalculus) wordsOptRelations opts
 
 unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
     let rels = tail $ typeHelper:(map readRel wordsOptRelations)
+    -- force full evaluation of rels. Is there a better way to do this?
+    -- ( `seq` does not help here )
+    when (rels == rels) (return ())
+    exec rels opts
+
+useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
+    let rels = Set.toList cBaserelations :: [Dipole72]
     exec rels opts
 
 exec rels opts@Options{..} = do

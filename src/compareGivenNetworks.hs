@@ -11,7 +11,7 @@ import System.IO
 
 -- standard modules
 import Basics
-import Calculus.Dipole
+import Calculus.Dipole72
 import Calculus.FlipFlop
 import Export
 import qualified Interface.Gqr as G
@@ -79,14 +79,7 @@ checkNetworks = do
 --    -- oriented matroid method.
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 12
     let dpNet5 = circleWithTwoCollinearDipolesInside 11
-    let dpNets = [
---                   dpNet0
---                   dpNet1
---                 , dpNet2
---                 , dpNet3
---                 , dpNet4
---                 , dpNet5  
-                 ]
+    let dpNets = map circleWithTwoCollinearDipolesInside [6..20]
 
     let ffNet1 = allLeft 8
     ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
@@ -106,24 +99,7 @@ checkNetworks = do
     ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
     ffNet16 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
 -}
-    let ffNets = [ 
-                   ffNet1
-                 , ffNet2
-                 , ffNet3
-                 , ffNet4
-                 , ffNet5
-                 , ffNet6
-                 , ffNet7
-                 , ffNet8
---                 , ffNet9
-                 , ffNet10
-                 , ffNet11
---                 , ffNet12
---                 , ffNet13
---                 , ffNet14
---                 , ffNet15
---                 , ffNet16
-                 ]
+    let ffNets = [ ]
 
     let dpAnswers = makeReadable 0 $ dpCheckConsistency dpNets
     let ffAnswers = makeReadable (length dpNets) $ ffCheckConsistency ffNets

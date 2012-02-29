@@ -335,5 +335,3 @@ makeNonAtomic net@Network { nCons = cons } =
     net { nCons = Map.map Set.singleton cons }
 
 
-
-

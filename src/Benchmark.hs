@@ -322,23 +322,27 @@ saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens = do
 -- Show things ----------------------------------------------------------------
 
 showInfo numOfNodes nOfTestedNet targetDens actualDens =
-    (printf "%8d" (numOfNodes :: Int)) ++ " │ " ++
-    (printf "%8d" (nOfTestedNet :: Int)) ++ " │ " ++
-    (printf "%4d" (numerator targetDens :: Int)) ++ " / " ++
-    (printf "%4d" (denominator targetDens :: Int)) ++ " │ " ++
-    (printf "%4d" (numerator actualDens :: Int)) ++ " / " ++
-    (printf "%4d" (denominator actualDens :: Int)) ++ " │ "
+    (printf "%8d" (numOfNodes :: Int)) ++ " │ "
+    ++ (printf "%8d" (nOfTestedNet :: Int)) ++ " │ "
+    ++ (printf "%4d" (numerator targetDens :: Int)) ++ " / "
+    ++ (printf "%4d" (denominator targetDens :: Int)) ++ " │ "
+--    ++ (printf "%4d" (numerator actualDens :: Int)) ++ " / "
+--    ++ (printf "%4d" (denominator actualDens :: Int)) ++ " │ "
 
 showProcedures results = " │ " ++
     foldl (\acc (desc, _) -> acc ++ align desc ++ " │ ") "" results ++
     foldl (\acc str -> acc ++ align str ++ " │ ") ""
         [ "# nodes"
         , "# nets"
-        , "Target Dens"
-        , "Actual Dens" ] ++
+        , "  Density  "
+--        , "Target Dens"
+--        , "Actual Dens"
+        ] ++
     "\n" ++ " ├──────────" ++
     concat (replicate (length results + 1) "┼──────────") ++
-    concat (replicate 2 "┼─────────────") ++ "┤"
+    concat (replicate 1 "┼─────────────") ++
+--    concat (replicate 2 "┼─────────────") ++
+    "┤"
   where
     align str
         | diff < 1  = str

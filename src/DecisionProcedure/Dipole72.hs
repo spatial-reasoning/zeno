@@ -1,4 +1,4 @@
-module DecisionProcedure.Dipole where
+module DecisionProcedure.Dipole72 () where
 
 -- standard modules
 import Data.Maybe
@@ -6,7 +6,7 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Dipole
+import Calculus.Dipole72
 import Convert
 import DecisionProcedure
 
@@ -21,7 +21,6 @@ toAtomicFlipFlops (a,fun) = (a, newFun)
 
 instance HasDecisionProcedure Dipole72 where
     proceduresForAtomicNets _ =
-{- fixme: Sparq seems to be broken for Dipoles.
         [ algebraicClosure str72
         , algebraicReasoning str72
         , toAtomicFlipFlops triangleConsistency
@@ -30,8 +29,6 @@ instance HasDecisionProcedure Dipole72 where
         , toAtomicFlipFlops chirotope
         , toAtomicFlipFlops biquadraticFinalPolynomials
         ]
--}
-        [ toAtomicFlipFlops triangleConsistency ]
 
     proceduresForNonAtomicNets _ =
         [ algebraicClosure str72

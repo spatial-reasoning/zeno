@@ -7,7 +7,7 @@ import Data.Maybe
 import qualified Data.Set as Set
 -- local modules
 import Basics
-import Calculus.Dipole
+import Calculus.Dipole72
 import Calculus.FlipFlop
 import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
 import Helpful
