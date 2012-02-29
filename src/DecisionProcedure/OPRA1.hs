@@ -10,7 +10,7 @@ import Calculus.OPRA1
 import Calculus.OPRA1.ToFlipFlop
 import DecisionProcedure
 
-strOpra1 = "opra-1"
+str = "opra-1"
 
 toAtomicFlipFlops (a,fun) =
     ( a
@@ -19,8 +19,8 @@ toAtomicFlipFlops (a,fun) =
 
 instance HasDecisionProcedure OPRA1 where
     proceduresForAtomicNets _ =
-        [ algebraicClosure strOpra1
-        , algebraicReasoning strOpra1
+        [ algebraicClosure str
+        , algebraicReasoning str
         , toAtomicFlipFlops triangleConsistency
         , toAtomicFlipFlops chirotopeSloppy
         , toAtomicFlipFlops biquadraticFinalPolynomialsSloppy
@@ -29,6 +29,6 @@ instance HasDecisionProcedure OPRA1 where
         ]
 
     proceduresForNonAtomicNets _ =
-        [ algebraicClosure strOpra1
-        , algebraicReasoning strOpra1
+        [ algebraicClosure str
+        , algebraicReasoning str
         ]

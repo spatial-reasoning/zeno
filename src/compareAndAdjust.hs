@@ -16,7 +16,6 @@ import System.Console.CmdArgs
 import System.Environment
 import System.IO
 import System.IO.Unsafe
-import System.TimeIt
 import Text.Printf
 
 -- local modules
@@ -169,7 +168,7 @@ unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
     exec rels opts
 
 useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
-    let rels = Set.toList cBaserelations :: [Dipole72]
+    let rels = tail $ typeHelper:(Set.toList cBaserelations)
     exec rels opts
 
 exec rels opts@Options{..} = do

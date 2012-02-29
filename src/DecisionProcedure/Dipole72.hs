@@ -10,7 +10,7 @@ import Calculus.Dipole72
 import Convert
 import DecisionProcedure
 
-str72 = "dra-72"
+str = "dra-72"
 
 toAtomicFlipFlops (a,fun) = (a, newFun)
   where
@@ -21,8 +21,8 @@ toAtomicFlipFlops (a,fun) = (a, newFun)
 
 instance HasDecisionProcedure Dipole72 where
     proceduresForAtomicNets _ =
-        [ algebraicClosure str72
-        , algebraicReasoning str72
+        [ algebraicClosure str
+        , algebraicReasoning str
         , toAtomicFlipFlops triangleConsistency
         , toAtomicFlipFlops chirotopeSloppy
         , toAtomicFlipFlops biquadraticFinalPolynomialsSloppy
@@ -31,6 +31,6 @@ instance HasDecisionProcedure Dipole72 where
         ]
 
     proceduresForNonAtomicNets _ =
-        [ algebraicClosure str72
-        , algebraicReasoning str72
+        [ algebraicClosure str
+        , algebraicReasoning str
         ]

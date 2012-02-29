@@ -1,4 +1,4 @@
-module Calculus.Dipole where
+module Calculus.Dipole80 where
 
 -- standard modules
 import qualified Data.Char as Char
