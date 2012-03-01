@@ -79,7 +79,7 @@ checkNetworks = do
 --    -- oriented matroid method.
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 12
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 11
-    let dpNets = map circleWithTwoCollinearDipolesInside [6..20]
+    let dpNets = map circleWithTwoCollinearDipolesInside [6..40]
 {-
     let ffNet1 = allLeft 8
     ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
