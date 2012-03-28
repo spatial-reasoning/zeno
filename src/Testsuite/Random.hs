@@ -31,7 +31,7 @@ randomScenario rank domain syze = do
     rels <- randomsOfIO domain
     let cons = Map.fromList $
             zip (kCombinations rank $ map show [1..syze]) rels
-    let net = eNetwork { nDesc = "Random Network", nCons = cons }
+    let net = eNetwork { nDesc = "Random_Network", nCons = cons }
     return net
 
 randomAtomicNetworkWithDensity :: (Calculus a)
@@ -44,7 +44,7 @@ randomAtomicNetworkWithDensity rank domain syze numerator = do
     combis <- sampleRVar $ shuffle $ kCombinations rank $ map show [1..syze]
     rels <- randomsOfIO domain
     let cons = Map.fromList $ take numerator $ zip combis rels
-    return $ eNetwork { nDesc = "Random Network", nCons = cons }
+    return $ eNetwork { nDesc = "Random_Network", nCons = cons }
 
 randomConnectedAtomicNetworkWithDensity :: (Calculus a)
                                         => Int
@@ -59,6 +59,16 @@ randomConnectedAtomicNetworkWithDensity rank domain syze numerator = do
                       let node = show intNode
                       combi <- oneOfIO $ combis!!(intNode - rank)
                       rel <- oneOfIO domain
+                                     --     v--------- the order of these two
+                                     --                is very important
+                                     --                because the nodes of the
+                                     --                networks are assumed to
+                                     --                be sorted throughout the
+                                     --                code. Fixme: this should
+                                     --                be handled better by
+                                     --                internal generating
+                                     --                functions.
+                                     --v--------v--
                       let newCon = [(combi ++ [node], rel)]
                       return $ consAcc ++ newCon
                   ) [] [rank..syze]
@@ -68,7 +78,7 @@ randomConnectedAtomicNetworkWithDensity rank domain syze numerator = do
     fleshRels <- randomsOfIO domain
     let flesh = take (numerator - syze + rank - 1) $ zip fleshCombis fleshRels
     let cons = Map.fromList $ skel ++ flesh
-    return $ eNetwork { nDesc = "Random Network", nCons = cons }
+    return $ eNetwork { nDesc = "Random_Network", nCons = cons }
 
 randomAtomicNetworkAroundDensity :: (Calculus a)
                                  => Int

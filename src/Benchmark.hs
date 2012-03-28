@@ -108,7 +108,7 @@ markTheBench
 addToBench :: (Calculus a)
            => Benchmark
            -> Int -> (Ratio Int) -> (Ratio Int)
-           -> (Network [String] (Set.Set a))
+           -> (Network [String] a)
            -> [(String, (Double, Maybe (Maybe Bool)))]
            -> Benchmark
 addToBench bench numOfNodes targetDens actualDens net results =
@@ -214,8 +214,8 @@ addToBench bench numOfNodes targetDens actualDens net results =
         )
 
 checkNetwork rank relations funs tymeout size numerator = do
-    net <- liftM makeNonAtomic $
-        randomConnectedAtomicNetworkWithDensity rank relations size numerator
+    net <- randomConnectedAtomicNetworkWithDensity rank
+                                                   relations size numerator
     results <- sequence $ map
                   (\(desc, fun) -> do
                       res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
@@ -285,7 +285,7 @@ saveContradictingResults numOfNodes dens net results = unsafePerformIO $ do
     appendFile "RESULTS.ERROR" $
         " Number of Nodes: " ++ show numOfNodes ++
         " | Density: " ++ show dens ++ "\n\n" ++
-        showNonAtomicNet net ++ "\n" ++
+        showAtomicNet net ++ "\n" ++
         showProcedures results ++ "\n" ++
         showResults results ++ "\n\n\n"
     error $ "Results contradict each other. Results saved to " ++
@@ -311,7 +311,7 @@ saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens = do
     then
         appendFile "RESULTS.SPECIAL" $
         showInfo numOfNodes nOfTestedNet targetDens actualDens ++ "\n" ++
-        showNonAtomicNet net ++ "\n" ++
+        showAtomicNet net ++ "\n" ++
         showProcedures results ++ "\n\n" ++
         showResults results ++ "\n\n"
     else

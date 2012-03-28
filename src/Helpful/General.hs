@@ -2,16 +2,12 @@ module Helpful.General where
 
 import Prelude hiding (catch)
 import Control.Concurrent
-import Control.Exception
 import Control.Parallel.Strategies
-import Control.Monad
 import Control.DeepSeq
 import Data.Char
-import qualified Data.List as List
+import Data.List
 import Data.Maybe
 import qualified Data.Set as Set
-import System.Directory
-import System.Random
 
 import Debug.Trace
 
@@ -77,21 +73,6 @@ maxFilterSubset :: (Ord a) => ((Set.Set a) -> Bool)
                            -> Maybe (Set.Set a)
 maxFilterSubset p s = listToMaybe $ filter p $ subsetsLargeToSmall s
 
-createTempDir :: String -> IO FilePath
-createTempDir dirName = do
-    randGen <- newStdGen
-    sysTmpDir <- catch (getTemporaryDirectory) ((\_ -> return ".") :: SomeException -> IO String)
-    let tmpDirPrefix = sysTmpDir ++ "/" ++ dirName ++ "_"
-    tmpDir <- nonExistingDirName tmpDirPrefix
-    createDirectory tmpDir
-    return tmpDir
-    where nonExistingDirName prefix = do
-            randint <- randomRIO (1, 9999999 :: Int)
-            let path = prefix ++ show randint
-            fileExists <- doesFileExist path
-            dirExists <- doesDirectoryExist path
-            if (fileExists || dirExists) then nonExistingDirName prefix
-            else return path
 
 _fork1 :: (a -> IO b) -> a -> IO (MVar b)
 _fork1 f x =
@@ -118,7 +99,7 @@ hasDuplicates (x:xs) = elem x xs || hasDuplicates xs
 -- of the first element in the list satisfying the predicate and its index, or
 -- Nothing if there is no such element. 
 findWithIndex :: (Num a, Enum a) => (b -> Bool) -> [b] -> Maybe (a, b)
-findWithIndex = (. zip [0..]) . List.find . (. snd)
+findWithIndex = (. zip [0..]) . find . (. snd)
 
 -- interweave x [a, b] = [[x, a, b], [a, x, b], [a, b, x]]
 interweave :: t -> [t] -> [[t]]

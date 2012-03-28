@@ -3,7 +3,6 @@ module Interface.Gqr where
 -- standard modules
 import qualified Data.Set as Set
 import System.IO
-import System.IO.Temp
 import System.IO.Unsafe
 import System.Process
 import Text.Parsec
@@ -12,6 +11,7 @@ import Text.Parsec
 import Basics
 import Export
 import Parsing.Gqr
+import Helpful.Directory
 
 --import Debug.Trace
 
@@ -21,7 +21,7 @@ algebraicClosure :: (Calculus a)
                  -> Network [String] (Set.Set a)
                  -> (Maybe Bool, Network [String] (Set.Set a))
 algebraicClosure cal net = unsafePerformIO $
-  withSystemTempDirectory "Qstrlib-" (\tmpDir -> do
+  withTempDir "Qstrlib_qgr" (\tmpDir -> do
     gqrTempFile <- openTempFile tmpDir "gqrTempFile.csp"
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
@@ -55,7 +55,7 @@ algebraicClosures :: (Calculus a)
                   -> [Network [String] (Set.Set a)]
                   -> [Maybe Bool]
 algebraicClosures cal nets = unsafePerformIO $
-  withSystemTempDirectory "Qstrlib-" (\tmpDir -> do
+  withTempDir "Qstrlib-" (\tmpDir -> do
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (fst $ gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles

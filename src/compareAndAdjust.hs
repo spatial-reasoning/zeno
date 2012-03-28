@@ -90,7 +90,7 @@ defaultOptions = Options
         &= name "c"
         &= name "calculus"
         &= typ "Calculus"
-        &= help "Use this calculus.              Supported Calculi: Dipole-72, FlipFlop, OPRA-1. (default = \"\")"
+        &= help "Use this calculus.              Supported Calculi: Dipole-72, FlipFlop, OPRA-1, OPRA-4, OPRA-8, OPRA-10.     (default = \"\")"
 --    , optDensity = def
 --        &= opt (0.5 :: Float)
 --        &= explicit
@@ -122,18 +122,27 @@ instance Show Calc where
 --    show (Calc a) = "Calc " ++ show a
     show (Calc a) = show a
 
+-- improve: put this list somewhere else and just use it here.
+-- maybe make it more generic by having a list of known calculi and mapping the
+-- appropriate function over it.
 allBaseRels = concat
     [ map Calc (Set.toList cBaserelations :: [FlipFlop])
 --    , map Calc (Set.toList cBaserelations :: [Dipole24])
     , map Calc (Set.toList cBaserelations :: [Dipole72])
 --    , map Calc (Set.toList cBaserelations :: [Dipole80])
-    , map Calc (Set.toList cBaserelations :: [OPRA1])
+    , map Calc (Set.toList cBaserelations :: [Opra1])
+    , map Calc (Set.toList cBaserelations :: [Opra4])
+    , map Calc (Set.toList cBaserelations :: [Opra8])
+    , map Calc (Set.toList cBaserelations :: [Opra10])
     ]
 
-helperFor str = case map Char.toUpper str of
+helperForCalculus str = case map Char.toUpper str of
     "DIPOLE-72" -> Calc (Set.findMin cBaserelations :: Dipole72)
     "FLIPFLOP"  -> Calc (Set.findMin cBaserelations :: FlipFlop)
-    "OPRA-1"    -> Calc (Set.findMin cBaserelations :: OPRA1   )
+    "OPRA-1"    -> Calc (Set.findMin cBaserelations :: Opra1   )
+    "OPRA-4"    -> Calc (Set.findMin cBaserelations :: Opra4   )
+    "OPRA-8"    -> Calc (Set.findMin cBaserelations :: Opra8   )
+    "OPRA-10"   -> Calc (Set.findMin cBaserelations :: Opra10  )
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -156,9 +165,9 @@ optionHandler opts@Options{..} = do
         let boxedTypeHelper = head helperLst
         unboxAndExec boxedTypeHelper wordsOptRelations opts
     else if null optRelations then
-        useWholeCalculusAndExec (helperFor optCalculus) opts
+        useWholeCalculusAndExec (helperForCalculus optCalculus) opts
     else
-        unboxAndExec (helperFor optCalculus) wordsOptRelations opts
+        unboxAndExec (helperForCalculus optCalculus) wordsOptRelations opts
 
 unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
     let rels = tail $ typeHelper:(map readRel wordsOptRelations)
@@ -173,7 +182,7 @@ useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
 
 exec rels opts@Options{..} = do
     let head' = head rels
-    let rang = rank head'
+    let rank' = rank head'
     let procedures = proceduresForAtomicNets head'
     startBenchString <- catch
         (readFile "RESULTS.BENCHMARK")
@@ -188,5 +197,5 @@ exec rels opts@Options{..} = do
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    markTheBench optMinRange optMaxRange optNumOfNets procedures optTimeout rang rels startBench
+    markTheBench optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels startBench
 

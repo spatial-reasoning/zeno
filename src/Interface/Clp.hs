@@ -6,16 +6,16 @@ import Data.Maybe
 import System.IO
 import System.IO.Unsafe
 import System.Process
-import System.Unix.Directory
 
 -- local modules
+import Helpful.Directory
 
 --import Data.Time.Clock (diffUTCTime, getCurrentTime)
 --import Debug.Trace
 
 zeroObjective :: String -> Maybe Bool
 zeroObjective p = unsafePerformIO $
-  withTemporaryDirectory "clp-" (\tmpDir -> do
+  withTempDir "Qstrlib_clp" (\tmpDir -> do
     clpTempFile <- openTempFile tmpDir "clpTempFile.lp"
     hPutStr (snd clpTempFile) p
     hClose $ snd clpTempFile

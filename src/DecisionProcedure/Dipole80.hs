@@ -13,8 +13,8 @@ str = "dra-80"
 
 instance HasDecisionProcedure Dipole72 where
     proceduresForAtomicNets _ =
-        [ algebraicClosure str
-        , algebraicReasoning str
+        [ after makeNonAtomic (algebraicClosure str)
+        , after makeNonAtomic (algebraicReasoning str)
         ]
 
     proceduresForNonAtomicNets _ =

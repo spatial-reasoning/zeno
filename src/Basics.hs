@@ -35,6 +35,9 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
 
     readRel = read . (map Char.toUpper)
     showRel = (map Char.toLower) . show
+
+    sparqifyRel :: a -> String
+    sparqifyRel = showRel
     
 
 
@@ -214,7 +217,7 @@ tcTripleHomiInv [c, b, a] = [a, b, c]
 
 eNetwork = Network
     { nCons = Map.empty
-    , nDesc = "Empty Network"
+    , nDesc = "NoDescription"
     , nCalc = ""
     , nNumOfNodes = Nothing
     }
@@ -287,8 +290,7 @@ unenumerateFromString enumeration cons =
 
 nodesIn :: (Ord a) => Network [a] b -> Set.Set a
 nodesIn = Map.foldrWithKey
-    (\nodes _ newSet -> foldl (flip Set.insert) newSet nodes )
-    Set.empty . nCons
+    (\nodes _ acc -> foldr Set.insert acc nodes ) Set.empty . nCons
 
 numberOfNodes :: (Ord a) => Network [a] b -> Int
 numberOfNodes = Set.size . nodesIn

@@ -5,6 +5,7 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
+import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
 import qualified Interface.Triangle as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
@@ -12,7 +13,8 @@ import DecisionProcedure.FlipFlop.OrientedMatroid
 class HasDecisionProcedure a where
     proceduresForAtomicNets :: a ->
         [ ( String
-          , Network [String] (Set.Set a) -> Maybe Bool )
+--          , Network [String] (Set.Set a) -> Maybe Bool )
+          , Network [String] a -> Maybe Bool )
         ]
 
     proceduresForNonAtomicNets :: a ->
@@ -20,6 +22,11 @@ class HasDecisionProcedure a where
           , Network [String] (Set.Set a) -> Maybe Bool )
         ]
 
+after c (a, b) = (a, b . c)
+
+
+algebraicClosureGQR str =
+    ( "AC", (\(x,_) -> x) . G.algebraicClosure str )
 
 algebraicClosure str =
     ( "AC", (\(x,_,_) -> x) . S.algebraicClosure str )

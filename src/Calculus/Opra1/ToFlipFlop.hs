@@ -1,6 +1,6 @@
-module Calculus.OPRA1.ToFlipFlop where
+module Calculus.Opra1.ToFlipFlop where
 
---fixme: fix the whole module!
+--fixme: fix the whole module! and move it to Convert/
 
 -- standard modules
 import qualified Data.Map as Map
@@ -8,10 +8,10 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.OPRA1
+import Calculus.Opra1
 import Calculus.FlipFlop
 
-opra1ToFlipFlopRel :: [String] -> OPRA1 -> [([String], FlipFlop)]
+opra1ToFlipFlopRel :: [String] -> Opra1 -> [([String], FlipFlop)]
 opra1ToFlipFlopRel [a,b] c =
     [ ([a, "eris_1", b], rel1)
     , ([b, "eris_2", a], rel2)
@@ -28,7 +28,7 @@ opra1ToFlipFlopRel [a,b] c =
     showC = showRel c
 
 
-opra1ToFlipFlopNet :: Network [String] (Set.Set OPRA1)
+opra1ToFlipFlopNet :: Network [String] (Set.Set Opra1)
                    -> Network [String] (Set.Set FlipFlop)
 opra1ToFlipFlopNet net@Network{ nCons = cons } =
     net{ nCons = Map.foldrWithKey collectOneCon Map.empty cons
@@ -56,9 +56,9 @@ opra1ToFlipFlopNet net@Network{ nCons = cons } =
 -- test
 testNet = eNetwork
     { nCons = Map.fromList
-        [ (["a","b"], OPRA1_23)
-        , (["a","c"], OPRA1_02)
-        , (["b","c"], OPRA1_11)
-        , (["c","d"], OPRA1_30)
+        [ (["a","b"], Opra1_2_3)
+        , (["a","c"], Opra1_0_2)
+        , (["b","c"], Opra1_1_1)
+        , (["c","d"], Opra1_3_0)
         ]
     }

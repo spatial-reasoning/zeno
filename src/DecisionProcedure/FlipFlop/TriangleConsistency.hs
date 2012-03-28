@@ -3,9 +3,9 @@ module DecisionProcedure.FlipFlop.TriangleConsistency where
 import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.Map as Map
-import System.Process
+--import System.Process
 import Data.Maybe
-import Debug.Trace
+--import Debug.Trace
 
 -- local modules
 import Interface.Yices
@@ -79,7 +79,7 @@ cmpsMap mp =
           mp
       else
           cmpsMap $ Map.fromList $ map (\((x,y),l) ->
-                   case (trace "\nblabla\n" $ l) of
+                   case l of
                      []    -> (x,y)
                      le:[] -> (x, snd le)
                      _     -> error $ "Ambigious map, sorry... Programmer was "
@@ -436,8 +436,9 @@ showSMT lst =
                    $ getVariables lst
     in
         "(benchmark Triangles \n\n" ++
-        ":logic QF_AUFLIA\n\n" ++
---        ":logic QF_LRA\n\n" ++
+--        ":logic QF_AUFLIA\n\n" ++    -- This is the original line.
+        -- But this lines seems to be ignored by yices anyway!
+        ":logic QF_LRA\n\n" ++
         vars ++ "\n\n:formula\n" ++
         (if length tr > 1 then
             foldl (\x y -> "(and \n" ++ x ++ " " ++ y ++ ")\n")

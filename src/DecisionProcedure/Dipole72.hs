@@ -12,22 +12,21 @@ import DecisionProcedure
 
 str = "dra-72"
 
-toAtomicFlipFlops (a,fun) = (a, newFun)
+toFlipFlopsAtomic (a,fun) = (a, newFun)
   where
-    newFun net = case dpNet net of
+    newFun net = case dipolesToFlipFlops net of
        Just x  -> fun x
        Nothing -> Just False
-    dpNet net = dipolesToFlipFlops $ makeAtomic net
 
 instance HasDecisionProcedure Dipole72 where
     proceduresForAtomicNets _ =
-        [ algebraicClosure str
-        , algebraicReasoning str
-        , toAtomicFlipFlops triangleConsistency
-        , toAtomicFlipFlops chirotopeSloppy
-        , toAtomicFlipFlops biquadraticFinalPolynomialsSloppy
-        , toAtomicFlipFlops chirotope
-        , toAtomicFlipFlops biquadraticFinalPolynomials
+        [ after makeNonAtomic (algebraicClosure str)
+        , after makeNonAtomic (algebraicReasoning str)
+        , toFlipFlopsAtomic triangleConsistency
+        , toFlipFlopsAtomic chirotopeSloppy
+        , toFlipFlopsAtomic biquadraticFinalPolynomialsSloppy
+        , toFlipFlopsAtomic chirotope
+        , toFlipFlopsAtomic biquadraticFinalPolynomials
         ]
 
     proceduresForNonAtomicNets _ =
