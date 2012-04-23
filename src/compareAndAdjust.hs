@@ -38,7 +38,8 @@ data Options = Options { optMinRange   :: Int
                        , optRelations  :: String
                        , optCalculus   :: String
 --                       , optNumOfNodes :: Int
---                       , optDensity    :: Float
+                       , optDensity    :: Float
+                       , optAreal      :: Int
                        } deriving (Show, Data, Typeable)
 
 defaultOptions = Options
@@ -49,7 +50,7 @@ defaultOptions = Options
         &= name "minsize"
         &= typ "MINSIZE"
         &= help "Start with networks of size MINSIZE. (default = 5)"
-    , optMaxRange = 20
+    , optMaxRange = 99999
         &= opt (20 :: Int)
         &= explicit
         &= name "M"
@@ -91,20 +92,28 @@ defaultOptions = Options
         &= name "calculus"
         &= typ "Calculus"
         &= help "Use this calculus.              Supported Calculi: Dipole-72, FlipFlop, OPRA-1, OPRA-4, OPRA-8, OPRA-10.     (default = \"\")"
---    , optDensity = def
---        &= opt (0.5 :: Float)
---        &= explicit
---        &= name "d"
---        &= name "density"
---        &= typ "DENSITY"
---        &= help "Generate networks with this DENSITY. (default = 0.5)"
+    , optDensity = 0.5
+        &= opt (0.5 :: Float)
+        &= explicit
+        &= name "d"
+        &= name "density"
+        &= typ "INITIAL DENSITY"
+        &= help "Start with the density closest to the given value. (default = 0.5)"
+    , optAreal = 0
+        &= opt (1 :: Int)
+        &= explicit
+        &= name "a"
+        &= name "areal"
+        &= typ "NUMBER"
+        &= help "1 = Only use areal relations.          2 = Only use non-areal relations.      Any other number = No restriction. (Default = 1)"
     } &=
 --    verbosity &=
 --    help "Compares the results of semi-decision procedures for consistency of\
     help ("This progam compares several semi-decision procedures for the " ++
           "consistency of constraint networks using the given relations.") &=
-    helpArg [explicit, name "h", name "help"] &=
+    helpArg [explicit, name "h", name "help", help "Show this message."] &=
 --    versionArg [ignore] &=
+    versionArg [help "Show version information."] &=
     program "compareAndAdjust" &=
     summary "compare version 12.02.23, (K) André Scholz" &=
     details [ ""
@@ -143,6 +152,7 @@ helperForCalculus str = case map Char.toUpper str of
     "OPRA-4"    -> Calc (Set.findMin cBaserelations :: Opra4   )
     "OPRA-8"    -> Calc (Set.findMin cBaserelations :: Opra8   )
     "OPRA-10"   -> Calc (Set.findMin cBaserelations :: Opra10  )
+    "OPRA-16"   -> Calc (Set.findMin cBaserelations :: Opra16  )
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -170,32 +180,42 @@ optionHandler opts@Options{..} = do
         unboxAndExec (helperForCalculus optCalculus) wordsOptRelations opts
 
 unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
-    let rels = tail $ typeHelper:(map readRel wordsOptRelations)
+    let rels =
+            ( case optAreal of
+                  1 -> intersect (tail $ typeHelper:cBaserelationsArealList)
+                  2 -> intersect (tail $ typeHelper:cBaserelationsNonArealList)
+                  _ -> id
+            ) $ tail $ typeHelper:(map readRel wordsOptRelations)
     -- force full evaluation of rels. Is there a better way to do this?
     -- ( `seq` does not help here )
     when (rels == rels) (return ())
     exec rels opts
 
 useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
-    let rels = tail $ typeHelper:(Set.toList cBaserelations)
+    let rels = tail $ typeHelper:case optAreal of
+                                     1 -> cBaserelationsArealList
+                                     2 -> cBaserelationsNonArealList
+                                     _ -> cBaserelationsList
     exec rels opts
 
 exec rels opts@Options{..} = do
     let head' = head rels
     let rank' = rank head'
     let procedures = proceduresForAtomicNets head'
+    let startStr = "Starting a new Benchmarking (press 'q' to quit)...\n"
     startBenchString <- catch
-        (readFile "RESULTS.BENCHMARK")
+        (readFile "BENCHMARK.COLLECTION")
         ((\e -> do
-            putStrLn "Starting a new Benchmarking...\n"
+            putStrLn startStr
             return "fromList []"
          ) :: SomeException -> IO String
         )
     let startBenchRead = reads startBenchString
     startBench <- if startBenchRead == [] || (snd $ head startBenchRead) /= "" then do
-                          putStrLn "Starting a new Benchmarking...\n"
+                          putStrLn startStr
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    markTheBench optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels startBench
+    bench <- markTheBench optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
+    analyze bench
 

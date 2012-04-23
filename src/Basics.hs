@@ -24,11 +24,27 @@ data Network a b = Network
     , nNumOfNodes :: Maybe Int          -- Number of nodes
     } deriving (Eq, Ord, Read, Show)
 
+-- fixme: split this into "Non Associative Algebra" and "Relation ..."
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     rank :: a -> Int
 
+    cBaserelationsList :: [a]
+    cBaserelationsList =  [minBound..maxBound]
+
     cBaserelations :: Set.Set a
     cBaserelations = Set.fromList [minBound..maxBound]
+
+    cBaserelationsArealList :: [a]
+    cBaserelationsArealList = cBaserelationsList
+
+    cBaserelationsAreal :: Set.Set a
+    cBaserelationsAreal = Set.fromList cBaserelationsArealList
+
+    cBaserelationsNonArealList :: [a]
+    cBaserelationsNonArealList = cBaserelationsList \\ cBaserelationsArealList
+
+    cBaserelationsNonAreal :: Set.Set a
+    cBaserelationsNonAreal = Set.fromList cBaserelationsNonArealList
 
     readRel :: String -> a
     showRel :: a -> String
@@ -39,6 +55,8 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     sparqifyRel :: a -> String
     sparqifyRel = showRel
     
+    gqrifyRel :: a -> String
+    gqrifyRel = showRel
 
 
 -- This was a try to implement a general way to handle constraint networks.
@@ -230,9 +248,9 @@ enumerate :: (Ord a, Ord b)
           => Map.Map [a]   b
           -> Map.Map [Int] b
 enumerate cons =
-    snd $ Map.foldrWithKey collectOneCon (Map.empty, Map.empty) cons
+    snd $ Map.foldlWithKey collectOneCon (Map.empty, Map.empty) cons
   where
-    collectOneCon nodes rel (mapCol, consCol) =
+    collectOneCon (mapCol, consCol) nodes rel =
       let
         (newMap, newNodes) = mapAccumL
             (\ m node -> let mappedNode = Map.lookup node m in
@@ -253,11 +271,11 @@ enumerateAndEnumeration :: (Ord a, Ord b)
                         -> (Map.Map [Int] b, Map.Map Int a)
 enumerateAndEnumeration cons = (numericCons, enumeration)
   where
-    (_, numericCons, enumeration) = Map.foldrWithKey
+    (_, numericCons, enumeration) = Map.foldlWithKey
                                         collectOneCon
                                         (Map.empty, Map.empty, Map.empty)
                                         cons
-    collectOneCon nodes rel (mapCol, consCol, enumCol) =
+    collectOneCon (mapCol, consCol, enumCol) nodes rel =
         let
             ((newMap, newEnum), newNodes) = mapAccumL
                 (\ (m, e) node -> let mappedNode = Map.lookup node m in

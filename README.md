@@ -22,6 +22,7 @@ the tested procedures.
 - __Triangle Consistency__ (cf Lücke et al.)
 - __Oriented Matroids__ (sloppy and exact)
 - __Biquadratic Final Polynomials__
+- __Angle Consistency for Oriented Points (and thus for OPRA-m)__
 
 There will be a manual some time soon.
 

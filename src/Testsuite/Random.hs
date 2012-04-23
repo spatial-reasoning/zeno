@@ -15,6 +15,7 @@ import qualified Data.Set as Set
 -- local modules
 import Basics
 import Helpful.General
+import Helpful.Math
 import Helpful.Random
 
 import Debug.Trace
@@ -38,21 +39,28 @@ randomAtomicNetworkWithDensity :: (Calculus a)
                                => Int
                                -> [a]
                                -> Int
-                               -> Int
+                               -> Ratio Int
                                -> IO (Network [String] a)
-randomAtomicNetworkWithDensity rank domain syze numerator = do
+randomAtomicNetworkWithDensity rank domain syze density = do
     combis <- sampleRVar $ shuffle $ kCombinations rank $ map show [1..syze]
     rels <- randomsOfIO domain
-    let cons = Map.fromList $ take numerator $ zip combis rels
-    return $ eNetwork { nDesc = "Random_Network", nCons = cons }
+    let denom = choose syze rank
+    let (factor, rest) = divMod denom (denominator density)
+    let numer = (numerator density) * factor
+    let cons = Map.fromList $ take numer $ zip combis rels
+    if rest /= 0 then
+        error $ "Cannot create network of size " ++ show syze
+             ++ " and density " ++ show density
+    else
+        return $ eNetwork { nDesc = "Random_Network", nCons = cons }
 
 randomConnectedAtomicNetworkWithDensity :: (Calculus a)
                                         => Int
                                         -> [a]
                                         -> Int
-                                        -> Int
+                                        -> Ratio Int
                                         -> IO (Network [String] a)
-randomConnectedAtomicNetworkWithDensity rank domain syze numerator = do
+randomConnectedAtomicNetworkWithDensity rank domain syze density = do
     let combis = [ kCombinations (rank - 1) $ map show [1..n]
                  | n <- [rank - 1..] ]
     skel <- foldM (\consAcc intNode -> do
@@ -76,42 +84,54 @@ randomConnectedAtomicNetworkWithDensity rank domain syze numerator = do
             (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
     fleshCombis <- sampleRVar $ shuffle combisLeft
     fleshRels <- randomsOfIO domain
-    let flesh = take (numerator - syze + rank - 1) $ zip fleshCombis fleshRels
+    let denom = choose syze rank
+    let (factor, rest) = divMod denom (denominator density)
+    let numer = (numerator density) * factor
+    let flesh = take (numer - syze + rank - 1) $ zip fleshCombis fleshRels
     let cons = Map.fromList $ skel ++ flesh
-    return $ eNetwork { nDesc = "Random_Network", nCons = cons }
+                                   -- v-- fixme: is this lower bound correct?
+    if rest /= 0 || numer < (syze - rank + 1) then
+        error $ "Cannot create network of size " ++ show syze
+             ++ " and density " ++ show density
+    else
+        return $ eNetwork { nDesc = "Random_Network", nCons = cons }
 
-randomAtomicNetworkAroundDensity :: (Calculus a)
-                                 => Int
-                                 -> [a]
-                                 -> Int
-                                 -> Int
-                                 -> Int
-                                 -> IO (Network [String] a, Int)
-randomAtomicNetworkAroundDensity rank domain syze numerator' denomin = do
-    let numerator = fixNumeratorAtEdge numerator' denomin
-    numer <- sampleBinomial numerator denomin
-    net <- randomAtomicNetworkWithDensity rank domain syze numer
-    return (net, numer)
-
-randomConnectedAtomicNetworkAroundDensity :: (Calculus a)
-                                          => Int
-                                          -> [a]
-                                          -> Int
-                                          -> Int
-                                          -> Int
-                                          -> IO (Network [String] a, Int)
-randomConnectedAtomicNetworkAroundDensity rank domain syze numerator' denomin =
-  do
-    let numerator = fixNumeratorAtEdge numerator' denomin
-    numer <- sampleBinomial numerator denomin
-    net <- randomConnectedAtomicNetworkWithDensity rank domain syze numer
-    return (net, numer)
-
-fixNumeratorAtEdge numerator denomin
-    | numerator == 0        = 0.5
-    | numerator == denomin  = fromIntegral numerator - 0.5
-    | otherwise             = fromIntegral numerator
-
-sampleBinomial numerator denomin = sampleRVar $
-    binomial (denomin :: Int) (numerator / fromIntegral denomin :: Float)
+-- fixme: these need to be adjusted to the new functions above:
+--randomAtomicNetworkAroundDensity :: (Calculus a)
+--                                 => Int
+--                                 -> [a]
+--                                 -> Int
+--                                 -> Ratio Int
+--                                 -> IO (Network [String] a, Int)
+--randomAtomicNetworkAroundDensity rank domain syze density = do
+--    let numer' = fixNumeratorAtEdge density
+--    let denom = denominator density
+--    numer <- sampleBinomial numer' denom
+--    net <- randomAtomicNetworkWithDensity rank domain syze (numer%denom)
+--    return (net, numer)
+--
+--randomConnectedAtomicNetworkAroundDensity :: (Calculus a)
+--                                          => Int
+--                                          -> [a]
+--                                          -> Int
+--                                          -> Ratio Int
+--                                          -> IO (Network [String] a, Int)
+--randomConnectedAtomicNetworkAroundDensity rank domain syze density =
+--  do
+--    let numer' = fixNumeratorAtEdge density
+--    let denom = denominator density
+--    numer <- sampleBinomial numer' denom
+--    net <- randomConnectedAtomicNetworkWithDensity rank domain syze (numer%denom)
+--    return (net, numer)
+--
+--fixNumeratorAtEdge density
+--    | numer == 0      = 0.5
+--    | numer == denom  = fromIntegral numer - 0.5
+--    | otherwise       = fromIntegral numer
+--  where
+--    numer = numerator density
+--    denom = denominator density
+--
+--sampleBinomial numerator denomin = sampleRVar $
+--    binomial (denomin :: Int) (numerator / fromIntegral denomin :: Float)
 

@@ -2,6 +2,7 @@
 module Calculus.Opra where
 
 -- standard modules
+import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -15,14 +16,24 @@ data Opra = Opra Int Int Int
     deriving (Read, Ord, Eq)
 
 instance Show Opra where
-    show (Opra m (-1) b) = "Opra" ++ show m ++ "_s_" ++ show b
-    show (Opra m a    b) = "Opra" ++ show m ++ "_" ++ show a ++ "_"
+--    show (Opra m (-1) b) = "Opra" ++ show m ++ "_s_" ++ show b
+--    show (Opra m a    b) = "Opra" ++ show m ++ "_" ++ show a ++ "_"
+--                                                   ++ show b
+    show (Opra m (-1) b) = "Opra " ++ show m ++ " s " ++ show b
+    show (Opra m a    b) = "Opra " ++ show m ++ " " ++ show a ++ " "
                                                    ++ show b
 
---instance Calculus Opra where
---    showRel (Opra m (-1) b) = "Opra_" ++ show m ++ "_s_" ++ show b
---    showRel (Opra m a    b) = "Opra_" ++ show m ++ "_" ++ show a ++ "_"
---                                                       ++ show b
+instance Enum Opra where
+    
+
+instance Bounded Opra where
+    minBound = Opra 0 0 0
+    maxBound = Opra 20 20 20
+
+instance Calculus Opra where
+    showRel (Opra m (-1) b) = "Opra_" ++ show m ++ "_s_" ++ show b
+    showRel (Opra m a    b) = "Opra_" ++ show m ++ "_" ++ show a ++ "_"
+                                                       ++ show b
 
 opraBaserelations m =
     [ Opra m a b | let range = [0..4*m - 1], a <- range ++ [-1], b <- range]
@@ -44,6 +55,9 @@ class (Read a, Show a, Ord a) => Opram a where
     showOpram x = m ++ "<" ++ rels     -- '<' This symbol might cause problems!
       where
         (m, _:rels) = break (== '_') $ drop 4 $ show x
+
+    sparqifyOpram :: a -> String
+    sparqifyOpram = map Char.toUpper . drop 6 . show
 
     opraToOpram :: Opra -> a
     opraToOpram rel@(Opra a b c) =

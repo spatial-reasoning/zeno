@@ -27,7 +27,7 @@ instance HasDecisionProcedure Opra1 where
     proceduresForAtomicNets _ =
         [ after makeNonAtomic (algebraicClosureGQR str)
         , toFlipFlopsNonAtomic (algebraicReasoning "ff")
-        , toFlipFlopsAtomic triangleConsistency
+        , toFlipFlopsAtomic triangleConsistencyFlipFlop
         , toFlipFlopsAtomic chirotopeSloppy
         , toFlipFlopsAtomic biquadraticFinalPolynomialsSloppy
         , toFlipFlopsAtomic chirotope

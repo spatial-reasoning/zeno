@@ -24,7 +24,12 @@ instance Calculus Opra1 where
     rank _ = 2
     readRel = readOpram
     showRel = showOpram
-    sparqifyRel x = drop 6 $ show x
+    sparqifyRel = sparqifyOpram
+    gqrifyRel   = sparqifyOpram
+    cBaserelationsArealList = filter
+        (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
+            map (\x -> if x == 's' then '1' else x) $ drop 6 $ show a
+        ) cBaserelationsList
 
 instance BinaryCalculus Opra1 where
     bcIdentity = Opra1_s_0

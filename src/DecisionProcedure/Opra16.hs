@@ -1,4 +1,4 @@
-module DecisionProcedure.Opra8
+module DecisionProcedure.Opra16
     ( module DecisionProcedure.Opra
     ) where
 
@@ -6,13 +6,13 @@ module DecisionProcedure.Opra8
 
 -- local modules
 import Basics
-import Calculus.Opra8
+import Calculus.Opra16
 import DecisionProcedure
 import DecisionProcedure.Opra
 
 str = "opra8"
 
-instance HasDecisionProcedure Opra8 where
+instance HasDecisionProcedure Opra16 where
     proceduresForAtomicNets _ =
         [
           after makeNonAtomic (algebraicClosureGQR str)

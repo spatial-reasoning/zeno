@@ -4,7 +4,6 @@ module Interface.Gqr where
 import qualified Data.Set as Set
 import System.IO
 import System.IO.Unsafe
-import System.Process
 import Text.Parsec
 
 -- local modules
@@ -12,6 +11,7 @@ import Basics
 import Export
 import Parsing.Gqr
 import Helpful.Directory
+import Helpful.Process
 
 --import Debug.Trace
 
@@ -26,7 +26,9 @@ algebraicClosure cal net = unsafePerformIO $
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
-    gqrAnswer <- readProcess "gqr" (["c -C", cal, "-S", fst gqrTempFile]) ""
+--    putStrLn $ showNonAtomicNet net   -- DEBUGGING
+    gqrAnswer <- safeReadProcess
+                     "gqr" (["c -C", cal, "-S", fst gqrTempFile]) ""
     let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
     let consistent = zeroOne $ last fstline
           where
@@ -59,7 +61,8 @@ algebraicClosures cal nets = unsafePerformIO $
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (fst $ gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
-    gqrAnswer <- readProcess "gqr" (["c -C", cal] ++ (map fst gqrTempFiles)) ""
+    gqrAnswer <- safeReadProcess
+                     "gqr" (["c -C", cal] ++ (map fst gqrTempFiles)) ""
     let answer = map zeroOne [ last x | x <- lines gqrAnswer, head x == '#' ]
           where
             zeroOne x

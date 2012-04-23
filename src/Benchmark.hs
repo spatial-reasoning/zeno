@@ -5,6 +5,7 @@ module Benchmark where
 import Prelude hiding (catch)
 import Control.Exception
 import Control.Monad
+import qualified Data.Foldable as Fold
 import Data.List
 import Data.Maybe
 import qualified Data.Map as Map
@@ -52,25 +53,28 @@ type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
 
 
 
-markTheBench
-    minsize maxsize testThisManyNets funs tymeout rank relations bench = do
+markTheBench minsize maxsize testThisManyNets
+             funs tymeout rank relations dens bench = do
+    hSetBuffering stdin NoBuffering
     let numOfNodes' = filter
             (\a -> maybe
                 True
                 (\(a,_,_) -> a < testThisManyNets) $
                 Map.lookup a bench
             ) [minsize..maxsize]
-    myExit <- timeout 500 getLine
-    if maybe False (isInfixOf "q") myExit then do
+    myExit <- keyPressed 'q'
+    if myExit then do
         putStrLn "Quit requested by user."
+        return bench
     else if null numOfNodes' then do
         putStrLn "Finished."
+        return bench
     else do
         let numOfNodes = head numOfNodes'
         let denomin = choose numOfNodes rank
         let (nOfTestedNet, targetNumer) = maybe
                 ( maybe
-                    (1, closestNumeratorTo denomin 0.5)
+                    (1, closestNumeratorTo denomin dens)
                     (\(_,a,_) -> (1, closestNumeratorTo denomin a)
                     ) $ Map.lookup (numOfNodes - 1) bench
                 )
@@ -82,14 +86,16 @@ markTheBench
                         sicnum = signum $ e + f + g - d
                       in
                         ( a + 1
-                        , min denomin $ max 0 $
+--                        , min denomin $ max 0 $
+                                             -- v-- fixme: is this lower bound correct?
+                        , min denomin $ max (numOfNodes - rank + 1) $
                               round (b * fromIntegral denomin) + sicnum
                         )
                     ) $ (Map.!) c b
                 ) $ Map.lookup numOfNodes bench
-        (net, results) <-
-            checkNetwork rank relations funs tymeout numOfNodes targetNumer
         let targetDens = targetNumer%denomin
+        (net, results) <-
+            checkNetwork rank relations funs tymeout numOfNodes targetDens
         let actualDens = targetDens
         saveSpecialNet
             net results numOfNodes nOfTestedNet targetDens actualDens
@@ -98,11 +104,11 @@ markTheBench
             (showInfo numOfNodes nOfTestedNet targetDens actualDens )
         let newBench = addToBench
                 bench numOfNodes targetDens actualDens net results
-        writeFile "RESULTS.BENCHMARK" $ show newBench
-        appendFile "RESULTS.NETS" $ show net ++ "\n"
-        appendFile "RESULTS.RESULTS" $ show results ++ "\n"
-        markTheBench
-          minsize maxsize testThisManyNets funs tymeout rank relations newBench
+        writeFile "BENCHMARK.COLLECTION" $ show newBench
+        appendFile "BENCHMARK.NETS" $ show net ++ "\n"
+        appendFile "BENCHMARK.ANSWERS" $ show results ++ "\n"
+        markTheBench minsize maxsize testThisManyNets
+                     funs tymeout rank relations dens newBench
 
 
 addToBench :: (Calculus a)
@@ -213,9 +219,10 @@ addToBench bench numOfNodes targetDens actualDens net results =
             ) results
         )
 
-checkNetwork rank relations funs tymeout size numerator = do
+checkNetwork rank relations funs tymeout size dens = do
     net <- randomConnectedAtomicNetworkWithDensity rank
-                                                   relations size numerator
+                                                   relations size dens
+--    putStrLn $ showAtomicNet net  -- DEBUGGING
     results <- sequence $ map
                   (\(desc, fun) -> do
                       res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
@@ -282,14 +289,14 @@ loadBench fileName = do
     return bench
 
 saveContradictingResults numOfNodes dens net results = unsafePerformIO $ do
-    appendFile "RESULTS.ERROR" $
+    appendFile "BENCHMARK.ERROR" $
         " Number of Nodes: " ++ show numOfNodes ++
         " | Density: " ++ show dens ++ "\n\n" ++
         showAtomicNet net ++ "\n" ++
         showProcedures results ++ "\n" ++
         showResults results ++ "\n\n\n"
     error $ "Results contradict each other. Results saved to " ++
-            "RESULTS.ERROR"
+            "BENCHMARK.ERROR"
 
 saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens = do
     if    ( elem (length $ filter
@@ -309,11 +316,13 @@ saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens = do
                                   ) results
                     ) [1,2] )
     then
-        appendFile "RESULTS.SPECIAL" $
-        showInfo numOfNodes nOfTestedNet targetDens actualDens ++ "\n" ++
-        showAtomicNet net ++ "\n" ++
-        showProcedures results ++ "\n\n" ++
-        showResults results ++ "\n\n"
+        appendFile "BENCHMARK.SPECIAL" $
+            showAtomicNet net ++ "\n" ++
+            showProcedures results ++ "\n" ++
+            showResults results ++
+            showInfo numOfNodes nOfTestedNet targetDens actualDens ++
+            "\n\n\n" ++ "-------------------------------------------------" ++
+            "\n\n\n"
     else
         return ()
 
@@ -326,8 +335,12 @@ showInfo numOfNodes nOfTestedNet targetDens actualDens =
     ++ (printf "%8d" (nOfTestedNet :: Int)) ++ " │ "
     ++ (printf "%4d" (numerator targetDens :: Int)) ++ " / "
     ++ (printf "%4d" (denominator targetDens :: Int)) ++ " │ "
+    ++ (printf "%4d" (numerator minDens :: Int)) ++ " / "
+    ++ (printf "%4d" (denominator minDens :: Int)) ++ " │ "
 --    ++ (printf "%4d" (numerator actualDens :: Int)) ++ " / "
 --    ++ (printf "%4d" (denominator actualDens :: Int)) ++ " │ "
+  where
+    minDens = (numOfNodes - 1) * 2 % (numOfNodes * (numOfNodes + 1))
 
 showProcedures results = " │ " ++
     foldl (\acc (desc, _) -> acc ++ align desc ++ " │ ") "" results ++
@@ -335,13 +348,13 @@ showProcedures results = " │ " ++
         [ "# nodes"
         , "# nets"
         , "  Density  "
+        , "Min Density"
 --        , "Target Dens"
 --        , "Actual Dens"
         ] ++
     "\n" ++ " ├──────────" ++
     concat (replicate (length results + 1) "┼──────────") ++
-    concat (replicate 1 "┼─────────────") ++
---    concat (replicate 2 "┼─────────────") ++
+    concat (replicate 2 "┼─────────────") ++
     "┤"
   where
     align str
@@ -363,4 +376,36 @@ showAnswer (Just (Just False)) = " - "
 showAnswer (Just (Just True))  = " + "
 showAnswer (Just Nothing)      = " o "
 showAnswer Nothing             = " x "
+
+analyze bench = do
+    let str = concatMap analyze' $ Map.toList bench
+    writeFile "BENCHMARK.RESULTS" str
+    putStrLn $ str ++ "\nResults saved to 'BENCHMARK.RESULTS'\n"
+
+analyze' (a,(b,c,d)) = "\n#Nodes = " ++ show a ++ "\n"
+        ++ "#Networks = " ++ show b ++ "\n"
+        ++ "Last Density = " ++ show c ++ "\n"
+        ++ "All together: #No, #Yes, #Undecided, #Timeout = "
+        ++ (intercalate ", " $ map show [v,w,x,y]) ++ "\n"
+        ++ Map.foldrWithKey showMethod "" z ++ "\n"
+        ++ replicate 70 '-' ++ "\n"
+  where
+    (v,w,x,y,z) = collectOverAllDensities d
+    showMethod k (v,w,x,y,_,z) acc = k
+        ++ ": #No, #Yes, #Undecided, #Timeout, Average Time (seconds) =\n    "
+        ++ (intercalate ", " $ map show [v,w,x,y]) ++ ", " ++ show z ++ "\n"
+        ++ acc
+
+collectOverAllDensities m = Map.fold getFromOneDens (0, 0, 0, 0, Map.empty) m
+
+getFromOneDens (v,w,x,y,m) (acc, acc2, acc3, acc4, acc5) =
+    ( acc + v, acc2 + w, acc3 + x, acc4 + y
+    , Map.unionWith
+        (\(a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) ->
+            ( a1 + a2, b1 + b2, c1 + c2, d1 + d2
+            , Map.unionWith (+) e1 e2
+            , f1 + f2
+            )
+        ) m acc5
+    )
 

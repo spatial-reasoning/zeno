@@ -17,7 +17,7 @@ instance HasDecisionProcedure FlipFlop where
         [ after makeNonAtomic (algebraicClosure str)
         , after makeNonAtomic (ternaryAlgebraicClosure str)
         , after makeNonAtomic (algebraicReasoning str)
-        , triangleConsistency
+        , triangleConsistencyFlipFlop
         , chirotopeSloppy
         , biquadraticFinalPolynomialsSloppy
         , chirotope

@@ -8,6 +8,7 @@ module Calculus.All
     , module Calculus.Opra4
     , module Calculus.Opra8
     , module Calculus.Opra10
+    , module Calculus.Opra16
     ) where
 
 --import Calculus.Dipole24
@@ -19,4 +20,5 @@ import Calculus.Opra1
 import Calculus.Opra4
 import Calculus.Opra8
 import Calculus.Opra10
+import Calculus.Opra16
 

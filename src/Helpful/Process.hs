@@ -55,6 +55,7 @@ safeReadProcess prog args str =
 unsafeReadProcess :: String -> [String] -> String -> String
 unsafeReadProcess prog args str =
     unsafePerformIO $ safeReadProcess prog args str
+{-# NOINLINE unsafeReadProcess #-}
 
 terminateProcessGroup :: ProcessHandle -> IO ()
 terminateProcessGroup ph = do

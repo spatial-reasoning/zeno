@@ -14,7 +14,8 @@ import Basics
 --qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
 --qstrify net = 
 
-showAtomicNet :: (Calculus b) => Network [String] b -> String
+--showAtomicNet :: (Calculus b) => Network [String] b -> String
+showAtomicNet :: (Show b) => Network [String] b -> String   -- DEBUGGING
 showAtomicNet net@Network { nCons = cons
                     , nDesc = desc
                     , nCalc = calc
@@ -25,7 +26,8 @@ showAtomicNet net@Network { nCons = cons
     "\nnetwork =\n" ++ 
     ( unlines $ map
         (\(nodes, rel) ->
-            "    " ++ (intercalate " " nodes) ++ " ( " ++ showRel rel ++ " )"
+--            "    " ++ (intercalate " " nodes) ++ " ( " ++ showRel rel ++ " )"
+            "    " ++ (intercalate " " nodes) ++ " ( " ++ show rel ++ " )"    --DEBUGGING
         ) $ Map.toList cons
     )
 
@@ -51,7 +53,7 @@ sparqify oneLine net = desc ++ "(" ++ sep1
     ++ intercalate sep2 ["(" ++ (concat $ intersperse " " $ init x)
                              ++ " ("
                              ++ (concat $ intersperse " " $
-                                    Set.toList $ Set.map showRel y)
+                                    Set.toList $ Set.map sparqifyRel y)
                              ++ ") " ++ last x ++ ")"
                         | (x, y) <- Map.toList $ nCons net
                         ]
@@ -72,7 +74,7 @@ gqrify net =
         ++ " # description = " ++ nDesc net ++ "\n"
         ++ unlines [" " ++ (concat $ intersperse " " $ map show x) ++ " ( "
                         ++ (concat $ intersperse " " $
-                               Set.toList $ Set.map showRel y)
+                               Set.toList $ Set.map gqrifyRel y)
                         ++ " )" 
                    | (x, y) <- Map.toList numCons
                    ]

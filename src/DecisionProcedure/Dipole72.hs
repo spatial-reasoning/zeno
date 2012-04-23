@@ -22,7 +22,7 @@ instance HasDecisionProcedure Dipole72 where
     proceduresForAtomicNets _ =
         [ after makeNonAtomic (algebraicClosure str)
         , after makeNonAtomic (algebraicReasoning str)
-        , toFlipFlopsAtomic triangleConsistency
+        , toFlipFlopsAtomic triangleConsistencyFlipFlop
         , toFlipFlopsAtomic chirotopeSloppy
         , toFlipFlopsAtomic biquadraticFinalPolynomialsSloppy
         , toFlipFlopsAtomic chirotope

@@ -1,6 +1,6 @@
 module Calculus.Opra4
     ( module Calculus.Opra
-    , Opra4
+    , Opra4(..)
     ) where
 
 -- standard modules
@@ -84,3 +84,12 @@ instance Opram Opra4 where
 
 instance Calculus Opra4 where
     rank _ = 2
+    readRel = readOpram
+    showRel = showOpram
+    sparqifyRel = sparqifyOpram
+    gqrifyRel   = sparqifyOpram
+    cBaserelationsArealList = filter
+        (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
+            map (\x -> if x == 's' then '1' else x) $ drop 6 $ show a
+        ) cBaserelationsList
+

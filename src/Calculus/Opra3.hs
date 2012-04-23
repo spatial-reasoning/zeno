@@ -42,3 +42,10 @@ data Opra3 = Opra3_0_0   | Opra3_0_1   | Opra3_0_2   | Opra3_0_3   | Opra3_0_4
 instance Opra Opra3 where
     m _ = 3
 
+instance Calculus Opra3 where
+    rank _ = 2
+    readRel = readOpram
+    showRel = showOpram
+    sparqifyRel = drop 6 . show
+    gqrifyRel   = sparqifyRel
+

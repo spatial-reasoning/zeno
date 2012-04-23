@@ -7,6 +7,7 @@ import qualified Data.Set as Set
 import Basics
 import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
+--import qualified Interface.Sparq.Server as SpS
 import qualified Interface.Triangle as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
 
@@ -26,10 +27,14 @@ after c (a, b) = (a, b . c)
 
 
 algebraicClosureGQR str =
-    ( "AC", (\(x,_) -> x) . G.algebraicClosure str )
+    ( "AC-GQR", (\(x,_) -> x) . G.algebraicClosure str )
 
 algebraicClosure str =
-    ( "AC", (\(x,_,_) -> x) . S.algebraicClosure str )
+    ( "AC-SparQ", (\(x,_,_) -> x) . S.algebraicClosure str )
+
+--algebraicClosureSpS str =
+--    ( "AC", (\(x,_,_) -> x) . SpS.algebraicClosure str )
+
 
 ternaryAlgebraicClosure str =
     ( "TAC", (\(x,_,_) -> x) . S.ternaryAlgebraicClosure str )
@@ -37,7 +42,7 @@ ternaryAlgebraicClosure str =
 algebraicReasoning str =
     ( "AR", S.algebraicReasoning str )
 
-triangleConsistency =
+triangleConsistencyFlipFlop =
     ( "TC", T.checkConsistency)
 
 chirotopeSloppy =
