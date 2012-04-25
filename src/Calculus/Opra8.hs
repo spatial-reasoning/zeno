@@ -89,177 +89,177 @@ data Opra8 = Opra8_0_0   | Opra8_0_1   | Opra8_0_2   | Opra8_0_3
            | Opra8_9_20  | Opra8_9_21  | Opra8_9_22  | Opra8_9_23 
            | Opra8_9_24  | Opra8_9_25  | Opra8_9_26  | Opra8_9_27 
            | Opra8_9_28  | Opra8_9_29  | Opra8_9_30  | Opra8_9_31 
-           | Opra8_10_00 | Opra8_10_01 | Opra8_10_02 | Opra8_10_03
-           | Opra8_10_04 | Opra8_10_05 | Opra8_10_06 | Opra8_10_07
-           | Opra8_10_08 | Opra8_10_09 | Opra8_10_10 | Opra8_10_11
+           | Opra8_10_0  | Opra8_10_1  | Opra8_10_2  | Opra8_10_3 
+           | Opra8_10_4  | Opra8_10_5  | Opra8_10_6  | Opra8_10_7 
+           | Opra8_10_8  | Opra8_10_9  | Opra8_10_10 | Opra8_10_11
            | Opra8_10_12 | Opra8_10_13 | Opra8_10_14 | Opra8_10_15
            | Opra8_10_16 | Opra8_10_17 | Opra8_10_18 | Opra8_10_19
            | Opra8_10_20 | Opra8_10_21 | Opra8_10_22 | Opra8_10_23
            | Opra8_10_24 | Opra8_10_25 | Opra8_10_26 | Opra8_10_27
            | Opra8_10_28 | Opra8_10_29 | Opra8_10_30 | Opra8_10_31
-           | Opra8_11_00 | Opra8_11_01 | Opra8_11_02 | Opra8_11_03
-           | Opra8_11_04 | Opra8_11_05 | Opra8_11_06 | Opra8_11_07
-           | Opra8_11_08 | Opra8_11_09 | Opra8_11_10 | Opra8_11_11
+           | Opra8_11_0  | Opra8_11_1  | Opra8_11_2  | Opra8_11_3 
+           | Opra8_11_4  | Opra8_11_5  | Opra8_11_6  | Opra8_11_7 
+           | Opra8_11_8  | Opra8_11_9  | Opra8_11_10 | Opra8_11_11
            | Opra8_11_12 | Opra8_11_13 | Opra8_11_14 | Opra8_11_15
            | Opra8_11_16 | Opra8_11_17 | Opra8_11_18 | Opra8_11_19
            | Opra8_11_20 | Opra8_11_21 | Opra8_11_22 | Opra8_11_23
            | Opra8_11_24 | Opra8_11_25 | Opra8_11_26 | Opra8_11_27
            | Opra8_11_28 | Opra8_11_29 | Opra8_11_30 | Opra8_11_31
-           | Opra8_12_00 | Opra8_12_01 | Opra8_12_02 | Opra8_12_03
-           | Opra8_12_04 | Opra8_12_05 | Opra8_12_06 | Opra8_12_07
-           | Opra8_12_08 | Opra8_12_09 | Opra8_12_10 | Opra8_12_11
+           | Opra8_12_0  | Opra8_12_1  | Opra8_12_2  | Opra8_12_3 
+           | Opra8_12_4  | Opra8_12_5  | Opra8_12_6  | Opra8_12_7 
+           | Opra8_12_8  | Opra8_12_9  | Opra8_12_10 | Opra8_12_11
            | Opra8_12_12 | Opra8_12_13 | Opra8_12_14 | Opra8_12_15
            | Opra8_12_16 | Opra8_12_17 | Opra8_12_18 | Opra8_12_19
            | Opra8_12_20 | Opra8_12_21 | Opra8_12_22 | Opra8_12_23
            | Opra8_12_24 | Opra8_12_25 | Opra8_12_26 | Opra8_12_27
            | Opra8_12_28 | Opra8_12_29 | Opra8_12_30 | Opra8_12_31
-           | Opra8_13_00 | Opra8_13_01 | Opra8_13_02 | Opra8_13_03
-           | Opra8_13_04 | Opra8_13_05 | Opra8_13_06 | Opra8_13_07
-           | Opra8_13_08 | Opra8_13_09 | Opra8_13_10 | Opra8_13_11
+           | Opra8_13_0  | Opra8_13_1  | Opra8_13_2  | Opra8_13_3 
+           | Opra8_13_4  | Opra8_13_5  | Opra8_13_6  | Opra8_13_7 
+           | Opra8_13_8  | Opra8_13_9  | Opra8_13_10 | Opra8_13_11
            | Opra8_13_12 | Opra8_13_13 | Opra8_13_14 | Opra8_13_15
            | Opra8_13_16 | Opra8_13_17 | Opra8_13_18 | Opra8_13_19
            | Opra8_13_20 | Opra8_13_21 | Opra8_13_22 | Opra8_13_23
            | Opra8_13_24 | Opra8_13_25 | Opra8_13_26 | Opra8_13_27
            | Opra8_13_28 | Opra8_13_29 | Opra8_13_30 | Opra8_13_31
-           | Opra8_14_00 | Opra8_14_01 | Opra8_14_02 | Opra8_14_03
-           | Opra8_14_04 | Opra8_14_05 | Opra8_14_06 | Opra8_14_07
-           | Opra8_14_08 | Opra8_14_09 | Opra8_14_10 | Opra8_14_11
+           | Opra8_14_0  | Opra8_14_1  | Opra8_14_2  | Opra8_14_3 
+           | Opra8_14_4  | Opra8_14_5  | Opra8_14_6  | Opra8_14_7 
+           | Opra8_14_8  | Opra8_14_9  | Opra8_14_10 | Opra8_14_11
            | Opra8_14_12 | Opra8_14_13 | Opra8_14_14 | Opra8_14_15
            | Opra8_14_16 | Opra8_14_17 | Opra8_14_18 | Opra8_14_19
            | Opra8_14_20 | Opra8_14_21 | Opra8_14_22 | Opra8_14_23
            | Opra8_14_24 | Opra8_14_25 | Opra8_14_26 | Opra8_14_27
            | Opra8_14_28 | Opra8_14_29 | Opra8_14_30 | Opra8_14_31
-           | Opra8_15_00 | Opra8_15_01 | Opra8_15_02 | Opra8_15_03
-           | Opra8_15_04 | Opra8_15_05 | Opra8_15_06 | Opra8_15_07
-           | Opra8_15_08 | Opra8_15_09 | Opra8_15_10 | Opra8_15_11
+           | Opra8_15_0  | Opra8_15_1  | Opra8_15_2  | Opra8_15_3 
+           | Opra8_15_4  | Opra8_15_5  | Opra8_15_6  | Opra8_15_7 
+           | Opra8_15_8  | Opra8_15_9  | Opra8_15_10 | Opra8_15_11
            | Opra8_15_12 | Opra8_15_13 | Opra8_15_14 | Opra8_15_15
            | Opra8_15_16 | Opra8_15_17 | Opra8_15_18 | Opra8_15_19
            | Opra8_15_20 | Opra8_15_21 | Opra8_15_22 | Opra8_15_23
            | Opra8_15_24 | Opra8_15_25 | Opra8_15_26 | Opra8_15_27
            | Opra8_15_28 | Opra8_15_29 | Opra8_15_30 | Opra8_15_31
-           | Opra8_16_00 | Opra8_16_01 | Opra8_16_02 | Opra8_16_03
-           | Opra8_16_04 | Opra8_16_05 | Opra8_16_06 | Opra8_16_07
-           | Opra8_16_08 | Opra8_16_09 | Opra8_16_10 | Opra8_16_11
+           | Opra8_16_0  | Opra8_16_1  | Opra8_16_2  | Opra8_16_3 
+           | Opra8_16_4  | Opra8_16_5  | Opra8_16_6  | Opra8_16_7 
+           | Opra8_16_8  | Opra8_16_9  | Opra8_16_10 | Opra8_16_11
            | Opra8_16_12 | Opra8_16_13 | Opra8_16_14 | Opra8_16_15
            | Opra8_16_16 | Opra8_16_17 | Opra8_16_18 | Opra8_16_19
            | Opra8_16_20 | Opra8_16_21 | Opra8_16_22 | Opra8_16_23
            | Opra8_16_24 | Opra8_16_25 | Opra8_16_26 | Opra8_16_27
            | Opra8_16_28 | Opra8_16_29 | Opra8_16_30 | Opra8_16_31
-           | Opra8_17_00 | Opra8_17_01 | Opra8_17_02 | Opra8_17_03
-           | Opra8_17_04 | Opra8_17_05 | Opra8_17_06 | Opra8_17_07
-           | Opra8_17_08 | Opra8_17_09 | Opra8_17_10 | Opra8_17_11
+           | Opra8_17_0  | Opra8_17_1  | Opra8_17_2  | Opra8_17_3 
+           | Opra8_17_4  | Opra8_17_5  | Opra8_17_6  | Opra8_17_7 
+           | Opra8_17_8  | Opra8_17_9  | Opra8_17_10 | Opra8_17_11
            | Opra8_17_12 | Opra8_17_13 | Opra8_17_14 | Opra8_17_15
            | Opra8_17_16 | Opra8_17_17 | Opra8_17_18 | Opra8_17_19
            | Opra8_17_20 | Opra8_17_21 | Opra8_17_22 | Opra8_17_23
            | Opra8_17_24 | Opra8_17_25 | Opra8_17_26 | Opra8_17_27
            | Opra8_17_28 | Opra8_17_29 | Opra8_17_30 | Opra8_17_31
-           | Opra8_18_00 | Opra8_18_01 | Opra8_18_02 | Opra8_18_03
-           | Opra8_18_04 | Opra8_18_05 | Opra8_18_06 | Opra8_18_07
-           | Opra8_18_08 | Opra8_18_09 | Opra8_18_10 | Opra8_18_11
+           | Opra8_18_0  | Opra8_18_1  | Opra8_18_2  | Opra8_18_3 
+           | Opra8_18_4  | Opra8_18_5  | Opra8_18_6  | Opra8_18_7 
+           | Opra8_18_8  | Opra8_18_9  | Opra8_18_10 | Opra8_18_11
            | Opra8_18_12 | Opra8_18_13 | Opra8_18_14 | Opra8_18_15
            | Opra8_18_16 | Opra8_18_17 | Opra8_18_18 | Opra8_18_19
            | Opra8_18_20 | Opra8_18_21 | Opra8_18_22 | Opra8_18_23
            | Opra8_18_24 | Opra8_18_25 | Opra8_18_26 | Opra8_18_27
            | Opra8_18_28 | Opra8_18_29 | Opra8_18_30 | Opra8_18_31
-           | Opra8_19_00 | Opra8_19_01 | Opra8_19_02 | Opra8_19_03
-           | Opra8_19_04 | Opra8_19_05 | Opra8_19_06 | Opra8_19_07
-           | Opra8_19_08 | Opra8_19_09 | Opra8_19_10 | Opra8_19_11
+           | Opra8_19_0  | Opra8_19_1  | Opra8_19_2  | Opra8_19_3 
+           | Opra8_19_4  | Opra8_19_5  | Opra8_19_6  | Opra8_19_7 
+           | Opra8_19_8  | Opra8_19_9  | Opra8_19_10 | Opra8_19_11
            | Opra8_19_12 | Opra8_19_13 | Opra8_19_14 | Opra8_19_15
            | Opra8_19_16 | Opra8_19_17 | Opra8_19_18 | Opra8_19_19
            | Opra8_19_20 | Opra8_19_21 | Opra8_19_22 | Opra8_19_23
            | Opra8_19_24 | Opra8_19_25 | Opra8_19_26 | Opra8_19_27
            | Opra8_19_28 | Opra8_19_29 | Opra8_19_30 | Opra8_19_31
-           | Opra8_20_00 | Opra8_20_01 | Opra8_20_02 | Opra8_20_03
-           | Opra8_20_04 | Opra8_20_05 | Opra8_20_06 | Opra8_20_07
-           | Opra8_20_08 | Opra8_20_09 | Opra8_20_10 | Opra8_20_11
+           | Opra8_20_0  | Opra8_20_1  | Opra8_20_2  | Opra8_20_3 
+           | Opra8_20_4  | Opra8_20_5  | Opra8_20_6  | Opra8_20_7 
+           | Opra8_20_8  | Opra8_20_9  | Opra8_20_10 | Opra8_20_11
            | Opra8_20_12 | Opra8_20_13 | Opra8_20_14 | Opra8_20_15
            | Opra8_20_16 | Opra8_20_17 | Opra8_20_18 | Opra8_20_19
            | Opra8_20_20 | Opra8_20_21 | Opra8_20_22 | Opra8_20_23
            | Opra8_20_24 | Opra8_20_25 | Opra8_20_26 | Opra8_20_27
            | Opra8_20_28 | Opra8_20_29 | Opra8_20_30 | Opra8_20_31
-           | Opra8_21_00 | Opra8_21_01 | Opra8_21_02 | Opra8_21_03
-           | Opra8_21_04 | Opra8_21_05 | Opra8_21_06 | Opra8_21_07
-           | Opra8_21_08 | Opra8_21_09 | Opra8_21_10 | Opra8_21_11
+           | Opra8_21_0  | Opra8_21_1  | Opra8_21_2  | Opra8_21_3 
+           | Opra8_21_4  | Opra8_21_5  | Opra8_21_6  | Opra8_21_7 
+           | Opra8_21_8  | Opra8_21_9  | Opra8_21_10 | Opra8_21_11
            | Opra8_21_12 | Opra8_21_13 | Opra8_21_14 | Opra8_21_15
            | Opra8_21_16 | Opra8_21_17 | Opra8_21_18 | Opra8_21_19
            | Opra8_21_20 | Opra8_21_21 | Opra8_21_22 | Opra8_21_23
            | Opra8_21_24 | Opra8_21_25 | Opra8_21_26 | Opra8_21_27
            | Opra8_21_28 | Opra8_21_29 | Opra8_21_30 | Opra8_21_31
-           | Opra8_22_00 | Opra8_22_01 | Opra8_22_02 | Opra8_22_03
-           | Opra8_22_04 | Opra8_22_05 | Opra8_22_06 | Opra8_22_07
-           | Opra8_22_08 | Opra8_22_09 | Opra8_22_10 | Opra8_22_11
+           | Opra8_22_0  | Opra8_22_1  | Opra8_22_2  | Opra8_22_3 
+           | Opra8_22_4  | Opra8_22_5  | Opra8_22_6  | Opra8_22_7 
+           | Opra8_22_8  | Opra8_22_9  | Opra8_22_10 | Opra8_22_11
            | Opra8_22_12 | Opra8_22_13 | Opra8_22_14 | Opra8_22_15
            | Opra8_22_16 | Opra8_22_17 | Opra8_22_18 | Opra8_22_19
            | Opra8_22_20 | Opra8_22_21 | Opra8_22_22 | Opra8_22_23
            | Opra8_22_24 | Opra8_22_25 | Opra8_22_26 | Opra8_22_27
            | Opra8_22_28 | Opra8_22_29 | Opra8_22_30 | Opra8_22_31
-           | Opra8_23_00 | Opra8_23_01 | Opra8_23_02 | Opra8_23_03
-           | Opra8_23_04 | Opra8_23_05 | Opra8_23_06 | Opra8_23_07
-           | Opra8_23_08 | Opra8_23_09 | Opra8_23_10 | Opra8_23_11
+           | Opra8_23_0  | Opra8_23_1  | Opra8_23_2  | Opra8_23_3 
+           | Opra8_23_4  | Opra8_23_5  | Opra8_23_6  | Opra8_23_7 
+           | Opra8_23_8  | Opra8_23_9  | Opra8_23_10 | Opra8_23_11
            | Opra8_23_12 | Opra8_23_13 | Opra8_23_14 | Opra8_23_15
            | Opra8_23_16 | Opra8_23_17 | Opra8_23_18 | Opra8_23_19
            | Opra8_23_20 | Opra8_23_21 | Opra8_23_22 | Opra8_23_23
            | Opra8_23_24 | Opra8_23_25 | Opra8_23_26 | Opra8_23_27
            | Opra8_23_28 | Opra8_23_29 | Opra8_23_30 | Opra8_23_31
-           | Opra8_24_00 | Opra8_24_01 | Opra8_24_02 | Opra8_24_03
-           | Opra8_24_04 | Opra8_24_05 | Opra8_24_06 | Opra8_24_07
-           | Opra8_24_08 | Opra8_24_09 | Opra8_24_10 | Opra8_24_11
+           | Opra8_24_0  | Opra8_24_1  | Opra8_24_2  | Opra8_24_3 
+           | Opra8_24_4  | Opra8_24_5  | Opra8_24_6  | Opra8_24_7 
+           | Opra8_24_8  | Opra8_24_9  | Opra8_24_10 | Opra8_24_11
            | Opra8_24_12 | Opra8_24_13 | Opra8_24_14 | Opra8_24_15
            | Opra8_24_16 | Opra8_24_17 | Opra8_24_18 | Opra8_24_19
            | Opra8_24_20 | Opra8_24_21 | Opra8_24_22 | Opra8_24_23
            | Opra8_24_24 | Opra8_24_25 | Opra8_24_26 | Opra8_24_27
            | Opra8_24_28 | Opra8_24_29 | Opra8_24_30 | Opra8_24_31
-           | Opra8_25_00 | Opra8_25_01 | Opra8_25_02 | Opra8_25_03
-           | Opra8_25_04 | Opra8_25_05 | Opra8_25_06 | Opra8_25_07
-           | Opra8_25_08 | Opra8_25_09 | Opra8_25_10 | Opra8_25_11
+           | Opra8_25_0  | Opra8_25_1  | Opra8_25_2  | Opra8_25_3 
+           | Opra8_25_4  | Opra8_25_5  | Opra8_25_6  | Opra8_25_7 
+           | Opra8_25_8  | Opra8_25_9  | Opra8_25_10 | Opra8_25_11
            | Opra8_25_12 | Opra8_25_13 | Opra8_25_14 | Opra8_25_15
            | Opra8_25_16 | Opra8_25_17 | Opra8_25_18 | Opra8_25_19
            | Opra8_25_20 | Opra8_25_21 | Opra8_25_22 | Opra8_25_23
            | Opra8_25_24 | Opra8_25_25 | Opra8_25_26 | Opra8_25_27
            | Opra8_25_28 | Opra8_25_29 | Opra8_25_30 | Opra8_25_31
-           | Opra8_26_00 | Opra8_26_01 | Opra8_26_02 | Opra8_26_03
-           | Opra8_26_04 | Opra8_26_05 | Opra8_26_06 | Opra8_26_07
-           | Opra8_26_08 | Opra8_26_09 | Opra8_26_10 | Opra8_26_11
+           | Opra8_26_0  | Opra8_26_1  | Opra8_26_2  | Opra8_26_3 
+           | Opra8_26_4  | Opra8_26_5  | Opra8_26_6  | Opra8_26_7 
+           | Opra8_26_8  | Opra8_26_9  | Opra8_26_10 | Opra8_26_11
            | Opra8_26_12 | Opra8_26_13 | Opra8_26_14 | Opra8_26_15
            | Opra8_26_16 | Opra8_26_17 | Opra8_26_18 | Opra8_26_19
            | Opra8_26_20 | Opra8_26_21 | Opra8_26_22 | Opra8_26_23
            | Opra8_26_24 | Opra8_26_25 | Opra8_26_26 | Opra8_26_27
            | Opra8_26_28 | Opra8_26_29 | Opra8_26_30 | Opra8_26_31
-           | Opra8_27_00 | Opra8_27_01 | Opra8_27_02 | Opra8_27_03
-           | Opra8_27_04 | Opra8_27_05 | Opra8_27_06 | Opra8_27_07
-           | Opra8_27_08 | Opra8_27_09 | Opra8_27_10 | Opra8_27_11
+           | Opra8_27_0  | Opra8_27_1  | Opra8_27_2  | Opra8_27_3 
+           | Opra8_27_4  | Opra8_27_5  | Opra8_27_6  | Opra8_27_7 
+           | Opra8_27_8  | Opra8_27_9  | Opra8_27_10 | Opra8_27_11
            | Opra8_27_12 | Opra8_27_13 | Opra8_27_14 | Opra8_27_15
            | Opra8_27_16 | Opra8_27_17 | Opra8_27_18 | Opra8_27_19
            | Opra8_27_20 | Opra8_27_21 | Opra8_27_22 | Opra8_27_23
            | Opra8_27_24 | Opra8_27_25 | Opra8_27_26 | Opra8_27_27
            | Opra8_27_28 | Opra8_27_29 | Opra8_27_30 | Opra8_27_31
-           | Opra8_28_00 | Opra8_28_01 | Opra8_28_02 | Opra8_28_03
-           | Opra8_28_04 | Opra8_28_05 | Opra8_28_06 | Opra8_28_07
-           | Opra8_28_08 | Opra8_28_09 | Opra8_28_10 | Opra8_28_11
+           | Opra8_28_0  | Opra8_28_1  | Opra8_28_2  | Opra8_28_3 
+           | Opra8_28_4  | Opra8_28_5  | Opra8_28_6  | Opra8_28_7 
+           | Opra8_28_8  | Opra8_28_9  | Opra8_28_10 | Opra8_28_11
            | Opra8_28_12 | Opra8_28_13 | Opra8_28_14 | Opra8_28_15
            | Opra8_28_16 | Opra8_28_17 | Opra8_28_18 | Opra8_28_19
            | Opra8_28_20 | Opra8_28_21 | Opra8_28_22 | Opra8_28_23
            | Opra8_28_24 | Opra8_28_25 | Opra8_28_26 | Opra8_28_27
            | Opra8_28_28 | Opra8_28_29 | Opra8_28_30 | Opra8_28_31
-           | Opra8_29_00 | Opra8_29_01 | Opra8_29_02 | Opra8_29_03
-           | Opra8_29_04 | Opra8_29_05 | Opra8_29_06 | Opra8_29_07
-           | Opra8_29_08 | Opra8_29_09 | Opra8_29_10 | Opra8_29_11
+           | Opra8_29_0  | Opra8_29_1  | Opra8_29_2  | Opra8_29_3 
+           | Opra8_29_4  | Opra8_29_5  | Opra8_29_6  | Opra8_29_7 
+           | Opra8_29_8  | Opra8_29_9  | Opra8_29_10 | Opra8_29_11
            | Opra8_29_12 | Opra8_29_13 | Opra8_29_14 | Opra8_29_15
            | Opra8_29_16 | Opra8_29_17 | Opra8_29_18 | Opra8_29_19
            | Opra8_29_20 | Opra8_29_21 | Opra8_29_22 | Opra8_29_23
            | Opra8_29_24 | Opra8_29_25 | Opra8_29_26 | Opra8_29_27
            | Opra8_29_28 | Opra8_29_29 | Opra8_29_30 | Opra8_29_31
-           | Opra8_30_00 | Opra8_30_01 | Opra8_30_02 | Opra8_30_03
-           | Opra8_30_04 | Opra8_30_05 | Opra8_30_06 | Opra8_30_07
-           | Opra8_30_08 | Opra8_30_09 | Opra8_30_10 | Opra8_30_11
+           | Opra8_30_0  | Opra8_30_1  | Opra8_30_2  | Opra8_30_3 
+           | Opra8_30_4  | Opra8_30_5  | Opra8_30_6  | Opra8_30_7 
+           | Opra8_30_8  | Opra8_30_9  | Opra8_30_10 | Opra8_30_11
            | Opra8_30_12 | Opra8_30_13 | Opra8_30_14 | Opra8_30_15
            | Opra8_30_16 | Opra8_30_17 | Opra8_30_18 | Opra8_30_19
            | Opra8_30_20 | Opra8_30_21 | Opra8_30_22 | Opra8_30_23
            | Opra8_30_24 | Opra8_30_25 | Opra8_30_26 | Opra8_30_27
            | Opra8_30_28 | Opra8_30_29 | Opra8_30_30 | Opra8_30_31
-           | Opra8_31_00 | Opra8_31_01 | Opra8_31_02 | Opra8_31_03
-           | Opra8_31_04 | Opra8_31_05 | Opra8_31_06 | Opra8_31_07
-           | Opra8_31_08 | Opra8_31_09 | Opra8_31_10 | Opra8_31_11
+           | Opra8_31_0  | Opra8_31_1  | Opra8_31_2  | Opra8_31_3 
+           | Opra8_31_4  | Opra8_31_5  | Opra8_31_6  | Opra8_31_7 
+           | Opra8_31_8  | Opra8_31_9  | Opra8_31_10 | Opra8_31_11
            | Opra8_31_12 | Opra8_31_13 | Opra8_31_14 | Opra8_31_15
            | Opra8_31_16 | Opra8_31_17 | Opra8_31_18 | Opra8_31_19
            | Opra8_31_20 | Opra8_31_21 | Opra8_31_22 | Opra8_31_23

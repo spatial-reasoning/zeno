@@ -10,12 +10,12 @@ import Calculus.Opra16
 import DecisionProcedure
 import DecisionProcedure.Opra
 
-str = "opra8"
+str = "opra16"
 
 instance HasDecisionProcedure Opra16 where
     proceduresForAtomicNets _ =
         [
-          after makeNonAtomic (algebraicClosureGQR str)
+--          after makeNonAtomic (algebraicClosureGQR str)
 --          after makeNonAtomic (algebraicClosureSpS str)
 --        , after makeNonAtomic (algebraicReasoning str)
         ] ++ map (after opramNetToOpraNetAtomic)

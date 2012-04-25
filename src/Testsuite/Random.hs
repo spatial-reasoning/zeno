@@ -49,7 +49,7 @@ randomAtomicNetworkWithDensity rank domain syze density = do
     let numer = (numerator density) * factor
     let cons = Map.fromList $ take numer $ zip combis rels
     if rest /= 0 then
-        error $ "Cannot create network of size " ++ show syze
+        error $ "Cannot create a network of size " ++ show syze
              ++ " and density " ++ show density
     else
         return $ eNetwork { nDesc = "Random_Network", nCons = cons }
@@ -91,7 +91,7 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
     let cons = Map.fromList $ skel ++ flesh
                                    -- v-- fixme: is this lower bound correct?
     if rest /= 0 || numer < (syze - rank + 1) then
-        error $ "Cannot create network of size " ++ show syze
+        error $ "Cannot create a connected network of size " ++ show syze
              ++ " and density " ++ show density
     else
         return $ eNetwork { nDesc = "Random_Network", nCons = cons }

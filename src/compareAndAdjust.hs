@@ -40,6 +40,7 @@ data Options = Options { optMinRange   :: Int
 --                       , optNumOfNodes :: Int
                        , optDensity    :: Float
                        , optAreal      :: Int
+                       , optBatch      :: Bool
                        } deriving (Show, Data, Typeable)
 
 defaultOptions = Options
@@ -50,13 +51,13 @@ defaultOptions = Options
         &= name "minsize"
         &= typ "MINSIZE"
         &= help "Start with networks of size MINSIZE. (default = 5)"
-    , optMaxRange = 99999
-        &= opt (20 :: Int)
+    , optMaxRange = (-1)
+        &= opt (-1 :: Int)
         &= explicit
         &= name "M"
         &= name "maxsize"
         &= typ "MAXSIZE"
-        &= help "Stop after networks of size MAXSIZE. (default = 20)"
+        &= help "Stop after networks of size MAXSIZE. (default = negative value = infinity)"
 --    , optSampleSize = 1
 --        &= opt (1 :: Int)
 --        &= explicit
@@ -100,12 +101,17 @@ defaultOptions = Options
         &= typ "INITIAL DENSITY"
         &= help "Start with the density closest to the given value. (default = 0.5)"
     , optAreal = 0
-        &= opt (1 :: Int)
+        &= opt (0 :: Int)
         &= explicit
         &= name "a"
         &= name "areal"
         &= typ "NUMBER"
-        &= help "1 = Only use areal relations.          2 = Only use non-areal relations.      Any other number = No restriction. (Default = 1)"
+        &= help "1 = Only use areal relations.          2 = Only use non-areal relations.      Any other number = No restriction. (Default = 0)"
+    , optBatch = def
+        &= explicit
+        &= name "b"
+        &= name "batch"
+        &= help "Start in batch mode and don't wait for input."
     } &=
 --    verbosity &=
 --    help "Compares the results of semi-decision procedures for consistency of\
@@ -202,7 +208,12 @@ exec rels opts@Options{..} = do
     let head' = head rels
     let rank' = rank head'
     let procedures = proceduresForAtomicNets head'
-    let startStr = "Starting a new Benchmarking (press 'q' to quit)...\n"
+    let startStr = "Starting a new Benchmarking"
+            ++ ( if optBatch then
+                     " (running in batch mode)"
+                 else
+                     " (press 'q' to quit)" )
+            ++ "...\n"
     startBenchString <- catch
         (readFile "BENCHMARK.COLLECTION")
         ((\e -> do
@@ -216,6 +227,6 @@ exec rels opts@Options{..} = do
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    bench <- markTheBench optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
+    bench <- markTheBench optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
     analyze bench
 

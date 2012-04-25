@@ -416,24 +416,26 @@ translateToAngles' firstRun
     (newPair@[a,b]:remUnknownPairs) = unknownPairs
 
 
-translateToTriangles :: Network [String] Otop -> Maybe Formula
-translateToTriangles net@Network{nCons = cons} = do
+translateToTriangles :: Bool -> Network [String] Otop -> Maybe Formula
+translateToTriangles witnesses net@Network{nCons = cons} = do
     let allNodes = nodesIn net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     ps_rn <- Fold.foldlM         -- pairsWithSameness_and_relatedNodes
         (\ (acc, acc2) pair@[node, node2] ->
           let 
             existsWitnessForUnSameness =
-              False
---              not $ Set.null $ Set.filter
---                (\ node3 ->
---                  let
---                    n3n  = Map.lookup [node3, node ] cons
---                    n3n2 = Map.lookup [node3, node2] cons
---                  in
---                    node /= node3 && node2 /= node3 &&
---                    isJust n3n && isJust n3n2 && n3n /= n3n2
---                ) allNodes
+                if witnesses then
+                    not $ Set.null $ Set.filter
+                      (\ node3 ->
+                        let
+                          n3n  = Map.lookup [node3, node ] cons
+                          n3n2 = Map.lookup [node3, node2] cons
+                        in
+                          node /= node3 && node2 /= node3 &&
+                          isJust n3n && isJust n3n2 && n3n /= n3n2
+                      ) allNodes
+                else
+                    False
             -- not sure if this increases the speed.
             existWitnessesForSameness =
               False
@@ -701,5 +703,6 @@ angleConsistency' fun net@Network{nCons = cons, nDesc = desc} = mytrace2 (showAt
 
 angleConsistency = angleConsistency' translateToAngles
 
-triangleConsistency = angleConsistency' translateToTriangles
+triangleConsistency = angleConsistency' (translateToTriangles False)
+triangleConsistencyWithWitnesses = angleConsistency' (translateToTriangles True)
 
