@@ -26,7 +26,6 @@ import Helpful
 import Debug.Trace
 
 
-
 type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
     ( Int                      -- number of networks tested so far
     , Ratio Int                -- last used density
@@ -91,8 +90,6 @@ markTheBench batch minsize maxsize testThisManyNets
                         sicnum = signum $ e + f + g - d
                       in
                         ( a + 1
---                        , min denomin $ max 0 $
-                                             -- v-- fixme: is this lower bound correct?
                         , min denomin $ max (numOfNodes - rank + 1) $
                               round (b * fromIntegral denomin) + sicnum
                         )

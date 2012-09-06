@@ -20,15 +20,13 @@ isAcyclicChirotopeFlipFlop sloppy net
 --    | (isJust chiroNet &&) $ head $ isAcyclicChirotope      -- TWOINONE
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) sloppy =
--- fixme: we get some false positives! Why?
---        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
-        if (numberOfNodes (fromJust chiroNet) < 9) && False then
+        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
             Just True
         else
             Nothing
     | otherwise  = Just False
   where
-    chiroNet = flipflop7ToChirotope net
+    chiroNet = flipflopsToChirotope net
 
 
 isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
@@ -36,13 +34,11 @@ isAcyclicChirotopeWithoutBPFlipFlop sloppy net
 --    | (isJust chiroNet &&) $ last $ isAcyclicChirotope          -- TWOINONE
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
--- fixme: we get some false positives! Why?
---        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
-        if (numberOfNodes (fromJust chiroNet) < 9) && False then
+        if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
             Just True
         else
             Nothing
     | otherwise  = Just False
   where
-    chiroNet = flipflop7ToChirotope net
+    chiroNet = flipflopsToChirotope net
 

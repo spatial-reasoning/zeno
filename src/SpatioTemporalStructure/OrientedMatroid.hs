@@ -51,7 +51,7 @@ satisfiesGrassmannPluecker m
                   | xy <- combis
                   , let (x,[a,b,c,d]) = splitAt (rank - 2) xy
                   -- filter the ones in the map.
-                      -- FIXME: Here we could also drop
+                      -- fixme: Here we could also drop
                       -- those triples, that have been tested in the last
                       -- backtracking step!
                   , Map.member (x ++ [a,b]) wM
@@ -90,10 +90,8 @@ isAcyclicChirotope :: Map.Map [Int] Int
                    -> [Int]
                    -> Bool
                   )-> Bool
---                   -> [Bool]             -- TWOINONE
                    -> Bool
 isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
---    | null keys  = [True, True]          -- TWOINONE
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
     | not $ isAcyclic (Map.toList m) m  = False
@@ -108,7 +106,7 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
         (H.kPermutationsWithParity rank)
         (filter (flip Map.notMember m) $ H.kCombinations rank domain)
     applyMap k m =
-        -- ein unechtes Triple hat Orientierung Null
+        -- A triple containing the same node twice has orientation zero.
         -- TODO: teste ob das unechte triple nicht doch in der Map ist!
         if H.hasDuplicates k then
             Just 0
@@ -123,13 +121,11 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                 -- chirotopes, e.g. the function "is_realizable" !
 --                True
                 f wM keys rank domain
---                [True, f wM keys rank domain]          -- TWOINONE
             else
               let
                 -- Some optimizations might be helpful at this place.
                 x:stillMissingPwPs = missingPwPs
               in
---                map or $ transpose $ map          -- TWOINONE
                 or $ map
                     (\newSign ->
                       let
@@ -146,7 +142,6 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                             newConstraints $
                             foldl (flip $ uncurry Map.insert) wM newConstraints
                     ) [(-1), 0, 1]
---        | otherwise  = [False, False]            -- TWOINONE
         | otherwise  = False
     satisfiesThirdAxiom newCons m =
       let

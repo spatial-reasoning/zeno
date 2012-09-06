@@ -2,6 +2,8 @@ module Calculus.FlipFlop where
 
 -- standard modules
 import qualified Data.Char as Char
+import qualified Data.Key as Key
+import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
@@ -9,7 +11,7 @@ import qualified Data.Set as Set
 -- local modules
 import Basics
 import Interface.Sparq
-import Calculus.Helpful
+import Helpful
 
 import Debug.Trace
 
@@ -28,6 +30,7 @@ instance Calculus FlipFlop where
     showRel D = "dou"
     showRel T = "tri"
     showRel x = (map Char.toLower) $ show x
+    cBaserelationsArealList = [L, R]
 
 
 instance TernaryCalculus FlipFlop where
@@ -75,33 +78,186 @@ fflip B = F
 fflip I = I
 
 
-ffsToFF5s :: (Ord a, Show a)
-          => Network [a] FlipFlop
-          -> Maybe (Network [a] FlipFlop)
-ffsToFF5s net@Network { nCons = cons }
-    | not $ Map.null $ Map.filterWithKey
-          (\ [a, b, c] rel -> a == b || a == c || b == c || Set.null rel)
-          newCons  = Nothing
-    | otherwise = Just $ net{ nCons = Map.map Set.findMin newCons }
+ffsToFF5s :: Network [String] FlipFlop
+          -> Maybe (Network [String] FlipFlop)
+ffsToFF5s net@Network { nCons = cons } = do
+    acc <- Key.foldrWithKeyM
+                   checkOneCon
+                   (Map.empty, cons, nodesIn net)
+                   cons
+    let firstOfTriple (x, _, _) = x
+    return $ net{ nCons = firstOfTriple acc}
   where
-    newCons = Map.foldrWithKey addOneCon Map.empty cons
-    addOneCon nodes rel consAcc
-        | elem rel [S, E, D, T]  = consAcc
-        | otherwise  = tcInsert
-                           (map (applyMap nodesMap) nodes)
-                           (Set.singleton rel)
-                           consAcc
-    applyMap m node = Map.findWithDefault node node m
-    nodesMap = Map.foldrWithKey checkOneCon Map.empty cons
-    checkOneCon nodes@[a, b, c] rel mapAcc
-        | rel == S  = Map.insert c (applyMap mapAcc a) mapAcc
-        | rel == E  = Map.insert c (applyMap mapAcc b) mapAcc
-        | rel == D  = Map.insert b (applyMap mapAcc a) mapAcc
-        | rel == T  = let
-                          eris = Map.insert b (applyMap mapAcc a) mapAcc
-                      in
-                      Map.insert c (applyMap eris a) $ eris
-        | otherwise  = mapAcc
+    checkOneCon nodes@[a, b, c] rel acc@(consAcc, allConsAcc, nodesAcc)
+        -- Ensure the existence of a witness for the unsame nodes.
+        | rel == S  = ensureSamenessOf a c $ ensureUnsamenessOf a b acc
+        | rel == E  = ensureSamenessOf b c $ ensureUnsamenessOf a b acc
+        | rel == D  = ensureSamenessOf a b $ ensureUnsamenessOf b c acc
+        | rel == T  = ensureSamenessOf a b acc >>= ensureSamenessOf a c >>= ensureSamenessOf b c
+        | otherwise = Just ( fromJust $ tcInsertAtomic nodes rel consAcc
+                           , allConsAcc
+                           , nodesAcc )
+    newMaxNode nodes = (Set.findMax nodes) ++ "eris"
+    ensureUnsamenessOf x y acc@(consAccInter, allConsAccInter, nodesAccInter) =
+        if
+            Map.null $ Map.filterWithKey
+                (isWitnessForUnsamenessOf x y)
+                consAccInter
+        then
+          let
+            newNode = newMaxNode nodesAccInter
+          in
+            ( fromJust $ tcInsertAtomic [x, y, newNode] L consAccInter
+            , fromJust $ tcInsertAtomic [x, y, newNode] L allConsAccInter
+            , Set.insert newNode nodesAccInter )
+        else
+            acc
+    isWitnessForUnsamenessOf x y k v =
+        (null $ [x, y] \\ k) && (elem v [L, R, B, I, F])
+    ensureSamenessOf x y acc@(consAccInter, allConsAccInter, nodesAccInter)
+        | Map.size cIx == 1 || Map.size cIy == 1  = Just acc
+            -- x or y is only related this one time: do nothing.
+        | not $ null $ disjointPairsOfPIR x  =
+            -- take the first, check whether their relations to y exist and
+            -- comply:
+            --     non-existent -> add them,
+            --     don't comply -> return Nothing
+            --     comply       -> do nothing,
+            useDisjointPairOfPairs x y
+        | not $ null $ disjointPairsOfPIR y  =
+            -- same as above but with y exchanged by x.
+            useDisjointPairOfPairs y x
+        | not $ null pIRxy  =
+            -- take the first one, look for a non-inline node,
+            -- add a new node and use the later two.
+            oneInlinePairIn pIRxy x y
+        | not $ null pIRx  = -- same as above
+            oneInlinePairIn pIRx x y
+        | not $ null pIRy  = -- same as above
+            oneInlinePairIn pIRy y x
+        | not $ null pNIRx =
+            -- take the first two nodes node1 and node2,
+            -- introduce two new ones newNode1 and newNode2
+            -- and map [node1, newNode1, x/y] and [node2, newNode2, x/y] to F.
+            oneNonInlinePairIn pNIRx y
+        | not $ null pNIRy =  -- same as above.
+            oneNonInlinePairIn pNIRy x
+        | otherwise  = Just $
+            -- introduce four new nodes, since we cannot know whether any
+            -- nodes are collinear or same or not.
+          let
+            newNode0 = newMaxNode nodesAccInter
+            newNode1 = newNode0 ++ "mygoddess"
+            newNode2 = newNode0 ++ "standbyme"
+            newNode3 = newNode0 ++ "intimesofboredom"
+          in
+            ( fromJust $
+              tcInsertAtomic [newNode1, newNode3, y] F consAccInter >>=
+              tcInsertAtomic [newNode1, newNode3, x] F >>=
+              tcInsertAtomic [newNode0, newNode2, y] F >>=
+              tcInsertAtomic [newNode0, newNode2, x] F >>=
+              tcInsertAtomic [newNode0, newNode1, x] L
+            , fromJust $
+              tcInsertAtomic [newNode1, newNode3, y] F allConsAccInter >>=
+              tcInsertAtomic [newNode1, newNode3, x] F >>=
+              tcInsertAtomic [newNode0, newNode2, y] F >>=
+              tcInsertAtomic [newNode0, newNode2, x] F >>=
+              tcInsertAtomic [newNode0, newNode1, x] L
+            , foldr Set.insert nodesAccInter
+                  [newNode0, newNode1, newNode2, newNode3] )
+      where
+        useDisjointPairOfPairs v w =
+          let
+            [pair1, pair2] = head $ disjointPairsOfPIR v
+            relPair1v = fromJust $ tcRelOfAtomic allConsAccInter (pair1 ++ [v])
+            relPair2v = fromJust $ tcRelOfAtomic allConsAccInter (pair2 ++ [v])
+          in
+            ite (elem w (pair1 ++ pair2)) Nothing $ do
+                newAllConsAccInter <- 
+                    tcInsertAtomic (pair1 ++ [w]) relPair1v allConsAccInter >>=
+                    tcInsertAtomic (pair2 ++ [w]) relPair2v
+                return $
+                    ( fromJust $
+                      tcInsertAtomic (pair1 ++ [w]) relPair1v consAccInter >>=
+                      tcInsertAtomic (pair2 ++ [w]) relPair2v
+                    , newAllConsAccInter
+                    , nodesAccInter )
+        oneInlinePairIn pairs v w =
+          let
+            pair = head pairs -- improve: we should look for a pair for which
+                              -- there is a nonInlineNode.
+            newNode = newMaxNode nodesAccInter
+            newNode2 = newNode ++ "mygoddess"
+            nonInlineNode' = filter
+                ( \node -> (node /= w) && elem
+                      (tcRelOfAtomic allConsAccInter $ pair ++ [node])
+                      [Just L, Just R]
+                ) (Set.toAscList nodesAccInter)
+            nonInlineNode = head nonInlineNode'
+            addConForW = tcInsertAtomic
+                (pair ++ [w])
+                (fromJust $ tcRelOfAtomic allConsAccInter $ pair ++ [v])
+          in
+            ite (elem w pair) Nothing $ do
+            newAll <- addConForW allConsAccInter
+            return $
+                if null nonInlineNode' then
+                    ( fromJust $
+                      addConForW consAccInter >>=
+                      tcInsertAtomic (pair ++ [newNode]) L >>=
+                      tcInsertAtomic [newNode, newNode2, w] F >>=
+                      tcInsertAtomic [newNode, newNode2, v] F
+                    , fromJust $
+                      tcInsertAtomic (pair ++ [newNode]) L newAll >>=
+                      tcInsertAtomic [newNode, newNode2, w] F >>=
+                      tcInsertAtomic [newNode, newNode2, v] F
+                    , Set.insert newNode2 $
+                      Set.insert newNode nodesAccInter )
+                else
+                    ( fromJust $
+                      addConForW consAccInter >>=
+                      tcInsertAtomic [newNode, nonInlineNode, w] F >>=
+                      tcInsertAtomic [newNode, nonInlineNode, v] F
+                    , fromJust $
+                      tcInsertAtomic [newNode, nonInlineNode, w] F newAll >>=
+                      tcInsertAtomic [newNode, nonInlineNode, v] F
+                    , Set.insert newNode nodesAccInter )
+        oneNonInlinePairIn pairs v =
+          let
+            pair@[node1, node2] = head pairs
+            newNode1 = newMaxNode nodesAccInter
+            newNode2 = newNode1 ++ "mygoddess"
+          in
+            ite (elem v pair) Nothing $ Just
+            ( fromJust $
+              tcInsertAtomic [node2, newNode2, y] F consAccInter >>=
+              tcInsertAtomic [node1, newNode1, y] F >>=
+              tcInsertAtomic [node2, newNode2, x] F >>=
+              tcInsertAtomic [node1, newNode1, x] F
+            , fromJust $
+              tcInsertAtomic [node2, newNode2, y] F allConsAccInter >>=
+              tcInsertAtomic [node1, newNode1, y] F >>=
+              tcInsertAtomic [node2, newNode2, x] F >>=
+              tcInsertAtomic [node1, newNode1, x] F
+            , Set.insert newNode2 $ Set.insert newNode1 nodesAccInter )
+        disjointPairsOfPIR z = filter
+            (\ [pair1, pair2] -> null $ intersect pair1 pair2
+            ) $ kCombinations 2 $ fst $ pairsInlineAndNotInlineRelatedTo z
+        pIRxy = intersect pIRx pIRy
+        (pIRx, pNIRx) = pairsInlineAndNotInlineRelatedTo x
+        (pIRy, pNIRy) = pairsInlineAndNotInlineRelatedTo y
+        pairsInlineAndNotInlineRelatedTo z = Map.foldrWithKey
+            (\ k v acc@(inlineAcc, notInlineAcc) ->
+                if elem v [B, I, F] then
+                    ((delete z k):inlineAcc, notInlineAcc)
+                else if elem v [L, R] then
+                    (inlineAcc, (delete z k):notInlineAcc)
+                else
+                    acc
+            ) ([], []) (consIncluding z)
+        cIx = consIncluding x
+        cIy = consIncluding y
+        consIncluding z = Map.filterWithKey (\ k v -> elem z k) allConsAccInter
 
 
 -- Convert Back, Inline and Front to Inline.

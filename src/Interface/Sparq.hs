@@ -111,22 +111,25 @@ algebraicClosure cal net =
         False -> (consistent, modified, net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
+    sparqNet = sparqify True net
     sparqModified:rest = lines $ unsafeReadProcess "sparq"
-        ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net] ""
+        ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqNet] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
         "Not consistent." -> (Just False, False)
-        _ -> error $ "SparQ answered in an unexpected way.\n\
-                     \Expected: Modified network.\n\
-                     \      OR: Unmodified Network.\n\
-                     \      OR: Not consistent.\n\
-                     \Actual answer: \"" ++ sparqModified
+        _ -> error $ "SparQ answered in an unexpected way.\n" ++
+                     "On Network:\n" ++ sparqNet ++ "\n" ++
+                     "Expected: Modified network.\n" ++
+                     "      OR: Unmodified Network.\n" ++
+                     "      OR: Not consistent.\n" ++
+                     "Actual answer: \"" ++ sparqModified
                                          ++ unlines rest ++ "\""
     newNet = case parse parseNetwork "" (unlines rest) of
-        Left err -> error $ "SparQ answered in an unexpected way.\n\
-                            \Expected: a SparQ network definition.\n\
-                            \Actual answer: " ++ unlines rest
+        Left err -> error $ "SparQ answered in an unexpected way.\n" ++
+                            "On Network:\n" ++ sparqNet ++ "\n" ++
+                            "Expected: a SparQ network definition.\n" ++
+                            "Actual answer: " ++ unlines rest
         Right success -> success
 
 ternaryAlgebraicClosure :: (Calculus a)
@@ -140,22 +143,25 @@ ternaryAlgebraicClosure cal net =
         False -> (consistent, modified, net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
+    sparqNet = sparqify True net
     sparqModified:rest = lines $ unsafeReadProcess "sparq"
-        ["constraint-reasoning " ++ cal ++ " ternary-closure " ++ sparqify True net] ""
+        ["constraint-reasoning " ++ cal ++ " ternary-closure " ++ sparqNet] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
         "Not consistent." -> (Just False, False)
-        _ -> error $ "SparQ answered in an unexpected way.\n\
-                     \Expected: Modified network.\n\
-                     \      OR: Unmodified Network.\n\
-                     \      OR: Not consistent.\n\
-                     \Actual answer: \"" ++ sparqModified
+        _ -> error $ "SparQ answered in an unexpected way.\n" ++
+                     "On Network:\n" ++ sparqNet ++ "\n" ++
+                     "Expected: Modified network.\n" ++
+                     "      OR: Unmodified Network.\n" ++
+                     "      OR: Not consistent.\n" ++
+                     "Actual answer: \"" ++ sparqModified
                                          ++ unlines rest ++ "\""
     newNet = case parse parseNetwork "" (unlines rest) of
-        Left err -> error $ "SparQ answered in an unexpected way.\n\
-                            \Expected: a SparQ network definition.\n\
-                            \Actual answer: " ++ unlines rest
+        Left err -> error $ "SparQ answered in an unexpected way.\n" ++
+                            "On Network:\n" ++ sparqNet ++ "\n" ++
+                            "Expected: a SparQ network definition.\n" ++
+                            "Actual answer: " ++ unlines rest
         Right success -> success
 
 
@@ -291,7 +297,9 @@ algebraicClosure cal net = unsafePerformIO $ bracket
     (do connectToSparq)
     (close)
     (\ sparq -> do
-        writeBlock sparq ("constraint-reasoning " ++ cal ++ " a-closure " ++ sparqify True net ++ "\n")
+        let sparqNet = sparqify True net
+        writeBlock sparq ("constraint-reasoning " ++ cal ++ " a-closure "
+                                                  ++ sparqNet ++ "\n")
         sparqModified <- readOneLine sparq
         sparqNewNet <- readOneLine sparq
         close sparq
@@ -299,16 +307,18 @@ algebraicClosure cal net = unsafePerformIO $ bracket
                 "Modified network."   -> Just True
                 "Unmodified network." -> Just False
                 "Not consistent." -> Nothing
-                _ -> error $ "SparQ answered in an unexpected way.\n\
-                             \Expected: Modified network.\n\
-                             \      OR: Unmodified Network.\n\
-                             \      OR: Not consistent.\n\
-                             \Actual answer: \"" ++ sparqModified ++ "\""
+                _ -> error $ "SparQ answered in an unexpected way.\n" ++
+                             "On Network:\n" ++ sparqNet ++ "\n" ++
+                             "Expected: Modified network.\n" ++
+                             "      OR: Unmodified Network.\n" ++
+                             "      OR: Not consistent.\n" ++
+                             "Actual answer: \"" ++ sparqModified ++ "\""
         let newNet = case parse parseNetwork "" sparqNewNet of
-                Left err -> error $ "SparQ answered in an unexpected way.\n\
-                                    \Expected: a SparQ network definition.\n\
-                                    \Actual answer: " ++ sparqNewNet
-                Right success -> success
+               Left err -> error $ "SparQ answered in an unexpected way.\n" ++
+                                   "On Network:\n" ++ sparqNet ++ "\n" ++
+                                   "Expected: a SparQ network definition.\n" ++
+                                   "Actual answer: " ++ sparqNewNet
+               Right success -> success
         case modified of
             Nothing    -> return (modified, net)
             Just False -> return (modified, net)

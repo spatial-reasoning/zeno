@@ -7,6 +7,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Ratio
 import qualified Data.Set as Set
+import System.IO.Unsafe
 
 -- local modules
 import Basics
@@ -415,16 +416,29 @@ translateToAngles' firstRun
                                       remUnknownPairs
     (newPair@[a,b]:remUnknownPairs) = unknownPairs
 
-
+-- | Translate a network of SECTOR relations into a QF_LRA equation.
+-- The parameter 'useWitnesses' selects whether to use witnesses to decide
+-- whether a pair lies in a 'SAME' relation or not.
 translateToTriangles :: Bool -> Network [String] Otop -> Maybe Formula
-translateToTriangles witnesses net@Network{nCons = cons} = do
+translateToTriangles useWitnesses net@Network{nCons = cons} = do
     let allNodes = nodesIn net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
-    ps_rn <- Fold.foldlM         -- pairsWithSameness_and_relatedNodes
+    -- Fold over all pairs and generate:
+    --   1. the map mapping pairs to either True or False depending on whether
+    --      they are in a 'SAME' relation or not. Pairs for which we have no
+    --      information are left out of the map.
+    --   2. the map mapping nodes to the set of nodes of which we know whether
+    --      the node lies in a 'SAME' relation to them or not. Nodes for which
+    --      we have no information are left out of the map respectively the
+    --      set.
+    -- abbr.: pairsWithSameness_and_relatedNodes
+    ps_rn <- Fold.foldlM
         (\ (acc, acc2) pair@[node, node2] ->
-          let 
-            existsWitnessForUnSameness =
-                if witnesses then
+          let
+            -- Can we find a third node for which node and node2 lie in
+            -- different relations?
+            existsWitnessForUnsameness =
+                if useWitnesses then
                     not $ Set.null $ Set.filter
                       (\ node3 ->
                         let
@@ -436,7 +450,7 @@ translateToTriangles witnesses net@Network{nCons = cons} = do
                       ) allNodes
                 else
                     False
-            -- not sure if this increases the speed.
+            -- This slows down the method dramatically.
             existWitnessesForSameness =
               False
 --              not $ null $ filter
@@ -479,25 +493,33 @@ translateToTriangles witnesses net@Network{nCons = cons} = do
 --                ) pairs
             sameHelper g s g2 s2 = case sort [ (signum g , signum s )
                                              , (signum g2, signum s2)] of
-                -- (-1) = same, 1 = not same, 0 = partial or no knowledge.
-                [(-1, _), (-1, _)] -> newAccsTrue
-                [( 1, _), ( 1, _)] -> newAccsFalse
+                -- signum g = -1 denotes a 'SAME' relation,
+                -- signum g =  1 denotes a non-'SAME' relation,
+                -- signum g =  0 and signum s = -1 denotes the sole knowledge
+                -- that the pair is in a 'SAME' relation (without any knowledge
+                -- about directions)
+                -- signum g =  0 and signum s =  1 denotes the sole knowledge
+                -- that the pair is in a non-'SAME' relation (without any
+                -- knowledge about directions)
+                -- signum g =  0 and signum s =  0 denotes no knowledge at all.
+                [(-1, _), (-1, _)] -> newAccsSame
+                [( 1, _), ( 1, _)] -> newAccsUnsame
                 [(-1, _), ( 0, 1)] -> Nothing
-                [(-1, _), ( 0, _)] -> newAccsTrue
+                [(-1, _), ( 0, _)] -> newAccsSame
                 [( 0,-1), ( 1, _)] -> Nothing
-                [( 0, _), ( 1, _)] -> newAccsFalse
+                [( 0, _), ( 1, _)] -> newAccsUnsame
                 [( 0,-1), ( 0, 1)] -> Nothing
-                [( 0,-1), ( 0, _)] -> newAccsTrue
-                [( 0, _), ( 0, 1)] -> newAccsFalse
+                [( 0,-1), ( 0, _)] -> newAccsSame
+                [( 0, _), ( 0, 1)] -> newAccsUnsame
                 [(-1, _), ( 1, _)] -> Nothing
-            noInfoHelper = case ( existsWitnessForUnSameness
+            noInfoHelper = case ( existsWitnessForUnsameness
                                 , existWitnessesForSameness  ) of
-                (True , False) -> mytrace ("Wittness for Unsame. " ++ show pair) newAccsFalse
-                (False, True ) -> mytrace ("Wittnesses for Same. " ++ show pair) newAccsTrue
+                (True , False) -> newAccsUnsame
+                (False, True ) -> newAccsSame
                 (False, False) -> newAccsUnknown
-                (True , True ) -> mytrace ("Wittnesses!" ++ node) Nothing
-            newAccsTrue  = Just (Map.insert pair True  acc, newAcc2)
-            newAccsFalse = Just (Map.insert pair False acc, newAcc2)
+                (True , True ) -> Nothing
+            newAccsSame  = Just (Map.insert pair True  acc, newAcc2)
+            newAccsUnsame = Just (Map.insert pair False acc, newAcc2)
             newAccsUnknown = Just (acc, acc2)
             newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
           in
@@ -693,16 +715,22 @@ parseOutputFromYices str =
 angleConsistency' :: (Network [String] Otop -> Maybe Formula)
                   -> Network [String] Otop
                   -> Maybe Bool
-angleConsistency' fun net@Network{nCons = cons, nDesc = desc} = mytrace2 (showAtomicNet net) $
+angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
           (\f -> parseOutputFromYices $ readYices $ str f)
+--          (\f -> parseOutputFromYices $ readYices $ str2 f)  --DEBUG
           formula
   where
     formula = fun net
     str f = preamble desc f ++ ":formula\n" ++ showSMT f ++ "\n)"
+--    str2 f = unsafePerformIO $ do                      --DEBUG
+--        appendFile "BENCHMARK.EQUATIONS" (str f)       --DEBUG
+--        return (str f)                                 --DEBUG
 
 angleConsistency = angleConsistency' translateToAngles
 
-triangleConsistency = angleConsistency' (translateToTriangles False)
-triangleConsistencyWithWitnesses = angleConsistency' (translateToTriangles True)
+triangleConsistency =
+    angleConsistency' (translateToTriangles False)
+triangleConsistencyWithWitnesses =
+    angleConsistency' (translateToTriangles True)
 

@@ -79,7 +79,8 @@ checkNetworks = do
 --    -- oriented matroid method.
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 12
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 11
-    let dpNets = map circleWithTwoCollinearDipolesInside [6..40]
+--    let dpNets = map circleWithTwoCollinearDipolesInside [6..40]
+    let dpNets = []
 {-
     let ffNet1 = allLeft 8
     ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
@@ -99,7 +100,8 @@ checkNetworks = do
     ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
     ffNet16 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
 -}
-    let ffNets = [ ]
+    ffNet1 <- loadTernaryNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
+    let ffNets = [ffNet1]
 
     let dpAnswers = makeReadable 0 $ dpCheckConsistency dpNets
     let ffAnswers = makeReadable (length dpNets) $ ffCheckConsistency ffNets
@@ -116,6 +118,7 @@ checkNetworks = do
         "Number of Network:              " ++
         (intercalate "  " $ map show [1..length dpNets + length ffNets]) ++
         "\n"
+{-
     start <- getCurrentTime
     putStrLn $ "Algebraic Closure:             " ++ dpAnswers!!0 ++ ffAnswers!!0
     end <- getCurrentTime
@@ -142,6 +145,36 @@ checkNetworks = do
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
     putStrLn $ "Biquadratic Polynomial:        " ++ dpAnswers!!6 ++ ffAnswers!!6
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
+-}
+
+    start <- getCurrentTime
+    putStrLn $ "Algebraic Closure:             " ++ ffAnswers!!0
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+--    start <- getCurrentTime
+--    putStrLn $ "Algebraic Reasoning:           " ++ ffAnswers!!1
+--    end <- getCurrentTime
+ --   putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+    start <- getCurrentTime
+    putStrLn $ "Triangle Consistency:          " ++ ffAnswers!!2
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+    start <- getCurrentTime
+    putStrLn $ "Oriented Matroid Sloppy:       " ++ ffAnswers!!3
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
+    start <- getCurrentTime
+    putStrLn $ "Biquadratic Polynomial Sloppy: " ++ ffAnswers!!4
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
+    start <- getCurrentTime
+    putStrLn $ "Oriented Matroid:              " ++ ffAnswers!!5
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+    start <- getCurrentTime
+    putStrLn $ "Biquadratic Polynomial:        " ++ ffAnswers!!6
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
     return ()

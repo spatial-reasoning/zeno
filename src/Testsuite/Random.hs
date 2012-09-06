@@ -72,10 +72,14 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
                                      --                because the nodes of the
                                      --                networks are assumed to
                                      --                be sorted throughout the
-                                     --                code. Fixme: this should
+                                     --                code.
+                                     --                Fixme: this should
                                      --                be handled better by
                                      --                internal generating
-                                     --                functions.
+                                     --                functions. We could need
+                                     --                a function that
+                                     --                generalises bcInsert and
+                                     --                tcInsert.
                                      --v--------v--
                       let newCon = [(combi ++ [node], rel)]
                       return $ consAcc ++ newCon
@@ -89,7 +93,6 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
     let numer = (numerator density) * factor
     let flesh = take (numer - syze + rank - 1) $ zip fleshCombis fleshRels
     let cons = Map.fromList $ skel ++ flesh
-                                   -- v-- fixme: is this lower bound correct?
     if rest /= 0 || numer < (syze - rank + 1) then
         error $ "Cannot create a connected network of size " ++ show syze
              ++ " and density " ++ show density

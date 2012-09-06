@@ -69,10 +69,10 @@ dipolesToFlipFlops net@Network { nCons = cons }
 
 
 {------------------------------------------------------------------------------
-    FlipFlop-5 to Dominik
+    FlipFlop to Dominik
 ------------------------------------------------------------------------------}
-flipFlop5sToDominik :: Network [String] FlipFlop -> [T.Rel]
-flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
+flipFlopsToDominik :: Network [String] FlipFlop -> [T.Rel]
+flipFlopsToDominik Network { nCons = cons } = Map.foldrWithKey
     (\ [a, b, c] rel ls -> (T.Rel a b (showRel rel) c):ls )
     []
     (enumerate cons)
@@ -82,9 +82,9 @@ flipFlop5sToDominik Network { nCons = cons } = Map.foldrWithKey
  - FlipFlop to Chirotope
 ------------------------------------------------------------------------------}
 
-flipflop7ToChirotope :: Network [String] FlipFlop
+flipflopsToChirotope :: Network [String] FlipFlop
                      -> Maybe (Network [Int] Int)
-flipflop7ToChirotope net7
+flipflopsToChirotope net
     | isNothing net5 || isNothing net3  = Nothing
     | otherwise  = Just $ (fromJust net3)
         { nCons = fst $ Map.foldrWithKey
@@ -115,7 +115,7 @@ flipflop7ToChirotope net7
                 ]
             , newMap
             )
-        net5 = ffsToFF5s net7
+        net5 = ffsToFF5s net
         net3 = ff5sToFF3s $ fromJust net5
         cons = nCons $ fromJust net3
 

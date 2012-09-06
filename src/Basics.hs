@@ -198,12 +198,35 @@ class (Calculus a) => TernaryCalculus a where
         relInCons = Map.lookup sortedTriple cons
         sortedTriple = sort triple
         sortedRel
-            | sortedTriple == triple  = rel
+            | sortedTriple == triple               = rel
             | sortedTriple == tcTripleInv  triple  = tcInv  rel
             | sortedTriple == tcTripleSc   triple  = tcSc   rel
             | sortedTriple == tcTripleSci  triple  = tcSci  rel
             | sortedTriple == tcTripleHom  triple  = tcHom  rel
             | sortedTriple == tcTripleHomi triple  = tcHomi rel
+
+    tcInsertAtomic :: (Ord b)
+                   => [b] -> a -> Map.Map [b] a
+                   -> Maybe (Map.Map [b] a)
+    tcInsertAtomic triple rel cons
+        | Set.null sortedRel'      = Nothing
+        | Set.size sortedRel' > 1  = error $ "tcInsert: " ++ show sortedRel'
+                                                          ++ " is not atomic!"
+        | isNothing relInCons  = Just $ Map.insert sortedTriple sortedRel cons
+        | fromJust relInCons /= sortedRel  = Nothing
+        | otherwise  = Just cons
+      where
+        relInCons = Map.lookup sortedTriple cons
+        sortedTriple = sort triple
+        sortedRel = Set.findMin sortedRel'
+        sortedRel'
+            | sortedTriple == triple               = relSet
+            | sortedTriple == tcTripleInv  triple  = tcInv  relSet
+            | sortedTriple == tcTripleSc   triple  = tcSc   relSet
+            | sortedTriple == tcTripleSci  triple  = tcSci  relSet
+            | sortedTriple == tcTripleHom  triple  = tcHom  relSet
+            | sortedTriple == tcTripleHomi triple  = tcHomi relSet
+        relSet = Set.singleton rel
 
 
 tcTripleInv  :: [b] -> [b]
