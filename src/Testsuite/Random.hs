@@ -3,6 +3,7 @@ module Testsuite.Random where
 -- standard modules
 import Control.Monad
 import Data.List
+import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Random hiding (shuffle)
@@ -47,7 +48,9 @@ randomAtomicNetworkWithDensity rank domain syze density = do
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)
     let numer = (numerator density) * factor
-    let cons = Map.fromList $ take numer $ zip combis rels
+    let cons = fromJust $ Fold.foldrM (uncurry insertConAtomic)
+                                      Map.empty
+                                      (take numer $ zip combis rels)
     if rest /= 0 then
         error $ "Cannot create a network of size " ++ show syze
              ++ " and density " ++ show density
@@ -92,7 +95,9 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
     let (factor, rest) = divMod denom (denominator density)
     let numer = (numerator density) * factor
     let flesh = take (numer - syze + rank - 1) $ zip fleshCombis fleshRels
-    let cons = Map.fromList $ skel ++ flesh
+    let cons = fromJust $ Fold.foldrM (uncurry insertConAtomic)
+                                      Map.empty
+                                      (skel ++ flesh)
     if rest /= 0 || numer < (syze - rank + 1) then
         error $ "Cannot create a connected network of size " ++ show syze
              ++ " and density " ++ show density

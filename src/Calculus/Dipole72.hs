@@ -7,7 +7,7 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Helpful
+import Helpful
 
 
 -- maybe we can use this sometime?
@@ -53,8 +53,7 @@ instance Calculus Dipole72 where
         y = maybeRead $ (++ "72") $ map Char.toUpper x
     showRel = (map Char.toLower) . (take 4) . show
 
-instance BinaryCalculus Dipole72 where
-    bcIdentity = SESE72
+    identity = SESE72
 
     bcConversion = Map.fromList
         [ ( BBBB72 , Set.singleton BBBB72 )

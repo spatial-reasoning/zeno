@@ -15,7 +15,7 @@ str = "opra8"
 instance HasDecisionProcedure Opra8 where
     proceduresForAtomicNets _ =
         [
---          after makeNonAtomic (algebraicClosureGQR str)
+          after makeNonAtomic (algebraicClosureGQR str)
 --          after makeNonAtomic (algebraicClosureSpS str)
 --        , after makeNonAtomic (algebraicReasoning str)
         ] ++ map (after opramNetToOpraNetAtomic)

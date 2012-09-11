@@ -15,7 +15,7 @@ comparing the given decision procedures regarding several parameters of
 interest like the density of atomic networks and the common phase transition of
 the tested procedures.
 
-## Procedures implemented so far are:
+## Procedures implemented or integrated so far are:
 
 - __Algebraic Closure__ (binary and ternary) (via SparQ and Gqr)
 - __Gröbner Reasoning__ (via SparQ)

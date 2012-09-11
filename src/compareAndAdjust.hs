@@ -229,4 +229,5 @@ exec rels opts@Options{..} = do
                           return $ fst $ head startBenchRead
     bench <- markTheBench optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
     analyze bench
+    plotInconsistenciesPerSizeAndMethod bench
 

@@ -20,9 +20,9 @@ safeCreateProcess :: String -> [String] -> StdStream -> StdStream -> StdStream
 safeCreateProcess prog args streamIn streamOut streamErr fun = bracket
     ( do
         h <- createProcess (proc prog args) 
-                 { std_in  = streamIn
-                 , std_out = streamOut
-                 , std_err = streamErr
+                 { std_in  = CreatePipe
+                 , std_out = CreatePipe
+                 , std_err = CreatePipe
                  , create_group = True }
         return h
     )

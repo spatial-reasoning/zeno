@@ -19,6 +19,7 @@ import qualified Interface.Sparq as S
 import qualified Interface.Triangle as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
 import Parsing.Qstrlib
+import Testsuite.FlipFlop
 import Testsuite.Dipole80
 import Testsuite.Random
 import Helpful
@@ -81,7 +82,7 @@ checkNetworks = do
 --    let dpNet5 = circleWithTwoCollinearDipolesInside 11
 --    let dpNets = map circleWithTwoCollinearDipolesInside [6..40]
     let dpNets = []
-{-
+
     let ffNet1 = allLeft 8
     ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
     let ffNet3 = indianTent 8
@@ -98,10 +99,27 @@ checkNetworks = do
     ffNet14 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
     ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
     ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet16 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
--}
-    ffNet1 <- loadTernaryNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
-    let ffNets = [ffNet1]
+--    ffNet16 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
+
+--    ffNet1 <- loadTernaryNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
+--    let ffNets = [ffNet1]
+
+    let ffNets = [ ffNet1
+                 , ffNet2
+                 , ffNet3
+                 , ffNet4
+                 , ffNet5
+                 , ffNet6
+                 , ffNet7
+                 , ffNet8
+                 , ffNet9
+                 , ffNet10
+                 , ffNet11
+                 , ffNet12
+                 , ffNet13
+                 , ffNet14
+                 , ffNet15
+                 ]
 
     let dpAnswers = makeReadable 0 $ dpCheckConsistency dpNets
     let ffAnswers = makeReadable (length dpNets) $ ffCheckConsistency ffNets

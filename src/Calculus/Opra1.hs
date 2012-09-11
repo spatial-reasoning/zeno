@@ -7,7 +7,6 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Helpful
 import Calculus.Opra
 
 data Opra1 = Opra1_0_0 | Opra1_0_1 | Opra1_0_2 | Opra1_0_3
@@ -31,8 +30,7 @@ instance Calculus Opra1 where
             map (\x -> if x == 's' then '1' else x) $ drop 6 $ show a
         ) cBaserelationsList
 
-instance BinaryCalculus Opra1 where
-    bcIdentity = Opra1_s_0
+    identity = Opra1_s_0
 
     bcConversion = Map.fromList
         [ ( Opra1_0_0 , Set.singleton Opra1_0_0 )
