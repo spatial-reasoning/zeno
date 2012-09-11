@@ -7,7 +7,7 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Helpful
+import Helpful
 
 
 data Dipole24 = ELLS24 | ERRS24 | ESES24 | LERE24 | LLLL24 | LLLR24
@@ -25,8 +25,7 @@ instance Calculus Dipole24 where
         y = maybeRead $ (++ "24") $ map Char.toUpper x
     showRel = (map Char.toLower) . (take 4) . show
 
-instance BinaryCalculus Dipole24 where
-    bcIdentity = SESE24
+    identity = SESE24
 
     bcConversion = Map.fromList
         [ ( ELLS24 , Set.singleton LSEL24 )

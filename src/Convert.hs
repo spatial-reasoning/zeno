@@ -47,7 +47,7 @@ dipolesToFlipFlops net@Network { nCons = cons }
   where
     newCons = Map.foldrWithKey
         (\nodes rel mapAcc -> foldl
-            (\acc (nodes2, rel2) -> tcInsert nodes2 (Set.singleton rel2) acc)
+            (\acc (nodes2, rel2) -> insertCon nodes2 (Set.singleton rel2) acc)
             mapAcc $
             dipoleToFlipFlop nodes rel
         )

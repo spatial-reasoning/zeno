@@ -33,7 +33,6 @@ instance Calculus FlipFlop where
     cBaserelationsArealList = [L, R]
 
 
-instance TernaryCalculus FlipFlop where
     tcInvMap = Map.fromList
         [ (L, Set.singleton R)
         , (R, Set.singleton L)
@@ -94,7 +93,7 @@ ffsToFF5s net@Network { nCons = cons } = do
         | rel == E  = ensureSamenessOf b c $ ensureUnsamenessOf a b acc
         | rel == D  = ensureSamenessOf a b $ ensureUnsamenessOf b c acc
         | rel == T  = ensureSamenessOf a b acc >>= ensureSamenessOf a c >>= ensureSamenessOf b c
-        | otherwise = Just ( fromJust $ tcInsertAtomic nodes rel consAcc
+        | otherwise = Just ( fromJust $ insertConAtomic nodes rel consAcc
                            , allConsAcc
                            , nodesAcc )
     newMaxNode nodes = (Set.findMax nodes) ++ "eris"
@@ -107,8 +106,8 @@ ffsToFF5s net@Network { nCons = cons } = do
           let
             newNode = newMaxNode nodesAccInter
           in
-            ( fromJust $ tcInsertAtomic [x, y, newNode] L consAccInter
-            , fromJust $ tcInsertAtomic [x, y, newNode] L allConsAccInter
+            ( fromJust $ insertConAtomic [x, y, newNode] L consAccInter
+            , fromJust $ insertConAtomic [x, y, newNode] L allConsAccInter
             , Set.insert newNode nodesAccInter )
         else
             acc
@@ -152,34 +151,35 @@ ffsToFF5s net@Network { nCons = cons } = do
             newNode3 = newNode0 ++ "intimesofboredom"
           in
             ( fromJust $
-              tcInsertAtomic [newNode1, newNode3, y] F consAccInter >>=
-              tcInsertAtomic [newNode1, newNode3, x] F >>=
-              tcInsertAtomic [newNode0, newNode2, y] F >>=
-              tcInsertAtomic [newNode0, newNode2, x] F >>=
-              tcInsertAtomic [newNode0, newNode1, x] L
+              insertConAtomic [newNode1, newNode3, y] F consAccInter >>=
+              insertConAtomic [newNode1, newNode3, x] F >>=
+              insertConAtomic [newNode0, newNode2, y] F >>=
+              insertConAtomic [newNode0, newNode2, x] F >>=
+              insertConAtomic [newNode0, newNode1, x] L
             , fromJust $
-              tcInsertAtomic [newNode1, newNode3, y] F allConsAccInter >>=
-              tcInsertAtomic [newNode1, newNode3, x] F >>=
-              tcInsertAtomic [newNode0, newNode2, y] F >>=
-              tcInsertAtomic [newNode0, newNode2, x] F >>=
-              tcInsertAtomic [newNode0, newNode1, x] L
+              insertConAtomic [newNode1, newNode3, y] F allConsAccInter >>=
+              insertConAtomic [newNode1, newNode3, x] F >>=
+              insertConAtomic [newNode0, newNode2, y] F >>=
+              insertConAtomic [newNode0, newNode2, x] F >>=
+              insertConAtomic [newNode0, newNode1, x] L
             , foldr Set.insert nodesAccInter
                   [newNode0, newNode1, newNode2, newNode3] )
       where
         useDisjointPairOfPairs v w =
           let
             [pair1, pair2] = head $ disjointPairsOfPIR v
-            relPair1v = fromJust $ tcRelOfAtomic allConsAccInter (pair1 ++ [v])
-            relPair2v = fromJust $ tcRelOfAtomic allConsAccInter (pair2 ++ [v])
+            relPair1v = fromJust $ relOfAtomic allConsAccInter (pair1 ++ [v])
+            relPair2v = fromJust $ relOfAtomic allConsAccInter (pair2 ++ [v])
           in
             ite (elem w (pair1 ++ pair2)) Nothing $ do
+                newConsAccInter <- 
+                    insertConAtomic (pair1 ++ [w]) relPair1v consAccInter >>=
+                    insertConAtomic (pair2 ++ [w]) relPair2v
                 newAllConsAccInter <- 
-                    tcInsertAtomic (pair1 ++ [w]) relPair1v allConsAccInter >>=
-                    tcInsertAtomic (pair2 ++ [w]) relPair2v
+                    insertConAtomic (pair1 ++ [w]) relPair1v allConsAccInter >>=
+                    insertConAtomic (pair2 ++ [w]) relPair2v
                 return $
-                    ( fromJust $
-                      tcInsertAtomic (pair1 ++ [w]) relPair1v consAccInter >>=
-                      tcInsertAtomic (pair2 ++ [w]) relPair2v
+                    ( newConsAccInter
                     , newAllConsAccInter
                     , nodesAccInter )
         oneInlinePairIn pairs v w =
@@ -190,13 +190,13 @@ ffsToFF5s net@Network { nCons = cons } = do
             newNode2 = newNode ++ "mygoddess"
             nonInlineNode' = filter
                 ( \node -> (node /= w) && elem
-                      (tcRelOfAtomic allConsAccInter $ pair ++ [node])
+                      (relOfAtomic allConsAccInter $ pair ++ [node])
                       [Just L, Just R]
                 ) (Set.toAscList nodesAccInter)
             nonInlineNode = head nonInlineNode'
-            addConForW = tcInsertAtomic
+            addConForW = insertConAtomic
                 (pair ++ [w])
-                (fromJust $ tcRelOfAtomic allConsAccInter $ pair ++ [v])
+                (fromJust $ relOfAtomic allConsAccInter $ pair ++ [v])
           in
             ite (elem w pair) Nothing $ do
             newAll <- addConForW allConsAccInter
@@ -204,23 +204,23 @@ ffsToFF5s net@Network { nCons = cons } = do
                 if null nonInlineNode' then
                     ( fromJust $
                       addConForW consAccInter >>=
-                      tcInsertAtomic (pair ++ [newNode]) L >>=
-                      tcInsertAtomic [newNode, newNode2, w] F >>=
-                      tcInsertAtomic [newNode, newNode2, v] F
+                      insertConAtomic (pair ++ [newNode]) L >>=
+                      insertConAtomic [newNode, newNode2, w] F >>=
+                      insertConAtomic [newNode, newNode2, v] F
                     , fromJust $
-                      tcInsertAtomic (pair ++ [newNode]) L newAll >>=
-                      tcInsertAtomic [newNode, newNode2, w] F >>=
-                      tcInsertAtomic [newNode, newNode2, v] F
+                      insertConAtomic (pair ++ [newNode]) L newAll >>=
+                      insertConAtomic [newNode, newNode2, w] F >>=
+                      insertConAtomic [newNode, newNode2, v] F
                     , Set.insert newNode2 $
                       Set.insert newNode nodesAccInter )
                 else
                     ( fromJust $
                       addConForW consAccInter >>=
-                      tcInsertAtomic [newNode, nonInlineNode, w] F >>=
-                      tcInsertAtomic [newNode, nonInlineNode, v] F
+                      insertConAtomic [newNode, nonInlineNode, w] F >>=
+                      insertConAtomic [newNode, nonInlineNode, v] F
                     , fromJust $
-                      tcInsertAtomic [newNode, nonInlineNode, w] F newAll >>=
-                      tcInsertAtomic [newNode, nonInlineNode, v] F
+                      insertConAtomic [newNode, nonInlineNode, w] F newAll >>=
+                      insertConAtomic [newNode, nonInlineNode, v] F
                     , Set.insert newNode nodesAccInter )
         oneNonInlinePairIn pairs v =
           let
@@ -230,15 +230,15 @@ ffsToFF5s net@Network { nCons = cons } = do
           in
             ite (elem v pair) Nothing $ Just
             ( fromJust $
-              tcInsertAtomic [node2, newNode2, y] F consAccInter >>=
-              tcInsertAtomic [node1, newNode1, y] F >>=
-              tcInsertAtomic [node2, newNode2, x] F >>=
-              tcInsertAtomic [node1, newNode1, x] F
+              insertConAtomic [node2, newNode2, y] F consAccInter >>=
+              insertConAtomic [node1, newNode1, y] F >>=
+              insertConAtomic [node2, newNode2, x] F >>=
+              insertConAtomic [node1, newNode1, x] F
             , fromJust $
-              tcInsertAtomic [node2, newNode2, y] F allConsAccInter >>=
-              tcInsertAtomic [node1, newNode1, y] F >>=
-              tcInsertAtomic [node2, newNode2, x] F >>=
-              tcInsertAtomic [node1, newNode1, x] F
+              insertConAtomic [node2, newNode2, y] F allConsAccInter >>=
+              insertConAtomic [node1, newNode1, y] F >>=
+              insertConAtomic [node2, newNode2, x] F >>=
+              insertConAtomic [node1, newNode1, x] F
             , Set.insert newNode2 $ Set.insert newNode1 nodesAccInter )
         disjointPairsOfPIR z = filter
             (\ [pair1, pair2] -> null $ intersect pair1 pair2
@@ -286,10 +286,10 @@ ff5sToFF3s nnnet
     net@Network { nCons = cons } = fromJust nnet
     collectOneCon [a, b, c] rel (consAcc, nodesAcc)
         | rel == L || rel == R  =
-            ( tcInsert [a, b, c] (Set.singleton rel) consAcc
+            ( insertCon [a, b, c] (Set.singleton rel) consAcc
             , nodesAcc )
         | rel == B  =
-            ( foldl (flip $ uncurry tcInsert) consAcc
+            ( foldl (flip $ uncurry insertCon) consAcc
                 ( [ ([a, b, c], Set.singleton I)
                   , ([a, b, d], Set.singleton $ flipper L)
                   , ([d, a, c], Set.singleton $ flipper R) ]
@@ -301,7 +301,7 @@ ff5sToFF3s nnnet
                 )
             , newNodesAcc )
         | rel == I  =
-            ( foldl (flip $ uncurry tcInsert) consAcc
+            ( foldl (flip $ uncurry insertCon) consAcc
                 ( [ ([a, b, c], Set.singleton I)
                   , ([a, b, d], Set.singleton $ flipper L)
                   , ([d, a, c], Set.singleton $ flipper L)
@@ -315,7 +315,7 @@ ff5sToFF3s nnnet
             , newNodesAcc
             )
         | rel == F  =
-            ( foldl (flip $ uncurry tcInsert) consAcc
+            ( foldl (flip $ uncurry insertCon) consAcc
                 ( [ ([a, b, c], Set.singleton I)
                   , ([a, b, d], Set.singleton $ flipper L)
                   , ([d, b, c], Set.singleton $flipper L) ]
@@ -335,14 +335,14 @@ ff5sToFF3s nnnet
             | otherwise     = (newD                 , id   , True)
         leftD = Set.minView $ Set.filter
             (\node ->
-                tcRelOf
+                relOf
                     (Map.union (Map.map Set.singleton cons) consAcc)
                     [a, b, node]
                 == (Just $ Set.singleton L)
             ) nodesAcc
         rightD = Set.minView $ Set.filter
             (\node ->
-                tcRelOf
+                relOf
                     (Map.union (Map.map Set.singleton cons) consAcc)
                     [a, b, node]
                 == (Just $ Set.singleton R)
@@ -357,30 +357,30 @@ ff5sToFF3s nnnet
         inlineNodes = Set.fold (\x pairAcc -> Set.fold (\y pairAcc2 ->
             if
                  (x /= y)
-              && (    (    tcRelOfAtomic cons [a, b, x] == Just B
-                        && (    (    tcRelOfAtomic cons [a, b, y] == Just B
-                                  && tcRelOfAtomic cons [x, y, a] == Just F
-                                  && tcRelOfAtomic cons [x, y, b] == Just F )
+              && (    (    relOfAtomic cons [a, b, x] == Just B
+                        && (    (    relOfAtomic cons [a, b, y] == Just B
+                                  && relOfAtomic cons [x, y, a] == Just F
+                                  && relOfAtomic cons [x, y, b] == Just F )
                              || y == a
-                             || tcRelOfAtomic cons [a, b, y] == Just I
+                             || relOfAtomic cons [a, b, y] == Just I
                              || y == b
-                             || tcRelOfAtomic cons [a, b, y] == Just F ))
+                             || relOfAtomic cons [a, b, y] == Just F ))
                    || (    x == a
-                        && (    tcRelOfAtomic cons [a, b, y] == Just I
+                        && (    relOfAtomic cons [a, b, y] == Just I
 --                             || y == b
-                             || tcRelOfAtomic cons [a, b, y] == Just F ))
-                   || (    tcRelOfAtomic cons [a, b, x] == Just I
-                        && (    (    tcRelOfAtomic cons [a, b, y] == Just I
-                                  && tcRelOfAtomic cons [x, y, a] == Just B
-                                  && tcRelOfAtomic cons [x, y, b] == Just F )
+                             || relOfAtomic cons [a, b, y] == Just F ))
+                   || (    relOfAtomic cons [a, b, x] == Just I
+                        && (    (    relOfAtomic cons [a, b, y] == Just I
+                                  && relOfAtomic cons [x, y, a] == Just B
+                                  && relOfAtomic cons [x, y, b] == Just F )
                              || y == b
-                             || tcRelOfAtomic cons [a, b, y] == Just F ))
+                             || relOfAtomic cons [a, b, y] == Just F ))
                    || (    x == b
-                        && tcRelOfAtomic cons [a, b, y] == Just F )
-                   || (    tcRelOfAtomic cons [a, b, x] == Just F
-                        && tcRelOfAtomic cons [a, b, y] == Just F
-                        && tcRelOfAtomic cons [x, y, a] == Just B
-                        && tcRelOfAtomic cons [x, y, b] == Just B ))
+                        && relOfAtomic cons [a, b, y] == Just F )
+                   || (    relOfAtomic cons [a, b, x] == Just F
+                        && relOfAtomic cons [a, b, y] == Just F
+                        && relOfAtomic cons [x, y, a] == Just B
+                        && relOfAtomic cons [x, y, b] == Just B ))
             then
                 ([x, y, d], Set.singleton $ flipper L):pairAcc2
             else

@@ -54,87 +54,58 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
 
     sparqifyRel :: a -> String
     sparqifyRel = showRel
-    
+
     gqrifyRel :: a -> String
     gqrifyRel = showRel
 
-
--- This was a try to implement a general way to handle constraint networks.
---
---    conversions :: [( [b] -> [b] , Map.Map a (Set.Set a) )]
---
---    convert :: Map.Map a (Set.Set a) -> Set.Set a -> Set.Set a
---    convert conv = Set.fold Set.union Set.empty . Set.map ((Map.!) conv)
---
---    relOf :: (Ord b) => Map.Map [b] (Set.Set a) -> [b] -> Maybe (Set.Set a)
---    relOf cons nodes = maybe conved Just $ Map.lookup nodes cons where
---        conved = listToMaybe $ Map.foldrWithKey
---            (\k rel acc -> acc ++ foldl
---                (\acc2 (f, c) -> if f k == nodes then
---                                     acc2 ++ [convert c rel]
---                                 else
---                                     acc2
---                ) [] conversions
---            ) [] cons
---
---    insertCon :: (Ord b)
---              => [b]
---              -> a
---              -> Map.Map [b] (Set.Set a)
---              -> Map.Map [b] (Set.Set a)
---    insertCon nodes rel cons
---        | isNothing relInCons  = Map.insert nodes rel cons
---        | otherwise  = 
---      where
---        relInCons = relOf cons nodes
+    identity      :: a
 
 
-class (Calculus a) => BinaryCalculus a where
-    bcIdentity      :: a
-
+    -- binary calculi:
     bcConversion    :: Map.Map a (Set.Set a)
+    bcConversion    = Map.empty
+
     bcComposition   :: Map.Map (a, a) (Set.Set a)
+    bcComposition   = Map.empty
 
     bcConvert       :: Set.Set a -> Set.Set a
     bcCompose       :: Set.Set a -> Set.Set a -> Set.Set a
 
-    bcConvert = Set.fold Set.union Set.empty . Set.map ((Map.!) bcConversion)
+    bcConvert set =
+      let
+        theRank = rank $ Set.findMin $ Set.insert minBound set
+      in
+        if theRank == 2 then
+            Set.foldr Set.union Set.empty $ Set.map ((Map.!) bcConversion) set
+        else
+            error $ "bcConvert is not defined for calculi of rank " ++
+                    show theRank ++ "!"
 
-    bcCompose set1 set2 = Set.fold Set.union Set.empty $ Set.map
-        (\x -> Set.fold Set.union Set.empty $ Set.map
-            (\y -> bcComposition Map.! (x, y))
-            set2
-        ) set1
-
-    bcRelOf :: (Ord a, Ord b)
-            => Map.Map [b] (Set.Set a) -> [b] -> Maybe (Set.Set a)
-    bcRelOf cons pair
-        | isNothing sortedRel  = Nothing
-        | pair == sortedPair  = sortedRel
-        | otherwise  = liftM bcConvert sortedRel
-      where
-        sortedPair = sort pair
-        sortedRel  = Map.lookup sortedPair cons
-
-    bcInsert :: (Ord b)
-             => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
-             -> Map.Map [b] (Set.Set a)
-    bcInsert pair rel cons
-        | isNothing relInCons  = Map.insert sortedPair sortedRel cons
-        | otherwise  = Map.insert
-            sortedPair (Set.intersection sortedRel $ fromJust relInCons) cons
-      where
-        relInCons = Map.lookup sortedPair cons
-        sortedPair = sort pair
-        sortedRel
-            | sortedPair == pair  = rel
-            | otherwise           = bcConvert rel
+    bcCompose set1 set2 =
+      let
+        theRank = rank $ Set.findMin $ Set.insert minBound set1
+      in
+        if theRank == 2 then
+            Set.foldr Set.union Set.empty $ Set.map
+                (\x -> Set.fold Set.union Set.empty $ Set.map
+                    (\y -> bcComposition Map.! (x, y))
+                    set2
+                ) set1
+        else
+            error $ "bcCompose is not defined for calculi of rank " ++
+                    show theRank ++ "!"
 
 
-class (Calculus a) => TernaryCalculus a where
+    -- ternary calculi:
     tcInvMap :: Map.Map a (Set.Set a)
+    tcInvMap = Map.empty
+
     tcScMap  :: Map.Map a (Set.Set a)
+    tcScMap  = Map.empty
+
     tcHomMap :: Map.Map a (Set.Set a)
+    tcHomMap = Map.empty
+
 
     tcInv  :: Set.Set a -> Set.Set a
     tcSc   :: Set.Set a -> Set.Set a
@@ -142,114 +113,144 @@ class (Calculus a) => TernaryCalculus a where
     tcHom  :: Set.Set a -> Set.Set a
     tcHomi :: Set.Set a -> Set.Set a
 
-    tcInv  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcInvMap)
-    tcSc   = Set.fold Set.union Set.empty . Set.map ((Map.!) tcScMap)
-    tcHom  = Set.fold Set.union Set.empty . Set.map ((Map.!) tcHomMap)
+    tcInv set =
+      let
+        theRank = rank $ Set.findMin $ Set.insert minBound set
+      in
+        if theRank == 3 then
+            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcInvMap) set
+        else
+            error $ "tcInv is not defined for calculi of rank " ++
+                    show theRank ++ "!"
+    tcSc set =
+      let
+        theRank = rank $ Set.findMin $ Set.insert minBound set
+      in
+        if theRank == 3 then
+            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcScMap) set
+        else
+            error $ "tcInv is not defined for calculi of rank " ++
+                    show theRank ++ "!"
+    tcHom set =
+      let
+        theRank = rank $ Set.findMin $ Set.insert minBound set
+      in
+        if theRank == 3 then
+            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcHomMap) set
+        else
+            error $ "tcInv is not defined for calculi of rank " ++
+                    show theRank ++ "!"
     tcSci  = tcInv . tcSc
     tcHomi = tcInv . tcHom
 
-    -- TODO: Should this be here?
-    -- | Extracts the relation between the given nodes from a given network,
-    -- even if only given implicitly by means of Invers, ShortCut and Homing.
-    tcRelOf :: (Ord a, Ord b)
-            => Map.Map [b] (Set.Set a) -> [b] -> Maybe (Set.Set a)
-    tcRelOf cons triple
-        | isNothing sortedRel  = Nothing
-        | triple == sortedTriple  = sortedRel
-        | triple == tcTripleInv  sortedTriple  = liftM tcInv  sortedRel
-        | triple == tcTripleSc   sortedTriple  = liftM tcSc   sortedRel
-        | triple == tcTripleSci  sortedTriple  = liftM tcSci  sortedRel
-        | triple == tcTripleHom  sortedTriple  = liftM tcHom  sortedRel
-        | triple == tcTripleHomi sortedTriple  = liftM tcHomi sortedRel
-      where
-        sortedTriple = sort triple
-        sortedRel = Map.lookup sortedTriple cons
 
-    -- TODO: Should this be here?
-    -- | Extracts the relation between the given nodes from a given network,
-    -- even if only given implicitly by means of Invers, ShortCut and Homing.
-    tcRelOfAtomic :: (Ord a, Ord b) => Map.Map [b] a -> [b] -> Maybe a
-    tcRelOfAtomic cons triple
-        | isNothing sortedRel  = Nothing
-        | triple == sortedTriple  = sortedRel
-        | triple == tcTripleInv  sortedTriple  = unsortRelWith tcInv
-        | triple == tcTripleSc   sortedTriple  = unsortRelWith tcSc
-        | triple == tcTripleSci  sortedTriple  = unsortRelWith tcSci
-        | triple == tcTripleHom  sortedTriple  = unsortRelWith tcHom
-        | triple == tcTripleHomi sortedTriple  = unsortRelWith tcHomi
-      where
-        sortedTriple = sort triple
-        sortedRel  = Map.lookup sortedTriple cons
-        unsortRelWith f
-            | Set.size unsortedRel > 1  = Nothing
-            | otherwise  = Just $ Set.findMin unsortedRel
-          where
-            unsortedRel = f $ Set.singleton $ fromJust sortedRel
+-- fixme: should we return Nothing in case of an empty relation?
+insertCon :: (Calculus a, Ord b)
+          => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
+          -> Map.Map [b] (Set.Set a)
+insertCon nodes rel cons
+    | isNothing relInCons  = Map.insert sortedNodes sortedRel cons
+    | otherwise  = Map.insert
+        sortedNodes (Set.intersection sortedRel $ fromJust relInCons) cons
+  where
+    relInCons = Map.lookup sortedNodes cons
+    sortedNodes = sort nodes
+    sortedRel = sortRel (length nodes) rel
+    sortRel 2 | sortedNodes == nodes      = id
+              | otherwise                 = bcConvert
+    sortRel 3 | sortedNodes == nodes              = id
+              | sortedNodes == tcNodesInv  nodes  = tcInv
+              | sortedNodes == tcNodesSc   nodes  = tcSc
+              | sortedNodes == tcNodesSci  nodes  = tcSci
+              | sortedNodes == tcNodesHom  nodes  = tcHom
+              | sortedNodes == tcNodesHomi nodes  = tcHomi
 
-    -- TODO: Should this be here?
-    tcInsert :: (Ord b)
-             => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
-             -> Map.Map [b] (Set.Set a)
-    tcInsert triple rel cons
-        | isNothing relInCons  = Map.insert sortedTriple sortedRel cons
-        | otherwise  = Map.insert
-            sortedTriple (Set.intersection sortedRel $ fromJust relInCons) cons
-      where
-        relInCons = Map.lookup sortedTriple cons
-        sortedTriple = sort triple
-        sortedRel
-            | sortedTriple == triple               = rel
-            | sortedTriple == tcTripleInv  triple  = tcInv  rel
-            | sortedTriple == tcTripleSc   triple  = tcSc   rel
-            | sortedTriple == tcTripleSci  triple  = tcSci  rel
-            | sortedTriple == tcTripleHom  triple  = tcHom  rel
-            | sortedTriple == tcTripleHomi triple  = tcHomi rel
+insertConAtomic :: (Calculus a, Ord b)
+                => [b] -> a -> Map.Map [b] a
+                -> Maybe (Map.Map [b] a)
+insertConAtomic nodes rel cons
+    | Set.null sortedRel'      = Nothing
+    | Set.size sortedRel' > 1  = error $
+        "insertAtomicCon: " ++ show sortedRel' ++ " is not atomic!"
+    | isNothing relInCons  = Just $ Map.insert sortedNodes sortedRel cons
+    | fromJust relInCons /= sortedRel  = Nothing
+    | otherwise  = Just cons
+  where
+    relInCons = Map.lookup sortedNodes cons
+    sortedNodes = sort nodes
+    sortedRel = Set.findMin sortedRel'
+    sortedRel' = sortRel (length nodes) (Set.singleton rel)
+    sortRel 2 | sortedNodes == nodes      = id
+              | otherwise                 = bcConvert
+    sortRel 3 | sortedNodes == nodes              = id
+              | sortedNodes == tcNodesInv  nodes  = tcInv
+              | sortedNodes == tcNodesSc   nodes  = tcSc
+              | sortedNodes == tcNodesSci  nodes  = tcSci
+              | sortedNodes == tcNodesHom  nodes  = tcHom
+              | sortedNodes == tcNodesHomi nodes  = tcHomi
 
-    tcInsertAtomic :: (Ord b)
-                   => [b] -> a -> Map.Map [b] a
-                   -> Maybe (Map.Map [b] a)
-    tcInsertAtomic triple rel cons
-        | Set.null sortedRel'      = Nothing
-        | Set.size sortedRel' > 1  = error $ "tcInsert: " ++ show sortedRel'
-                                                          ++ " is not atomic!"
-        | isNothing relInCons  = Just $ Map.insert sortedTriple sortedRel cons
-        | fromJust relInCons /= sortedRel  = Nothing
-        | otherwise  = Just cons
-      where
-        relInCons = Map.lookup sortedTriple cons
-        sortedTriple = sort triple
-        sortedRel = Set.findMin sortedRel'
-        sortedRel'
-            | sortedTriple == triple               = relSet
-            | sortedTriple == tcTripleInv  triple  = tcInv  relSet
-            | sortedTriple == tcTripleSc   triple  = tcSc   relSet
-            | sortedTriple == tcTripleSci  triple  = tcSci  relSet
-            | sortedTriple == tcTripleHom  triple  = tcHom  relSet
-            | sortedTriple == tcTripleHomi triple  = tcHomi relSet
-        relSet = Set.singleton rel
+relOf :: (Calculus a, Ord b)
+      => Map.Map [b] (Set.Set a) -> [b]
+      -> Maybe (Set.Set a)
+relOf cons nodes = do
+    sortedRel <- Map.lookup sortedNodes cons
+    let unsortRel 2 | nodes == sortedNodes  = id
+                    | otherwise             = bcConvert
+    let unsortRel 3 | nodes == sortedNodes              = id
+                    | nodes == tcNodesInv  sortedNodes  = tcInv
+                    | nodes == tcNodesSc   sortedNodes  = tcSc
+                    | nodes == tcNodesSci  sortedNodes  = tcSci
+                    | nodes == tcNodesHom  sortedNodes  = tcHom
+                    | nodes == tcNodesHomi sortedNodes  = tcHomi
+    return $ unsortRel (length nodes) sortedRel
+  where
+    sortedNodes = sort nodes
+
+relOfAtomic :: (Calculus a, Ord b)
+            => Map.Map [b] a -> [b]
+            -> Maybe a
+relOfAtomic cons nodes = do
+    sortedRel <- Map.lookup sortedNodes cons
+    let unsortRel 2 | nodes == sortedNodes  = id
+                    | otherwise             = bcConvert
+    let unsortRel 3 | nodes == sortedNodes              = id
+                    | nodes == tcNodesInv  sortedNodes  = tcInv
+                    | nodes == tcNodesSc   sortedNodes  = tcSc
+                    | nodes == tcNodesSci  sortedNodes  = tcSci
+                    | nodes == tcNodesHom  sortedNodes  = tcHom
+                    | nodes == tcNodesHomi sortedNodes  = tcHomi
+    let unsortedRel = unsortRel (length nodes) (Set.singleton sortedRel)
+    -- fixme: what about a possiple empty set? Is Nothing the appropriate
+    -- answer in this case?
+    if Set.size unsortedRel > 1 then
+        Nothing
+    else
+        Just $ Set.findMin unsortedRel
+  where
+    sortedNodes = sort nodes
 
 
-tcTripleInv  :: [b] -> [b]
-tcTripleSc   :: [b] -> [b]
-tcTripleSci  :: [b] -> [b]
-tcTripleHom  :: [b] -> [b]
-tcTripleHomi :: [b] -> [b]
-tcTripleInv  [a, b, c] = [b, a, c]
-tcTripleSc   [a, b, c] = [a, c, b]
-tcTripleSci  [a, b, c] = [c, a, b]
-tcTripleHom  [a, b, c] = [b, c, a]
-tcTripleHomi [a, b, c] = [c, b, a]
+tcNodesInv  :: [b] -> [b]
+tcNodesSc   :: [b] -> [b]
+tcNodesSci  :: [b] -> [b]
+tcNodesHom  :: [b] -> [b]
+tcNodesHomi :: [b] -> [b]
+tcNodesInv  [a, b, c] = [b, a, c]
+tcNodesSc   [a, b, c] = [a, c, b]
+tcNodesSci  [a, b, c] = [c, a, b]
+tcNodesHom  [a, b, c] = [b, c, a]
+tcNodesHomi [a, b, c] = [c, b, a]
 
-tcTripleInvInv  :: [b] -> [b]
-tcTripleScInv   :: [b] -> [b]
-tcTripleSciInv  :: [b] -> [b]
-tcTripleHomInv  :: [b] -> [b]
-tcTripleHomiInv :: [b] -> [b]
-tcTripleInvInv  [b, a, c] = [a, b, c]
-tcTripleScInv   [a, c, b] = [a, b, c]
-tcTripleSciInv  [c, a, b] = [a, b, c]
-tcTripleHomInv  [b, c, a] = [a, b, c]
-tcTripleHomiInv [c, b, a] = [a, b, c]
+tcNodesInvInv  :: [b] -> [b]
+tcNodesScInv   :: [b] -> [b]
+tcNodesSciInv  :: [b] -> [b]
+tcNodesHomInv  :: [b] -> [b]
+tcNodesHomiInv :: [b] -> [b]
+tcNodesInvInv  [b, a, c] = [a, b, c]
+tcNodesScInv   [a, c, b] = [a, b, c]
+tcNodesSciInv  [c, a, b] = [a, b, c]
+tcNodesHomInv  [b, c, a] = [a, b, c]
+tcNodesHomiInv [c, b, a] = [a, b, c]
 
 
 {------------------------------------------------------------------------------

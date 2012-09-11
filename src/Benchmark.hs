@@ -25,7 +25,7 @@ import Helpful
 
 import Debug.Trace
 
-
+-- improve: we should use records instead of tuples!
 type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
     ( Int                      -- number of networks tested so far
     , Ratio Int                -- last used density
@@ -98,6 +98,7 @@ markTheBench batch minsize maxsize testThisManyNets
         let targetDens = targetNumer%denomin
         (net, results) <-
             checkNetwork rank relations funs tymeout numOfNodes targetDens
+        appendFile "BENCHMARK.NETS" $ show net ++ "\n"
         let actualDens = targetDens
         saveSpecialNet
             net results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer
@@ -107,7 +108,6 @@ markTheBench batch minsize maxsize testThisManyNets
         let newBench = addToBench
                 bench numOfNodes targetDens actualDens net results
         writeFile "BENCHMARK.COLLECTION" $ show newBench
-        appendFile "BENCHMARK.NETS" $ show net ++ "\n"
         appendFile "BENCHMARK.ANSWERS" $ show results ++ "\n"
         markTheBench batch minsize maxsize testThisManyNets
                      funs tymeout rank relations dens newBench
@@ -224,7 +224,7 @@ addToBench bench numOfNodes targetDens actualDens net results =
 checkNetwork rank relations funs tymeout size dens = do
     net <- randomConnectedAtomicNetworkWithDensity rank
                                                    relations size dens
---    putStrLn $ showAtomicNet net  -- DEBUGGING
+    appendFile "BENCHMARK.NETS2" $ show net ++ "\n"
     results <- sequence $ map
                   (\(desc, fun) -> do
                       res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
@@ -381,8 +381,63 @@ showAnswer (Just (Just True))  = " + "
 showAnswer (Just Nothing)      = " o "
 showAnswer Nothing             = " x "
 
+-- Analyze the benchmark ------------------------------------------------------
+
+plotInconsistenciesPerSizeAndMethod bench = do
+    writeFile "plot.dat" plotData
+    writeFile "plot.p" plotScript
+    safeReadProcess "gnuplot" ["-p", "plot.p"] ""
+  where
+    refinedBench = answersPerSizeAndMethod bench
+    allMethods = Map.foldr
+        (\ (_, _, _, _, v) acc ->
+            Set.union acc $ Map.keysSet v
+        ) Set.empty refinedBench
+    plotData = Set.foldl
+            (\ acc x -> acc ++ "  \"" ++ x ++ "\""
+            ) "\"#Nodes\"" allMethods ++
+        "\n" ++ Map.foldrWithKey
+            (\ k (_, _, _, _, v) acc -> (++ "\n" ++ acc) $
+                show k ++ "    " ++ Set.foldr
+                    (\ method acc2 -> (++ acc2) $
+                        maybe "-" (\ (x, _, _, _, _, _) -> show x)
+                                  (Map.lookup method v)
+                        ++ "    "
+                    ) "" allMethods
+            ) "" refinedBench
+    plotScript =
+        "set output 'plot.pdf'\n" ++
+        "set terminal pdf monochrome dashed\n" ++
+        "#set grid\n" ++
+        "#set xlabel 'Angle,\\n in degrees'\n" ++
+        "#set ylabel 'sin(angle)'\n" ++
+        "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
+            (\ n ->
+                "     'plot.dat' using 1:" ++ show n ++
+                " title column with linespoints"
+            ) [2..Set.size allMethods + 1]
+        ) ++ "\n"
+
+answersPerSizeAndMethod bench = Map.map
+    (\ (_, _, m) -> collectOverAllDensities m)
+    bench
+
+collectOverAllDensities m = Map.fold getFromOneDens (0, 0, 0, 0, Map.empty) m
+
+getFromOneDens (v,w,x,y,m) (acc, acc2, acc3, acc4, acc5) =
+    ( acc + v, acc2 + w, acc3 + x, acc4 + y
+    , Map.unionWith joinTwoMethodMaps m acc5 )
+
+joinTwoMethodMaps (a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) =
+    ( a1 + a2, b1 + b2, c1 + c2, d1 + d2
+    , Map.unionWith (+) e1 e2
+    , f1 + f2 )
+
+-- Analyze the benchmark (old version) ----------------------------------------
+
 analyze bench = do
-    let (b,v,w,x,y,summaryMap, str') = Map.foldrWithKey analyze' (0,0,0,0,0,Map.empty, "") bench
+    let (b,v,w,x,y,summaryMap, str') = Map.foldrWithKey
+            analyze' (0,0,0,0,0,Map.empty, "") bench
     let str = "\nSUMMARY:\n\n"
             ++ "Networks total = " ++ show b ++ "\n\n"
             ++ "All methods together:\n #No, #Yes, #Undecided, #Timeout =\n "
@@ -390,7 +445,6 @@ analyze bench = do
             ++ Map.foldrWithKey showMethod "" summaryMap ++ "\n"
             ++ replicate 70 '-' ++ "\n" ++ str' 
     writeFile "BENCHMARK.RESULTS" str
---    putStrLn $ str ++ "\nResults saved to 'BENCHMARK.RESULTS'\n"
     putStrLn "\nResults saved to 'BENCHMARK.RESULTS'\n"
 
 analyze' a (b,c,d) (accB, accV, accW, accX, accY, acc, acc2) =
@@ -409,18 +463,5 @@ analyze' a (b,c,d) (accB, accV, accW, accX, accY, acc, acc2) =
 
 showMethod k (v,w,x,y,_,z) acc = k
     ++ ":\n #No, #Yes, #Undecided, #Timeout, Average Time (seconds) =\n "
-    ++ (intercalate ", " $ map show [v,w,x,y]) ++ ", " ++ showFFloat (Just 3) z "" ++ "\n\n"
-    ++ acc
-
-collectOverAllDensities m = Map.fold getFromOneDens (0, 0, 0, 0, Map.empty) m
-
-getFromOneDens (v,w,x,y,m) (acc, acc2, acc3, acc4, acc5) =
-    ( acc + v, acc2 + w, acc3 + x, acc4 + y
-    , Map.unionWith joinTwoMethodMaps m acc5
-    )
-
-joinTwoMethodMaps (a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) =
-    ( a1 + a2, b1 + b2, c1 + c2, d1 + d2
-    , Map.unionWith (+) e1 e2
-    , f1 + f2
-    )
+    ++ (intercalate ", " $ map show [v,w,x,y]) ++ ", "
+    ++ showFFloat (Just 3) z "" ++ "\n\n" ++ acc

@@ -87,7 +87,9 @@ parseNetwork = do
     parseWhiteSpace
     char ')'
     parseWhiteSpace
-    return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
+    return eNetwork { nCons = foldl (\ acc (x, y) ->
+                                        insertCon x (Set.map readRel y) acc
+                                    ) Map.empty cons
                     , nDesc = fromMaybe (nDesc eNetwork) desc
                     , nCalc = fromMaybe (nCalc eNetwork) calc
                     , nNumOfNodes = numOfNodes }

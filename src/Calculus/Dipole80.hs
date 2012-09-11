@@ -7,7 +7,7 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Calculus.Helpful
+import Helpful
 
 
 data Dipole80 = BBBB80  | BBFF80  | BEIE80  | BFII80  | BIIF80  | BLRR80
@@ -48,8 +48,7 @@ instance Calculus Dipole80 where
             b = take (length b' - 2) b'
             lowerA = map Char.toLower a
 
-instance BinaryCalculus Dipole80 where
-    bcIdentity = SESE80
+    identity = SESE80
 
     bcConversion = Map.fromList
         [ ( BBBB80  , Set.singleton BBBB80  )

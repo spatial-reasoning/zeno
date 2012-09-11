@@ -12,7 +12,8 @@ import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
 import Convert
 
-import Debug.Trace
+--import Helpful
+--import Debug.Trace
 
 
 isAcyclicChirotopeFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool

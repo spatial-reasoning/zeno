@@ -78,7 +78,11 @@ parseNetwork = do
     (numOfNodes, desc, calc) <- parseInfo
     parseWhiteSpace
     cons <- many1 parseConstraint
-    return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
+      -- fixme: does not respect the ordering restriction on cons.
+--    return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
+    return eNetwork { nCons = foldl (\ acc (x, y) ->
+                                        insertCon x (Set.map readRel y) acc
+                                    ) Map.empty cons
                     , nDesc = desc
                     , nCalc = calc
                     , nNumOfNodes = Just numOfNodes }
@@ -89,5 +93,6 @@ loadNetwork filename = do
     case network of
         Left error -> do
             fail $ "parse error in " ++ filename ++ " at " ++ show(error)
-        Right success -> return success
+        Right success ->
+            return success
 
