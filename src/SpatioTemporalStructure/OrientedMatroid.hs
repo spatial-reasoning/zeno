@@ -94,13 +94,16 @@ isAcyclicChirotope :: Map.Map [Int] Int
 isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
-    | not $ isAcyclic (Map.toList m) m  = False
+    | (not $ satisfiesThirdAxiom (Map.toAscList m) m) ||
+      (not $ isAcyclic onlySortedInitialCons m)    = False
     | otherwise  =
         isAcyclicChirotope_worker missingPermutsWithParities [] m
   where
     keys = Map.keys m
     rank = length $ head keys
-    domain = nub $ concat keys
+    domain = Set.toAscList $ Set.fromList $ concat keys
+    onlySortedInitialCons = --fixme: we should get this from the initial network instead of reproducing it here.
+        Map.toAscList $ Map.filterWithKey (\ k v -> H.isSorted k) m
 --    combis = H.kCombinations (rank + 1) domain
     missingPermutsWithParities = map
         (H.kPermutationsWithParity rank)
@@ -143,21 +146,24 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                             foldl (flip $ uncurry Map.insert) wM newConstraints
                     ) [(-1), 0, 1]
         | otherwise  = False
+    -- here we check whether the chirotope axiom B2' from
+    -- "A. Björner et al: Oriented Matroids, 2nd ed., page 128"
+    -- is fulfilled.
     satisfiesThirdAxiom newCons m =
       let
         nonzeroNewCons = filter (\(_,x) -> x /= 0 ) newCons
         nonzeroM = Map.filter (/= 0) m
       in
         ( foldl
-            (\acc (nodes@(x:tailNodes), rel) -> (acc &&) $ Map.foldrWithKey
+            (\ acc (nodes@(x:tailNodes), rel) -> (acc &&) $ Map.foldrWithKey
                 (\nodes2 rel2 acc2 -> (acc2 &&) $
                     or [ case applyMap (y:tailNodes) m of
                            Nothing -> True
                            Just 0 ->  False
                            Just rel3 -> case applyMap (lefty ++ x:righty) m of
-                               Nothing -> True
-                               Just 0 -> False
-                               Just rel4 -> rel * rel2 == rel3 * rel4
+                               Nothing    -> True
+                               Just 0     -> False
+                               Just rel4  -> rel * rel2 == rel3 * rel4
                        | y <- nodes2
                        , let (lefty, _:righty) = break (== y) nodes2
                        ]
@@ -172,9 +178,9 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                             Nothing -> True
                             Just 0 ->  False
                             Just rel3 -> case applyMap (lefty ++ x:righty) m of
-                                Nothing -> True
-                                Just 0 -> False
-                                Just rel4 -> rel * rel2 == rel3 * rel4
+                                Nothing    -> True
+                                Just 0     -> False
+                                Just rel4  -> rel * rel2 == rel3 * rel4
                         | y <- nodes2
                         , let (lefty, _:righty) = break (== y) nodes2
                         ]
@@ -225,23 +231,33 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
 --            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
 --            Map.lookup (delete x z) m
 --        ) z
--- Faster version only testing the newly inserted triples :
+    -- Faster version only testing the newly inserted triples :
+    -- See "Ralf Gugish: A Construction of Isomorphism Classes of Oriented
+    --                   Matroids, in Algorithmic Algebraic Combinatorics and
+    --                   Gröbner Bases, p. 236"
     isAcyclic newCons m = {-# SCC "isAcyclic" #-}
       let
-        positiveCircuitOf z = filter
+        positiveCircuitElemsOf z = filter
             (\x -> maybe True
                 (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
                 Map.lookup (delete x z) m
             ) z
-        negativeCircuitOf z = filter
+        negativeCircuitElemsOf z = filter
             (\x -> maybe True
                 (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
                 Map.lookup (delete x z) m
             ) z
+                               -- /- fixme: is x sorted? No it isn't !
         combis = [ insert y x | (x,_) <- newCons, y <- domain, not $ elem y x ]
-        circuits = [ (positiveCircuitOf c, negativeCircuitOf c) | c <- combis ]
+        circuits = [ (positiveCircuitElemsOf c, negativeCircuitElemsOf c)
+                   | c <- combis ]
       in
         not $ any (\(x,y) -> ( null x && not (null y) )
+                          --fixme: is it right to include the negative circuits
+                          --       here? I did it because the indian tent
+                          --       configuration gave either a negative or a
+                          --       positive circuit depending on the
+                          --       orientation of the tent.
                           || ( null y && not (null x) )
                   ) circuits
 

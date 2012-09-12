@@ -87,18 +87,18 @@ flipflopsToChirotope :: Network [String] FlipFlop
 flipflopsToChirotope net
     | isNothing net5 || isNothing net3  = Nothing
     | otherwise  = Just $ (fromJust net3)
-        { nCons = fst $ Map.foldrWithKey
+        { nCons = fst $ Map.foldlWithKey
                                 collectOneCon
                                 (Map.empty, Map.empty)
                                 cons
         }
     where
-        collectOneCon nodes rel (consAcc, mapAcc) =
+        collectOneCon (consAcc, mapAcc) nodes rel =
             let
                 (newMap, convertedNodes) = mapAccumL
                     (\ m node -> let mappedNode = Map.lookup node m in
                         case mappedNode of
-                            Nothing   -> let n = Map.size m in
+                            Nothing   -> let n = (Map.size m) + 1 in
                                          (Map.insert node n m, n)
                             otherwise -> (m, fromJust mappedNode)
                     )

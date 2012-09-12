@@ -84,24 +84,24 @@ checkNetworks = do
     let dpNets = []
 
     let ffNet1 = allLeft 8
-    ffNet2 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet2 <- loadNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
     let ffNet3 = indianTent 8
-    ffNet4 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/nomatroid.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet5 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet6 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/triskilde_less.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet7 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet8 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet9 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet10 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet11 <- loadTernaryNetwork ("../testsuite/flipflop/inconsistent/tenA.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet12 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet13 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet14 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet15 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
---    ffNet16 <- loadTernaryNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet4 <- loadNetwork ("../testsuite/flipflop/inconsistent/nomatroid.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet5 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet6 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde_less.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet7 <- loadNetwork ("../testsuite/flipflop/inconsistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet8 <- loadNetwork ("../testsuite/flipflop/inconsistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet9 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet10 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet11 <- loadNetwork ("../testsuite/flipflop/inconsistent/tenA.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet12 <- loadNetwork ("../testsuite/flipflop/consistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet13 <- loadNetwork ("../testsuite/flipflop/consistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet14 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
+--    ffNet16 <- loadNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
 
---    ffNet1 <- loadTernaryNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
+--    ffNet1 <- loadNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
 --    let ffNets = [ffNet1]
 
     let ffNets = [ ffNet1

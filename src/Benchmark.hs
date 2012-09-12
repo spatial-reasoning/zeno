@@ -98,7 +98,6 @@ markTheBench batch minsize maxsize testThisManyNets
         let targetDens = targetNumer%denomin
         (net, results) <-
             checkNetwork rank relations funs tymeout numOfNodes targetDens
-        appendFile "BENCHMARK.NETS" $ show net ++ "\n"
         let actualDens = targetDens
         saveSpecialNet
             net results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer
@@ -224,7 +223,7 @@ addToBench bench numOfNodes targetDens actualDens net results =
 checkNetwork rank relations funs tymeout size dens = do
     net <- randomConnectedAtomicNetworkWithDensity rank
                                                    relations size dens
-    appendFile "BENCHMARK.NETS2" $ show net ++ "\n"
+    appendFile "BENCHMARK.NETS" $ show net ++ "\n"
     results <- sequence $ map
                   (\(desc, fun) -> do
                       res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net

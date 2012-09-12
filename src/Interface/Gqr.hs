@@ -26,7 +26,6 @@ algebraicClosure cal net = unsafePerformIO $
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
---    putStrLn $ showNonAtomicNet net   -- DEBUGGING
     gqrAnswer <- safeReadProcess
                      "gqr" (["c -C", cal, "-S", fst gqrTempFile]) ""
     let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
