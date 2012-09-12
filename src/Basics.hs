@@ -58,7 +58,8 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     gqrifyRel :: a -> String
     gqrifyRel = showRel
 
-    identity      :: a
+    identity :: a
+    identity = undefined
 
 
     -- binary calculi:

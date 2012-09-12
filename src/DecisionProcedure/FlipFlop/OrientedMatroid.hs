@@ -12,13 +12,9 @@ import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
 import Convert
 
---import Helpful
---import Debug.Trace
-
 
 isAcyclicChirotopeFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
 isAcyclicChirotopeFlipFlop sloppy net
---    | (isJust chiroNet &&) $ head $ isAcyclicChirotope      -- TWOINONE
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) sloppy =
         if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
@@ -32,7 +28,6 @@ isAcyclicChirotopeFlipFlop sloppy net
 
 isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
 isAcyclicChirotopeWithoutBPFlipFlop sloppy net
---    | (isJust chiroNet &&) $ last $ isAcyclicChirotope          -- TWOINONE
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
         if (numberOfNodes (fromJust chiroNet) < 9) && (not sloppy) then
