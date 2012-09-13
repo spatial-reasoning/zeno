@@ -138,7 +138,7 @@ getVarsFo Fals           = Set.empty
 -- improve: find a better way to preprocess the network.
 translateToAngles :: Network [String] Otop -> Maybe Formula
 translateToAngles net@Network{nCons = cons} = do
-    let allNodes = nodesIn net
+    let allNodes = nodesIn $ nCons net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     ps_u <- Fold.foldlM         -- pairsWithSameness_and_unknownPairs
         (\ (acc, acc2, acc3) pair@[node, node2] ->
@@ -421,7 +421,7 @@ translateToAngles' firstRun
 -- whether a pair lies in a 'SAME' relation or not.
 translateToTriangles :: Bool -> Network [String] Otop -> Maybe Formula
 translateToTriangles useWitnesses net@Network{nCons = cons} = do
-    let allNodes = nodesIn net
+    let allNodes = nodesIn $ nCons net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     -- Fold over all pairs and generate:
     --   1. the map mapping pairs to either True or False depending on whether

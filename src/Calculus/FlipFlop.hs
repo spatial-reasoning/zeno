@@ -82,7 +82,7 @@ ffsToFF5s :: Network [String] FlipFlop
 ffsToFF5s net@Network { nCons = cons } = do
     acc <- Key.foldrWithKeyM
                    checkOneCon
-                   (Map.empty, cons, nodesIn net)
+                   (Map.empty, cons, nodesIn $ nCons net)
                    cons
     let firstOfTriple (x, _, _) = x
     return $ net{ nCons = firstOfTriple acc}
@@ -277,7 +277,7 @@ ff5sToFF3s nnnet
   where
     newCons = fst $ Map.foldrWithKey
                         collectOneCon
-                        (Map.empty, nodesIn net)
+                        (Map.empty, nodesIn $ nCons net)
                         cons
     -- TODO: How to best handle the problem of conversion from atomic to nonatomic and back?
     (consistent, _, aClosedNnnet) = algebraicClosure "ff" $ makeNonAtomic nnnet

@@ -70,7 +70,7 @@ sparqify oneLine net = desc ++ "(" ++ sep1
 
 gqrify :: (Calculus a) => Network [String] (Set.Set a) -> (String, Map.Map Int String)
 gqrify net =
-    ( show ((Set.size $ nodesIn net) - 1)
+    ( show ((Set.size $ nodesIn $ nCons net) - 1)
         ++ " # description = " ++ nDesc net ++ "\n"
         ++ unlines [" " ++ (concat $ intersperse " " $ map show x) ++ " ( "
                         ++ (concat $ intersperse " " $
