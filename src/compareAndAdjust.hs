@@ -154,11 +154,14 @@ allBaseRels = concat
 helperForCalculus str = case map Char.toUpper str of
     "DIPOLE-72" -> Calc (Set.findMin cBaserelations :: Dipole72)
     "FLIPFLOP"  -> Calc (Set.findMin cBaserelations :: FlipFlop)
+    "FF"        -> Calc (Set.findMin cBaserelations :: FlipFlop)
     "OPRA-1"    -> Calc (Set.findMin cBaserelations :: Opra1   )
     "OPRA-4"    -> Calc (Set.findMin cBaserelations :: Opra4   )
     "OPRA-8"    -> Calc (Set.findMin cBaserelations :: Opra8   )
     "OPRA-10"   -> Calc (Set.findMin cBaserelations :: Opra10  )
     "OPRA-16"   -> Calc (Set.findMin cBaserelations :: Opra16  )
+    otherwise   -> error $
+        "Sorry, i don't know about the calculus \"" ++ str ++ "\""
 
 main = do
     hSetBuffering stdout NoBuffering

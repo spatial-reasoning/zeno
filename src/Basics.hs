@@ -172,7 +172,7 @@ insertConAtomic :: (Calculus a, Ord b)
 insertConAtomic nodes rel cons
     | Set.null sortedRel'      = Nothing
     | Set.size sortedRel' > 1  = error $
-        "insertAtomicCon: " ++ show sortedRel' ++ " is not atomic!"
+        "insertConAtomic: " ++ show sortedRel' ++ " is not atomic!"
     | isNothing relInCons  = Just $ Map.insert sortedNodes sortedRel cons
     | fromJust relInCons /= sortedRel  = Nothing
     | otherwise  = Just cons

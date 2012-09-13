@@ -12,6 +12,7 @@ import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
 import Convert
 
+import Helpful
 
 isAcyclicChirotopeFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
 isAcyclicChirotopeFlipFlop sloppy net
