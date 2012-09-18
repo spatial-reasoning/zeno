@@ -14,11 +14,11 @@ import Convert
 
 import Helpful
 
-isAcyclicChirotopeFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
-isAcyclicChirotopeFlipFlop sloppy net
+isAcyclicChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeFlipFlop net
     | (isJust chiroNet &&) $ isAcyclicChirotope
-        (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) sloppy =
-        if (numberOfNodes (nCons $ fromJust chiroNet) < 9) && (not sloppy) then
+        (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) =
+        if (numberOfNodes (nCons $ fromJust chiroNet) < 9) then
             Just True
         else
             Nothing
@@ -27,11 +27,11 @@ isAcyclicChirotopeFlipFlop sloppy net
     chiroNet = flipflopsToChirotope net
 
 
-isAcyclicChirotopeWithoutBPFlipFlop :: Bool -> Network [String] FlipFlop -> Maybe Bool
-isAcyclicChirotopeWithoutBPFlipFlop sloppy net
+isAcyclicChirotopeWithoutBPFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeWithoutBPFlipFlop net
     | (isJust chiroNet &&) $ isAcyclicChirotope
-        (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial sloppy =
-        if (numberOfNodes (nCons $ fromJust chiroNet) < 9) && (not sloppy) then
+        (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial =
+        if (numberOfNodes (nCons $ fromJust chiroNet) < 9) then
             Just True
         else
             Nothing

@@ -90,19 +90,16 @@ isAcyclicChirotope :: Map.Map [Int] Int
                    -> [Int]
                    -> Bool
                   )-> Bool
-                   -> Bool
-isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
+isAcyclicChirotope m f
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
-    | (not $ satisfiesThirdAxiom (Map.keys m) m nodesInM) ||
-      (not $ isAcyclic onlySortedInitialConsTuples m)    = False
     | otherwise  =
-        isAcyclicChirotope_worker missingPermutsWithParities [] m nodesInM
+        isAcyclicChirotope_worker missingPermutsWithParities (Map.keys m) m nodesInM
   where
     keys = Map.keys m
     rank = length $ head keys
     domain = Set.toAscList $ Set.fromList $ concat keys
-    --fixme: we should get this from the initial network instead of reproducing it here.
+    -- improve: we should get this from the initial network instead of reproducing it here.
     onlySortedInitialConsTuples = filter H.isSorted $ Map.keys m
     nodesInM = nodesIn m
 --    combis = H.kCombinations (rank + 1) domain
@@ -117,8 +114,9 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
         else
             Map.lookup k m
     isAcyclicChirotope_worker missingPwPs newTuples wM nodesInwM
-        | satisfiesThirdAxiom newTuples wM nodesInwM &&
-          ( onlyTestTheGivenMapForAcyclicity || isAcyclic (take 1 newTuples) wM )
+--        | satisfiesGrassmannPluecker wM &&
+        | satisfiesThirdAxiom wM &&
+          isAcyclic (take 1 newTuples) wM
            =
             if missingPwPs == [] then
                 -- here we can add a function to run on all full
@@ -146,22 +144,39 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
 
                     ) [(-1), 0, 1]
         | otherwise  = False
+    grassmannCombis = foldl
+        (\ acc x -> (acc ++) $ map (x ++) $ H.kCombinations 4 (domain \\ x)
+        ) [] (H.kCombinations (rank - 2) domain)
+    -- Testing the Grassmann-Pluecker condition is much faster than the third
+    -- axiom mentioned below, because the later also tests whether the keys in
+    -- the map are a matroid. But this is taken for granted here.
+    satisfiesGrassmannPluecker m =
+        and [ (\y -> (elem (-1) y && elem 1 y) || y == [0,0,0])
+                [ (Map.!) m (x ++ [a,b]) * (Map.!) m (x ++ [c,d])
+                , (Map.!) m (x ++ [a,c]) * (Map.!) m (x ++ [b,d]) * (-1)
+                , (Map.!) m (x ++ [a,d]) * (Map.!) m (x ++ [b,c])
+                ]
+            | xy <- grassmannCombis
+            , let (x,[a,b,c,d]) = splitAt (rank - 2) xy
+            -- filter the ones in the map.
+                -- fixme: Here we could also drop
+                -- those triples, that have been tested in the last
+                -- backtracking step!
+            , Map.member (x ++ [a,b]) m
+            , Map.member (x ++ [c,d]) m
+            , Map.member (x ++ [a,c]) m
+            , Map.member (x ++ [b,d]) m
+            , Map.member (x ++ [a,d]) m
+            , Map.member (x ++ [c,b]) m
+            ]
     -- here we check whether the chirotope axiom B2' from
     -- "A. Björner et al: Oriented Matroids, 2nd ed., page 128"
     -- is fulfilled.
-    satisfiesThirdAxiom newTuples m nodesInwM =
+    satisfiesThirdAxiom m =
       let
-        -- improve: maybe this part could be improved, look over it.
+        -- improve: can we make use of the newly introduced constraints in
+        -- order to reduce the number of tuples to test in this step?
         tuplePairs = H.kPermutations 2 $ Map.keys $ Map.filter (/= 0) m
-        tuplePairsToTest =
-            [ [tuple1, tuple2]
-            | [tuple1@(x:tailTuple1), tuple2] <- tuplePairs
-            , not $ null $ intersect newTuples $ intercalate []
-                [ [y:tailTuple1, lefty ++ x:righty]
-                | y <- tuple2
-                , let (lefty, _:righty) = break (== y) tuple2
-                ]
-            ]
       in
         and [ or
                 [ case applyMap (y:tailTuple1) m of
@@ -174,55 +189,10 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                 | y <- tuple2
                 , let (lefty, _:righty) = break (== y) tuple2
                 ]
-            | [tuple1@(x:tailTuple1), tuple2] <- tuplePairsToTest
+            | [tuple1@(x:tailTuple1), tuple2] <- tuplePairs
             , let rel1 = fromJust $ applyMap tuple1 m
             , let rel2 = fromJust $ applyMap tuple2 m
             ]
-    -- TODO: Can we just generate those quadruples of which a corresponding
-    -- triple has been added in the last backtracking step?
--- Complicated repaired version:
---    isAcyclic m = not $ any (\[x,y] -> (null x && (not $ null y))
---                                    || (null y && (not $ null x))
---                            ) $ circuits m
---    circuits m = map fst $ mapMaybe
---        (\combi ->
---          let
---            subCombis = [ ( delete node combi
---                          , ( node, fromJust $ elemIndex node combi )
---                          )
---                        | node <- combi ]
---          in
---            maybe Nothing
---              (Just . foldl
---                    (\([posAcc, negAcc], (subCombi, (node, index)):rSubCombis) rel ->
---                        case (-1)^index * rel of
---                            (-1) -> ([node:posAcc, negAcc], rSubCombis)
---                            1    -> ([posAcc, node:negAcc], rSubCombis)
---                            0    -> ([posAcc, negAcc], rSubCombis)
---                            _    -> error $ "This is not a chirotope!" ++
---                                            show m
---                    ) ([[],[]] , subCombis)
---               ) $ mapM (flip Map.lookup m) $ map fst subCombis
---        ) $ H.kCombinations (rank + 1) domain
----- Simple repaired version:
---    isAcyclic m =
---      let
---        circuits = [ (positiveCircuitOf x m, negativeCircuitOf x m) | x <- combis ] 
---      in
---        not $ any (\(x,y) -> ( null x && not (null y) )
---                          || ( null y && not (null x) )
---                  ) circuits
---    positiveCircuitOf z m = filter
---        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
---            Map.lookup (delete x z) m
---        ) z
---    negativeCircuitOf z m = filter
---        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
---            Map.lookup (delete x z) m
---        ) z
-    -- Faster version only testing the newly inserted triples :
     -- See "Ralf Gugish: A Construction of Isomorphism Classes of Oriented
     --                   Matroids, in Algorithmic Algebraic Combinatorics and
     --                   Gröbner Bases, p. 236"

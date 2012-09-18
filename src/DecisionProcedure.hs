@@ -45,15 +45,9 @@ algebraicReasoning str =
 triangleConsistencyFlipFlop =
     ( "TC", T.checkConsistency)
 
-chirotopeSloppy =
-    ( "OM s", isAcyclicChirotopeFlipFlop True)
-
-biquadraticFinalPolynomialsSloppy =
-    ( "BFP s", isAcyclicChirotopeWithoutBPFlipFlop True)
-
 chirotope =
-    ( "OM e", isAcyclicChirotopeFlipFlop False)
+    ( "OM e", isAcyclicChirotopeFlipFlop)
 
 biquadraticFinalPolynomials =
-    ( "BFP e", isAcyclicChirotopeWithoutBPFlipFlop False)
+    ( "BFP e", isAcyclicChirotopeWithoutBPFlipFlop)
 

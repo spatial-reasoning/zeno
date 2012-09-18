@@ -4,6 +4,7 @@ module Calculus.FlipFlop where
 import qualified Data.Char as Char
 import qualified Data.Key as Key
 import Data.List
+import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
@@ -99,7 +100,10 @@ ffsToFF5s net@Network { nCons = cons } = do
                                 , allConsAcc
                                 , nodesAcc ))
                           Nothing
-    newMaxNode nodes = (Set.findMax nodes) ++ "_i_scream"
+    newMaxNode nodes = ("eris_" ++) $ maybe "1" (show . (+ 1) . fst) $
+        Set.maxView $ Set.map
+            (read . drop 5 :: String -> Int) $
+            Set.filter (("eris_" ==) . take 5) nodes
     ensureUnsamenessOf x y acc@(consAccInter, allConsAccInter, nodesAccInter) =
       Just $
         if
@@ -125,14 +129,21 @@ ffsToFF5s net@Network { nCons = cons } = do
         consAcc
     nodesMap = Map.foldlWithKey buildNodesMap Map.empty cons
     buildNodesMap mapAcc nodes@[a, b, c] rel
-        | rel == S = Map.insert c (applyMap mapAcc a) mapAcc
-        | rel == E = Map.insert c (applyMap mapAcc b) mapAcc
-        | rel == D = Map.insert b (applyMap mapAcc a) mapAcc
-        | rel == T = let
-                          eris = Map.insert b (applyMap mapAcc a) mapAcc
-                      in
-                      Map.insert c (applyMap eris a) $ eris
+        | rel == S = insertNodeMap c a mapAcc
+        | rel == E = insertNodeMap c b mapAcc
+        | rel == D = insertNodeMap b a mapAcc
+        | rel == T = let eris = insertNodeMap b a mapAcc in
+                     insertNodeMap c a eris
         | otherwise = mapAcc
+    insertNodeMap node node2 m = case Map.lookup node m of
+        Nothing    -> Map.insert node (applyMap m node2) m
+        Just node3 ->
+          let
+            [n2, n3] = sort [applyMap m node2, node3]
+            nodesToBeMapped = (Map.keys $ Map.filter (== n3) m)
+                              ++ [node, node3]
+          in
+            foldl (\ acc x -> Map.insert x n2 acc) m nodesToBeMapped
     applyMap m node = Map.findWithDefault node node m
         
 
@@ -147,63 +158,55 @@ bifToI x = x
 -- network.
 ff5sToFF3s :: Network [String] FlipFlop
            -> Maybe (Network [String] FlipFlop)
-ff5sToFF3s nnnet
-    | consistent == Just False || isNothing nnet
-                               || elem Set.empty (Map.elems newCons)  = Nothing
-    | otherwise  = Just $ makeAtomic $ net { nCons = newCons }
-  where
-    newCons = fst $ Map.foldrWithKey
+ff5sToFF3s net@Network{ nCons = cons } = do
+    (newCons, _) <- Key.foldrWithKeyM
                         collectOneCon
                         (Map.empty, nodesIn $ nCons net)
                         cons
+    Just net{ nCons = newCons }
+  where
     -- TODO: How to best handle the problem of conversion from atomic to nonatomic and back?
-    (consistent, _, aClosedNnnet) = algebraicClosure "ff" $ makeNonAtomic nnnet
-    nnet = ffsToFF5s $ makeAtomic $ aClosedNnnet
---        { nCons = Map.map (Set.map bifToI) $ nCons aClosedNnnet }    -- Why the heck did i write this?
-    net@Network { nCons = cons } = fromJust nnet
     collectOneCon [a, b, c] rel (consAcc, nodesAcc)
-        | rel == L || rel == R  =
-            ( insertCon [a, b, c] (Set.singleton rel) consAcc
-            , nodesAcc )
-        | rel == B  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, a, c], Set.singleton $ flipper R) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc )
-        | rel == I  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, a, c], Set.singleton $ flipper L)
-                  , ([d, b, c], Set.singleton $ flipper R) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc
-            )
-        | rel == F  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, b, c], Set.singleton $flipper L) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc
-            )
+        | rel == L || rel == R  = do
+            maybeConsAcc <- insertConAtomic [a, b, c] rel consAcc
+            Just (maybeConsAcc, nodesAcc)
+        | rel == B  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, a, c], flipper R)
+                                ] ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
+        | rel == I  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, a, c], flipper L)
+                                , ([d, b, c], flipper R) ]
+                                ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
+        | rel == F  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, b, c], flipper L) ]
+                                ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
       where
         newNodesAcc = Set.insert d nodesAcc
         (d, flipper, new)
@@ -212,17 +215,11 @@ ff5sToFF3s nnnet
             | otherwise     = (newD                 , id   , True)
         leftD = Set.minView $ Set.filter
             (\node ->
-                relOf
-                    (Map.union (Map.map Set.singleton cons) consAcc)
-                    [a, b, node]
-                == (Just $ Set.singleton L)
+                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just L
             ) nodesAcc
         rightD = Set.minView $ Set.filter
             (\node ->
-                relOf
-                    (Map.union (Map.map Set.singleton cons) consAcc)
-                    [a, b, node]
-                == (Just $ Set.singleton R)
+                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just R
             ) nodesAcc
         -- if we could generalize the generation of newD we wouldn't be
         -- restricted to Strings as the type of the nodes.
@@ -231,7 +228,8 @@ ff5sToFF3s nnnet
             Set.map
                 (read . drop 5 :: String -> Int) $
                 Set.filter (("eris_" ==) . take 5) nodesAcc
-        inlineNodes = Set.fold (\x pairAcc -> Set.fold (\y pairAcc2 ->
+        inlineNodes = Set.fold (\x pairAcc -> Set.fold
+          (\y pairAcc2 ->
             if
                  (x /= y)
               && (    (    relOfAtomic cons [a, b, x] == Just B
@@ -259,8 +257,8 @@ ff5sToFF3s nnnet
                         && relOfAtomic cons [x, y, a] == Just B
                         && relOfAtomic cons [x, y, b] == Just B ))
             then
-                ([x, y, d], Set.singleton $ flipper L):pairAcc2
+                ([x, y, d], flipper L):pairAcc2
             else
                 pairAcc2
-            ) pairAcc nodesAcc ) [] nodesAcc
+          ) pairAcc nodesAcc ) [] nodesAcc
 
