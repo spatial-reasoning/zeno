@@ -114,10 +114,7 @@ isAcyclicChirotope m f
         else
             Map.lookup k m
     isAcyclicChirotope_worker missingPwPs newTuples wM nodesInwM
---        | satisfiesGrassmannPluecker wM &&
-        | satisfiesThirdAxiom wM &&
-          isAcyclic (take 1 newTuples) wM
-           =
+        | satisfiesThirdAxiom wM && isAcyclic (take 1 newTuples) wM =
             if missingPwPs == [] then
                 -- here we can add a function to run on all full
                 -- chirotopes, e.g. the function "is_realizable" !
@@ -144,34 +141,11 @@ isAcyclicChirotope m f
 
                     ) [(-1), 0, 1]
         | otherwise  = False
-    grassmannCombis = foldl
-        (\ acc x -> (acc ++) $ map (x ++) $ H.kCombinations 4 (domain \\ x)
-        ) [] (H.kCombinations (rank - 2) domain)
-    -- Testing the Grassmann-Pluecker condition is much faster than the third
-    -- axiom mentioned below, because the later also tests whether the keys in
-    -- the map are a matroid. But this is taken for granted here.
-    satisfiesGrassmannPluecker m =
-        and [ (\y -> (elem (-1) y && elem 1 y) || y == [0,0,0])
-                [ (Map.!) m (x ++ [a,b]) * (Map.!) m (x ++ [c,d])
-                , (Map.!) m (x ++ [a,c]) * (Map.!) m (x ++ [b,d]) * (-1)
-                , (Map.!) m (x ++ [a,d]) * (Map.!) m (x ++ [b,c])
-                ]
-            | xy <- grassmannCombis
-            , let (x,[a,b,c,d]) = splitAt (rank - 2) xy
-            -- filter the ones in the map.
-                -- fixme: Here we could also drop
-                -- those triples, that have been tested in the last
-                -- backtracking step!
-            , Map.member (x ++ [a,b]) m
-            , Map.member (x ++ [c,d]) m
-            , Map.member (x ++ [a,c]) m
-            , Map.member (x ++ [b,d]) m
-            , Map.member (x ++ [a,d]) m
-            , Map.member (x ++ [c,b]) m
-            ]
     -- here we check whether the chirotope axiom B2' from
     -- "A. Björner et al: Oriented Matroids, 2nd ed., page 128"
-    -- is fulfilled.
+    -- is fulfilled. Only checking the Grassmann-Pluecker condition is not
+    -- sufficient since we also have to check, that the absolute value of the
+    -- mapping is a matroid.
     satisfiesThirdAxiom m =
       let
         -- improve: can we make use of the newly introduced constraints in

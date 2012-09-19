@@ -382,10 +382,46 @@ showAnswer Nothing             = " x "
 
 -- Analyze the benchmark ------------------------------------------------------
 
+-- here we plot for each network size a graph mapping the density to the
+-- percentage of inconsistent networks found for that density.
+plotPercentageOfInconsistentNetworksPerDensity bench = do
+    writeFile "plotPercentageOfInconsistentNetworksPerDensity.plt" $
+        plotScript ++ plotData
+    safeReadProcess "gnuplot"
+        ["plotPercentageOfInconsistentNetworksPerDensity.plt"] ""
+  where
+    plotData = (++ "\nend") $ ("# \"Density\"  \"Percentage\"" ++) $ drop 2 $
+        Map.foldlWithKey
+            (\ acc numOfNodes (_, _, densMap) -> (acc ++) $
+                "\n" ++ "# # = " ++ show numOfNodes ++ Map.foldlWithKey
+                    (\ acc2 dens (numN, numY, numU, numT, _) -> (acc2 ++)
+                        "\n" ++
+                        (show $ fromRational $ toRational dens) ++ " " ++
+                        ( show $ 100 * fromIntegral numN /
+                                       fromIntegral (numN + numY + numU + numT)
+                        )
+                    ) "" densMap
+                ++ "\nend\n"
+            ) "" bench
+    plotScript =
+        "set output 'plotPercentageOfInconsistentNetworksPerDensity.pdf'\n" ++
+        "set terminal pdf monochrome dashed\n" ++
+        "#set grid\n" ++
+        "#set xlabel 'Angle,\\n in degrees'\n" ++
+        "#set ylabel 'sin(angle)'\n" ++
+        "plot " ++
+        ( drop 5 $ intercalate ",\\\n" $ map
+            (\ n ->
+                "     '-' using 1:2 title \"# = " ++
+                (show $ fst $ Map.elemAt n bench) ++ "\" with linespoints"
+            ) [0..Map.size bench - 1]
+        ) ++ "\n"
+
 plotInconsistenciesPerSizeAndMethod bench = do
-    writeFile "plot.dat" plotData
-    writeFile "plot.p" plotScript
-    safeReadProcess "gnuplot" ["-p", "plot.p"] ""
+    writeFile "plotInconsistenciesPerSizeAndMethod.dat" plotData
+    writeFile "plotInconsistenciesPerSizeAndMethod.plt" plotScript
+    safeReadProcess "gnuplot"
+        ["plotInconsistenciesPerSizeAndMethod.plt"] ""
   where
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
@@ -405,14 +441,14 @@ plotInconsistenciesPerSizeAndMethod bench = do
                     ) "" allMethods
             ) "" refinedBench
     plotScript =
-        "set output 'plot.pdf'\n" ++
+        "set output 'plotInconsistenciesPerSizeAndMethod.pdf'\n" ++
         "set terminal pdf monochrome dashed\n" ++
         "#set grid\n" ++
         "#set xlabel 'Angle,\\n in degrees'\n" ++
         "#set ylabel 'sin(angle)'\n" ++
         "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
-                "     'plot.dat' using 1:" ++ show n ++
+                "     'plotInconsistenciesPerSizeAndMethod.dat' using 1:" ++ show n ++
                 " title column with linespoints"
             ) [2..Set.size allMethods + 1]
         ) ++ "\n"

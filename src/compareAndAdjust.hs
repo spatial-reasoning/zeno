@@ -233,4 +233,5 @@ exec rels opts@Options{..} = do
     bench <- markTheBench optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
     analyze bench
     plotInconsistenciesPerSizeAndMethod bench
+    plotPercentageOfInconsistentNetworksPerDensity bench
 

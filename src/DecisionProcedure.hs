@@ -46,8 +46,8 @@ triangleConsistencyFlipFlop =
     ( "TC", T.checkConsistency)
 
 chirotope =
-    ( "OM e", isAcyclicChirotopeFlipFlop)
+    ( "OM", isAcyclicChirotopeFlipFlop)
 
 biquadraticFinalPolynomials =
-    ( "BFP e", isAcyclicChirotopeWithoutBPFlipFlop)
+    ( "OM BFP", isAcyclicChirotopeWithoutBPFlipFlop)
 
