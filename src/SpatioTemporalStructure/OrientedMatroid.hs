@@ -93,14 +93,17 @@ isAcyclicChirotope :: Map.Map [Int] Int
 isAcyclicChirotope m f
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
+    | (not $ satisfiesThirdAxiom m) ||
+                        -- /- improve: we should get this from the initial
+                        -- /- network instead of reproducing it here.
+                        ------------------------------
+      (not $ isAcyclic (filter H.isSorted $ Map.keys m) m)  = False
     | otherwise  =
-        isAcyclicChirotope_worker missingPermutsWithParities (Map.keys m) m nodesInM
+        isAcyclicChirotope_worker missingPermutsWithParities [] m nodesInM
   where
     keys = Map.keys m
     rank = length $ head keys
     domain = Set.toAscList $ Set.fromList $ concat keys
-    -- improve: we should get this from the initial network instead of reproducing it here.
-    onlySortedInitialConsTuples = filter H.isSorted $ Map.keys m
     nodesInM = nodesIn m
 --    combis = H.kCombinations (rank + 1) domain
     missingPermutsWithParities = map
