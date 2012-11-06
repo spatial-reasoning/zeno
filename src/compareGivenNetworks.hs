@@ -11,16 +11,17 @@ import System.IO
 
 -- standard modules
 import Basics
-import Calculus.Dipole80
+import Calculus.Dipole72
 import Calculus.FlipFlop
 import Export
 import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
 import qualified Interface.Triangle as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
+import DecisionProcedure.Dipole72.OrientedMatroid
 import Parsing.Qstrlib
 import Testsuite.FlipFlop
-import Testsuite.Dipole80
+import Testsuite.Dipole72
 import Testsuite.Random
 import Helpful
 
@@ -136,7 +137,7 @@ checkNetworks = do
         "Number of Network:              " ++
         (intercalate "  " $ map show [1..length dpNets + length ffNets]) ++
         "\n"
-{-
+
     start <- getCurrentTime
     putStrLn $ "Algebraic Closure:             " ++ dpAnswers!!0 ++ ffAnswers!!0
     end <- getCurrentTime
@@ -150,55 +151,41 @@ checkNetworks = do
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
-    putStrLn $ "Oriented Matroid Sloppy:       " ++ dpAnswers!!3 ++ ffAnswers!!3
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
-    start <- getCurrentTime
-    putStrLn $ "Biquadratic Polynomial Sloppy: " ++ dpAnswers!!4 ++ ffAnswers!!4
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
-    start <- getCurrentTime
-    putStrLn $ "Oriented Matroid:              " ++ dpAnswers!!5 ++ ffAnswers!!5
+    putStrLn $ "Oriented Matroid:              " ++ dpAnswers!!3 ++ ffAnswers!!3
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
-    putStrLn $ "Biquadratic Polynomial:        " ++ dpAnswers!!6 ++ ffAnswers!!6
+    putStrLn $ "Biquadratic Polynomial:        " ++ dpAnswers!!4 ++ ffAnswers!!4
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
--}
 
+{-
     start <- getCurrentTime
     putStrLn $ "Algebraic Closure:             " ++ ffAnswers!!0
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
---    start <- getCurrentTime
---    putStrLn $ "Algebraic Reasoning:           " ++ ffAnswers!!1
---    end <- getCurrentTime
- --   putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+    start <- getCurrentTime
+    putStrLn $ "Algebraic Reasoning:           " ++ ffAnswers!!1
+    end <- getCurrentTime
+    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
     putStrLn $ "Triangle Consistency:          " ++ ffAnswers!!2
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
-    putStrLn $ "Oriented Matroid Sloppy:       " ++ ffAnswers!!3
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
-    start <- getCurrentTime
-    putStrLn $ "Biquadratic Polynomial Sloppy: " ++ ffAnswers!!4
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
-    start <- getCurrentTime
-    putStrLn $ "Oriented Matroid:              " ++ ffAnswers!!5
+    putStrLn $ "Oriented Matroid:              " ++ ffAnswers!!3
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
-    putStrLn $ "Biquadratic Polynomial:        " ++ ffAnswers!!6
+    putStrLn $ "Biquadratic Polynomial:        " ++ ffAnswers!!4
     end <- getCurrentTime
     putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n\n"
+-}
+
     return ()
 
 
-dpCheckConsistency :: [Network [String] (Set.Set Dipole80)]
+dpCheckConsistency :: [Network [String] (Set.Set Dipole72)]
                    -> [[Maybe Bool]]
 dpCheckConsistency nets = answers
   where
@@ -208,19 +195,15 @@ dpCheckConsistency nets = answers
 --    answers = [sparqAnswersPar, gqrAnswers, triangleAnswers, chirotopeAnswers]
     answers = [ aClosureAnswers
               , aReasoningAnswers
---              , triangleAnswers
---              , chirotopeSloppyAnswers
---              , biquadraticPolynomialSloppyAnswers
---              , chirotopeAnswers
---              , biquadraticPolynomialAnswers
+              , triangleAnswers
+              , chirotopeAnswers
+              , biquadraticPolynomialAnswers
               ]
-    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure "dra-80") nets
-    aReasoningAnswers = map (S.algebraicReasoning "dra-80") nets
-{-    triangleAnswers = map (T.checkConsistencyDipole72 . makeAtomic) nets
-    chirotopeAnswers = map (isAcyclicChirotopeDipole72 False . makeAtomic) nets
-    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPDipole72 False . makeAtomic) nets
-    chirotopeSloppyAnswers = map (isAcyclicChirotopeDipole72 True . makeAtomic) nets
-    biquadraticPolynomialSloppyAnswers = map (isAcyclicChirotopeWithoutBPDipole72 True . makeAtomic) nets
+    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure "dra-72") nets
+    aReasoningAnswers = map (S.algebraicReasoning "dra-72") nets
+    triangleAnswers = map (T.checkConsistencyDipole72 . makeAtomic) nets
+    chirotopeAnswers = map (isAcyclicChirotopeDipole72 . makeAtomic) nets
+    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPDipole72 . makeAtomic) nets
 --    chirotopeAndBiquadraticPolynomialAnswers = map (isAcyclicChirotopePlainAndWithoutBPDipole72 . makeAtomic) nets
 --    [chirotopeAnswers, biquadraticPolynomialAnswers] = transpose chirotopeAndBiquadraticPolynomialAnswers
 
@@ -231,7 +214,7 @@ dpCheckConsistency nets = answers
 --    chirotopeAnswers = parMap rseq (isAcyclicChirotopeDipole72 . makeAtomic) nets
 --    biquadraticPolynomialAnswers = parMap rseq (isAcyclicChirotopeWithoutBPDipole72 . makeAtomic) nets
 
--}
+
 
 ffCheckConsistency :: [Network [String] (Set.Set FlipFlop)]
                    -> [[Maybe Bool]]
@@ -244,18 +227,14 @@ ffCheckConsistency nets = answers
     answers = [ aClosureAnswers
               , aReasoningAnswers
               , triangleAnswers
-              , chirotopeSloppyAnswers
-              , biquadraticPolynomialSloppyAnswers
               , chirotopeAnswers
               , biquadraticPolynomialAnswers
               ]
     aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure "ff") nets
     aReasoningAnswers = map (S.algebraicReasoning "ff") nets
     triangleAnswers = map (T.checkConsistency . makeAtomic) nets
-    chirotopeAnswers = map (isAcyclicChirotopeFlipFlop False . makeAtomic) nets
-    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPFlipFlop False . makeAtomic) nets
-    chirotopeSloppyAnswers = map (isAcyclicChirotopeFlipFlop True . makeAtomic) nets
-    biquadraticPolynomialSloppyAnswers = map (isAcyclicChirotopeWithoutBPFlipFlop True . makeAtomic) nets
+    chirotopeAnswers = map (isAcyclicChirotopeFlipFlop . makeAtomic) nets
+    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPFlipFlop . makeAtomic) nets
 --    chirotopeAndBiquadraticPolynomialAnswers = map (isAcyclicChirotopePlainAndWithoutBPFlipFlop . makeAtomic) nets
 --    [chirotopeAnswers, biquadraticPolynomialAnswers] = transpose chirotopeAndBiquadraticPolynomialAnswers
 

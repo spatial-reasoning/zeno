@@ -4,6 +4,7 @@ module Calculus.FlipFlop where
 import qualified Data.Char as Char
 import qualified Data.Key as Key
 import Data.List
+import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
@@ -80,28 +81,35 @@ fflip I = I
 ffsToFF5s :: Network [String] FlipFlop
           -> Maybe (Network [String] FlipFlop)
 ffsToFF5s net@Network { nCons = cons } = do
-    acc <- Key.foldrWithKeyM
+    consWithSamesIdentified <- consWithSamesIdentifiedMaybe
+    acc <- Key.foldlWithKeyM
                    checkOneCon
-                   (Map.empty, cons, nodesIn net)
-                   cons
+                   (Map.empty, cons, nodesIn $ nCons net)
+                   consWithSamesIdentified
     let firstOfTriple (x, _, _) = x
     return $ net{ nCons = firstOfTriple acc}
   where
-    checkOneCon nodes@[a, b, c] rel acc@(consAcc, allConsAcc, nodesAcc)
+    checkOneCon acc@(consAcc, allConsAcc, nodesAcc) nodes@[a, b, c] rel
         -- Ensure the existence of a witness for the unsame nodes.
-        | rel == S  = ensureSamenessOf a c $ ensureUnsamenessOf a b acc
-        | rel == E  = ensureSamenessOf b c $ ensureUnsamenessOf a b acc
-        | rel == D  = ensureSamenessOf a b $ ensureUnsamenessOf b c acc
-        | rel == T  = ensureSamenessOf a b acc >>= ensureSamenessOf a c >>= ensureSamenessOf b c
-        | otherwise = Just ( fromJust $ insertConAtomic nodes rel consAcc
-                           , allConsAcc
-                           , nodesAcc )
-    newMaxNode nodes = (Set.findMax nodes) ++ "eris"
+        | rel == S  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
+        | rel == E  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
+        | rel == D  = ite (a /= c) (ensureUnsamenessOf b c acc) Nothing
+        | rel == T  = Just acc
+        | otherwise = ite ((a /= b) && (a /= c) && (b /= c))
+                          (Just ( fromJust $ insertConAtomic nodes rel consAcc
+                                , allConsAcc
+                                , nodesAcc ))
+                          Nothing
+    newMaxNode nodes = ("eris_" ++) $ maybe "1" (show . (+ 1) . fst) $
+        Set.maxView $ Set.map
+            (read . drop 5 :: String -> Int) $
+            Set.filter (("eris_" ==) . take 5) nodes
     ensureUnsamenessOf x y acc@(consAccInter, allConsAccInter, nodesAccInter) =
+      Just $
         if
             Map.null $ Map.filterWithKey
                 (isWitnessForUnsamenessOf x y)
-                consAccInter
+                allConsAccInter  --fixme: this should be allConsAccInter, no?
         then
           let
             newNode = newMaxNode nodesAccInter
@@ -113,151 +121,31 @@ ffsToFF5s net@Network { nCons = cons } = do
             acc
     isWitnessForUnsamenessOf x y k v =
         (null $ [x, y] \\ k) && (elem v [L, R, B, I, F])
-    ensureSamenessOf x y acc@(consAccInter, allConsAccInter, nodesAccInter)
-        | Map.size cIx == 1 || Map.size cIy == 1  = Just acc
-            -- x or y is only related this one time: do nothing.
-        | not $ null $ disjointPairsOfPIR x  =
-            -- take the first, check whether their relations to y exist and
-            -- comply:
-            --     non-existent -> add them,
-            --     don't comply -> return Nothing
-            --     comply       -> do nothing,
-            useDisjointPairOfPairs x y
-        | not $ null $ disjointPairsOfPIR y  =
-            -- same as above but with y exchanged by x.
-            useDisjointPairOfPairs y x
-        | not $ null pIRxy  =
-            -- take the first one, look for a non-inline node,
-            -- add a new node and use the later two.
-            oneInlinePairIn pIRxy x y
-        | not $ null pIRx  = -- same as above
-            oneInlinePairIn pIRx x y
-        | not $ null pIRy  = -- same as above
-            oneInlinePairIn pIRy y x
-        | not $ null pNIRx =
-            -- take the first two nodes node1 and node2,
-            -- introduce two new ones newNode1 and newNode2
-            -- and map [node1, newNode1, x/y] and [node2, newNode2, x/y] to F.
-            oneNonInlinePairIn pNIRx y
-        | not $ null pNIRy =  -- same as above.
-            oneNonInlinePairIn pNIRy x
-        | otherwise  = Just $
-            -- introduce four new nodes, since we cannot know whether any
-            -- nodes are collinear or same or not.
+    consWithSamesIdentifiedMaybe =
+        Key.foldlWithKeyM buildConsWithSamesIdentifiedMaybe Map.empty cons
+    buildConsWithSamesIdentifiedMaybe consAcc nodes rel = insertConAtomic
+        (map (applyMap nodesMap) nodes)
+        rel
+        consAcc
+    nodesMap = Map.foldlWithKey buildNodesMap Map.empty cons
+    buildNodesMap mapAcc nodes@[a, b, c] rel
+        | rel == S = insertNodeMap c a mapAcc
+        | rel == E = insertNodeMap c b mapAcc
+        | rel == D = insertNodeMap b a mapAcc
+        | rel == T = let eris = insertNodeMap b a mapAcc in
+                     insertNodeMap c a eris
+        | otherwise = mapAcc
+    insertNodeMap node node2 m = case Map.lookup node m of
+        Nothing    -> Map.insert node (applyMap m node2) m
+        Just node3 ->
           let
-            newNode0 = newMaxNode nodesAccInter
-            newNode1 = newNode0 ++ "mygoddess"
-            newNode2 = newNode0 ++ "standbyme"
-            newNode3 = newNode0 ++ "intimesofboredom"
+            [n2, n3] = sort [applyMap m node2, node3]
+            nodesToBeMapped = (Map.keys $ Map.filter (== n3) m)
+                              ++ [node, node3]
           in
-            ( fromJust $
-              insertConAtomic [newNode1, newNode3, y] F consAccInter >>=
-              insertConAtomic [newNode1, newNode3, x] F >>=
-              insertConAtomic [newNode0, newNode2, y] F >>=
-              insertConAtomic [newNode0, newNode2, x] F >>=
-              insertConAtomic [newNode0, newNode1, x] L
-            , fromJust $
-              insertConAtomic [newNode1, newNode3, y] F allConsAccInter >>=
-              insertConAtomic [newNode1, newNode3, x] F >>=
-              insertConAtomic [newNode0, newNode2, y] F >>=
-              insertConAtomic [newNode0, newNode2, x] F >>=
-              insertConAtomic [newNode0, newNode1, x] L
-            , foldr Set.insert nodesAccInter
-                  [newNode0, newNode1, newNode2, newNode3] )
-      where
-        useDisjointPairOfPairs v w =
-          let
-            [pair1, pair2] = head $ disjointPairsOfPIR v
-            relPair1v = fromJust $ relOfAtomic allConsAccInter (pair1 ++ [v])
-            relPair2v = fromJust $ relOfAtomic allConsAccInter (pair2 ++ [v])
-          in
-            ite (elem w (pair1 ++ pair2)) Nothing $ do
-                newConsAccInter <- 
-                    insertConAtomic (pair1 ++ [w]) relPair1v consAccInter >>=
-                    insertConAtomic (pair2 ++ [w]) relPair2v
-                newAllConsAccInter <- 
-                    insertConAtomic (pair1 ++ [w]) relPair1v allConsAccInter >>=
-                    insertConAtomic (pair2 ++ [w]) relPair2v
-                return $
-                    ( newConsAccInter
-                    , newAllConsAccInter
-                    , nodesAccInter )
-        oneInlinePairIn pairs v w =
-          let
-            pair = head pairs -- improve: we should look for a pair for which
-                              -- there is a nonInlineNode.
-            newNode = newMaxNode nodesAccInter
-            newNode2 = newNode ++ "mygoddess"
-            nonInlineNode' = filter
-                ( \node -> (node /= w) && elem
-                      (relOfAtomic allConsAccInter $ pair ++ [node])
-                      [Just L, Just R]
-                ) (Set.toAscList nodesAccInter)
-            nonInlineNode = head nonInlineNode'
-            addConForW = insertConAtomic
-                (pair ++ [w])
-                (fromJust $ relOfAtomic allConsAccInter $ pair ++ [v])
-          in
-            ite (elem w pair) Nothing $ do
-            newAll <- addConForW allConsAccInter
-            return $
-                if null nonInlineNode' then
-                    ( fromJust $
-                      addConForW consAccInter >>=
-                      insertConAtomic (pair ++ [newNode]) L >>=
-                      insertConAtomic [newNode, newNode2, w] F >>=
-                      insertConAtomic [newNode, newNode2, v] F
-                    , fromJust $
-                      insertConAtomic (pair ++ [newNode]) L newAll >>=
-                      insertConAtomic [newNode, newNode2, w] F >>=
-                      insertConAtomic [newNode, newNode2, v] F
-                    , Set.insert newNode2 $
-                      Set.insert newNode nodesAccInter )
-                else
-                    ( fromJust $
-                      addConForW consAccInter >>=
-                      insertConAtomic [newNode, nonInlineNode, w] F >>=
-                      insertConAtomic [newNode, nonInlineNode, v] F
-                    , fromJust $
-                      insertConAtomic [newNode, nonInlineNode, w] F newAll >>=
-                      insertConAtomic [newNode, nonInlineNode, v] F
-                    , Set.insert newNode nodesAccInter )
-        oneNonInlinePairIn pairs v =
-          let
-            pair@[node1, node2] = head pairs
-            newNode1 = newMaxNode nodesAccInter
-            newNode2 = newNode1 ++ "mygoddess"
-          in
-            ite (elem v pair) Nothing $ Just
-            ( fromJust $
-              insertConAtomic [node2, newNode2, y] F consAccInter >>=
-              insertConAtomic [node1, newNode1, y] F >>=
-              insertConAtomic [node2, newNode2, x] F >>=
-              insertConAtomic [node1, newNode1, x] F
-            , fromJust $
-              insertConAtomic [node2, newNode2, y] F allConsAccInter >>=
-              insertConAtomic [node1, newNode1, y] F >>=
-              insertConAtomic [node2, newNode2, x] F >>=
-              insertConAtomic [node1, newNode1, x] F
-            , Set.insert newNode2 $ Set.insert newNode1 nodesAccInter )
-        disjointPairsOfPIR z = filter
-            (\ [pair1, pair2] -> null $ intersect pair1 pair2
-            ) $ kCombinations 2 $ fst $ pairsInlineAndNotInlineRelatedTo z
-        pIRxy = intersect pIRx pIRy
-        (pIRx, pNIRx) = pairsInlineAndNotInlineRelatedTo x
-        (pIRy, pNIRy) = pairsInlineAndNotInlineRelatedTo y
-        pairsInlineAndNotInlineRelatedTo z = Map.foldrWithKey
-            (\ k v acc@(inlineAcc, notInlineAcc) ->
-                if elem v [B, I, F] then
-                    ((delete z k):inlineAcc, notInlineAcc)
-                else if elem v [L, R] then
-                    (inlineAcc, (delete z k):notInlineAcc)
-                else
-                    acc
-            ) ([], []) (consIncluding z)
-        cIx = consIncluding x
-        cIy = consIncluding y
-        consIncluding z = Map.filterWithKey (\ k v -> elem z k) allConsAccInter
+            foldl (\ acc x -> Map.insert x n2 acc) m nodesToBeMapped
+    applyMap m node = Map.findWithDefault node node m
+        
 
 
 -- Convert Back, Inline and Front to Inline.
@@ -270,82 +158,68 @@ bifToI x = x
 -- network.
 ff5sToFF3s :: Network [String] FlipFlop
            -> Maybe (Network [String] FlipFlop)
-ff5sToFF3s nnnet
-    | consistent == Just False || isNothing nnet
-                               || elem Set.empty (Map.elems newCons)  = Nothing
-    | otherwise  = Just $ makeAtomic $ net { nCons = newCons }
-  where
-    newCons = fst $ Map.foldrWithKey
+ff5sToFF3s net@Network{ nCons = cons } = do
+    (newCons, _) <- Key.foldrWithKeyM
                         collectOneCon
-                        (Map.empty, nodesIn net)
+                        (Map.empty, nodesIn $ nCons net)
                         cons
+    Just net{ nCons = newCons }
+  where
     -- TODO: How to best handle the problem of conversion from atomic to nonatomic and back?
-    (consistent, _, aClosedNnnet) = algebraicClosure "ff" $ makeNonAtomic nnnet
-    nnet = ffsToFF5s $ makeAtomic $ aClosedNnnet
---        { nCons = Map.map (Set.map bifToI) $ nCons aClosedNnnet }    -- Why the heck did i write this?
-    net@Network { nCons = cons } = fromJust nnet
     collectOneCon [a, b, c] rel (consAcc, nodesAcc)
-        | rel == L || rel == R  =
-            ( insertCon [a, b, c] (Set.singleton rel) consAcc
-            , nodesAcc )
-        | rel == B  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, a, c], Set.singleton $ flipper R) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc )
-        | rel == I  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, a, c], Set.singleton $ flipper L)
-                  , ([d, b, c], Set.singleton $ flipper R) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc
-            )
-        | rel == F  =
-            ( foldl (flip $ uncurry insertCon) consAcc
-                ( [ ([a, b, c], Set.singleton I)
-                  , ([a, b, d], Set.singleton $ flipper L)
-                  , ([d, b, c], Set.singleton $flipper L) ]
-                  ++
-                  if new then
-                      inlineNodes
-                  else
-                      []
-                )
-            , newNodesAcc
-            )
+        | rel == L || rel == R  = do
+            maybeConsAcc <- insertConAtomic [a, b, c] rel consAcc
+            Just (maybeConsAcc, nodesAcc)
+        | rel == B  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, a, c], flipper R)
+                                ] ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
+        | rel == I  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, a, c], flipper L)
+                                , ([d, b, c], flipper R) ]
+                                ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
+        | rel == F  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+                                consAcc $
+                                [ ([a, b, c], I)
+                                , ([a, b, d], flipper L)
+                                , ([d, b, c], flipper L) ]
+                                ++
+                                if new then
+                                    inlineNodes
+                                else
+                                    []
+            Just (maybeConsAcc, newNodesAcc)
       where
         newNodesAcc = Set.insert d nodesAcc
         (d, flipper, new)
             | isJust leftD  = (fst $ fromJust leftD , id   , False)
             | isJust rightD = (fst $ fromJust rightD, fflip, False)
-            | otherwise     = (newD                 , id   , True)
+            | otherwise     = (newD                 , id   , True )
         leftD = Set.minView $ Set.filter
             (\node ->
-                relOf
-                    (Map.union (Map.map Set.singleton cons) consAcc)
-                    [a, b, node]
-                == (Just $ Set.singleton L)
+                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just L
             ) nodesAcc
         rightD = Set.minView $ Set.filter
             (\node ->
-                relOf
-                    (Map.union (Map.map Set.singleton cons) consAcc)
-                    [a, b, node]
-                == (Just $ Set.singleton R)
+                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just R
             ) nodesAcc
         -- if we could generalize the generation of newD we wouldn't be
         -- restricted to Strings as the type of the nodes.
@@ -354,7 +228,8 @@ ff5sToFF3s nnnet
             Set.map
                 (read . drop 5 :: String -> Int) $
                 Set.filter (("eris_" ==) . take 5) nodesAcc
-        inlineNodes = Set.fold (\x pairAcc -> Set.fold (\y pairAcc2 ->
+        inlineNodes = Set.fold (\x pairAcc -> Set.fold
+          (\y pairAcc2 ->
             if
                  (x /= y)
               && (    (    relOfAtomic cons [a, b, x] == Just B
@@ -382,8 +257,8 @@ ff5sToFF3s nnnet
                         && relOfAtomic cons [x, y, a] == Just B
                         && relOfAtomic cons [x, y, b] == Just B ))
             then
-                ([x, y, d], Set.singleton $ flipper L):pairAcc2
+                ([x, y, d], flipper L):pairAcc2
             else
                 pairAcc2
-            ) pairAcc nodesAcc ) [] nodesAcc
+          ) pairAcc nodesAcc ) [] nodesAcc
 

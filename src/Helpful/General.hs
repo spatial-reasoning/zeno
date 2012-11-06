@@ -119,7 +119,7 @@ kPermutations k (x:xs) = concatMap (interweave x) (kPermutations (k-1) xs)
                          ++ kPermutations k xs
 
 -- combinations (where the order doesn't matter -- and therefore does...)
-kCombinations :: (Eq a, Num a) => a -> [a1] -> [[a1]]
+kCombinations :: Int -> [a] -> [[a]]
 kCombinations 0 _ = [[]]
 kCombinations _ [] = []
 kCombinations n (x:xs) = map (x:) (kCombinations (n-1) xs)

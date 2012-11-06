@@ -172,7 +172,7 @@ insertConAtomic :: (Calculus a, Ord b)
 insertConAtomic nodes rel cons
     | Set.null sortedRel'      = Nothing
     | Set.size sortedRel' > 1  = error $
-        "insertAtomicCon: " ++ show sortedRel' ++ " is not atomic!"
+        "insertConAtomic: " ++ show sortedRel' ++ " is not atomic!"
     | isNothing relInCons  = Just $ Map.insert sortedNodes sortedRel cons
     | fromJust relInCons /= sortedRel  = Nothing
     | otherwise  = Just cons
@@ -331,11 +331,11 @@ unenumerateFromString enumeration cons =
     Map.mapKeys (map ( (enumeration Map.!) . read )) cons
 
 
-nodesIn :: (Ord a) => Network [a] b -> Set.Set a
+nodesIn :: (Ord a) => Map.Map [a] b -> Set.Set a
 nodesIn = Map.foldrWithKey
-    (\nodes _ acc -> foldr Set.insert acc nodes ) Set.empty . nCons
+    (\nodes _ acc -> foldr Set.insert acc nodes ) Set.empty
 
-numberOfNodes :: (Ord a) => Network [a] b -> Int
+numberOfNodes :: (Ord a) => Map.Map [a] b -> Int
 numberOfNodes = Set.size . nodesIn
 
 -- number of related tuples divided by number of possible tuples.
@@ -345,7 +345,7 @@ density net@Network{nCons = cons}
     | Map.null cons = 0  --fixme: This should be something else.
     | otherwise  = Map.size cons % H.choose size rank
   where
-    size = numberOfNodes net
+    size = numberOfNodes $ nCons net
     rank = length $ fst $ fst $ fromJust minElem
     minElem = Map.minViewWithKey cons
 

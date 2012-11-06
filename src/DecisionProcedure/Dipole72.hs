@@ -23,8 +23,6 @@ instance HasDecisionProcedure Dipole72 where
         [ after makeNonAtomic (algebraicClosure str)
         , after makeNonAtomic (algebraicReasoning str)
         , toFlipFlopsAtomic triangleConsistencyFlipFlop
-        , toFlipFlopsAtomic chirotopeSloppy
-        , toFlipFlopsAtomic biquadraticFinalPolynomialsSloppy
         , toFlipFlopsAtomic chirotope
         , toFlipFlopsAtomic biquadraticFinalPolynomials
         ]

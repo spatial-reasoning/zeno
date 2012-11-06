@@ -9,13 +9,11 @@ import Data.Maybe
 -- local modules
 import Basics
 --import Calculus.Dipole
-import Calculus.FlipFlop
-import Convert
 import qualified Helpful as H
 import Interface.LpSolve
 --import Interface.Clp
 
-import Debug.Trace
+--import Debug.Trace
 
 --type Assignment = Map.Map [Int] Int
 --data Chirotope = Chirotope (Map.Map [Int] Int)
@@ -90,20 +88,21 @@ isAcyclicChirotope :: Map.Map [Int] Int
                    -> [Int]
                    -> Bool
                   )-> Bool
-                   -> Bool
-isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
+isAcyclicChirotope m f
     | null keys  = True
 --    | not $ Map.null $ Map.filter (flip notElem [0,1] . abs) m  =
-    | (not $ satisfiesThirdAxiom (Map.toAscList m) m) ||
-      (not $ isAcyclic onlySortedInitialCons m)    = False
+    | (not $ satisfiesThirdAxiom m) ||
+                        -- /- improve: we should get this from the initial
+                        -- /- network instead of reproducing it here.
+                        ------------------------------
+      (not $ isAcyclic (filter H.isSorted $ Map.keys m) m)  = False
     | otherwise  =
-        isAcyclicChirotope_worker missingPermutsWithParities [] m
+        isAcyclicChirotope_worker missingPermutsWithParities [] m nodesInM
   where
     keys = Map.keys m
     rank = length $ head keys
     domain = Set.toAscList $ Set.fromList $ concat keys
-    onlySortedInitialCons = --fixme: we should get this from the initial network instead of reproducing it here.
-        Map.toAscList $ Map.filterWithKey (\ k v -> H.isSorted k) m
+    nodesInM = nodesIn m
 --    combis = H.kCombinations (rank + 1) domain
     missingPermutsWithParities = map
         (H.kPermutationsWithParity rank)
@@ -115,10 +114,8 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
             Just 0
         else
             Map.lookup k m
-    isAcyclicChirotope_worker missingPwPs newCons wM
-        | satisfiesThirdAxiom newCons wM &&
-          ( onlyTestTheGivenMapForAcyclicity || isAcyclic (take 1 newCons) wM )
-           =
+    isAcyclicChirotope_worker missingPwPs newTuples wM nodesInwM
+        | satisfiesThirdAxiom wM && isAcyclic (take 1 newTuples) wM =
             if missingPwPs == [] then
                 -- here we can add a function to run on all full
                 -- chirotopes, e.g. the function "is_realizable" !
@@ -134,108 +131,47 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                       let
                         newConstraints = [ (y, newSign * z) | (y, z) <- x ]
                       in
-{-                        trace (
-                                "\nassigning " ++ show x ++ " to " ++ show newSign ++ "\n"
-                                ++
-                                "length of missing constraints: " ++ (show $ length stillMissingPwPs) ++
-                                "a\n\n\n" ++ show wM
-                              ) $
--}                        isAcyclicChirotope_worker
+                        isAcyclicChirotope_worker
                             stillMissingPwPs
-                            newConstraints $
-                            foldl (flip $ uncurry Map.insert) wM newConstraints
+                            (map fst newConstraints)
+                            (foldr (uncurry Map.insert)
+                                   wM newConstraints)
+                            (foldr Set.insert
+                                   nodesInwM
+                                   (intercalate [] $ map fst $ take 1 x))
+
                     ) [(-1), 0, 1]
         | otherwise  = False
     -- here we check whether the chirotope axiom B2' from
     -- "A. Björner et al: Oriented Matroids, 2nd ed., page 128"
-    -- is fulfilled.
-    satisfiesThirdAxiom newCons m =
+    -- is fulfilled. Only checking the Grassmann-Pluecker condition is not
+    -- sufficient since we also have to check, that the absolute value of the
+    -- mapping is a matroid.
+    satisfiesThirdAxiom m =
       let
-        nonzeroNewCons = filter (\(_,x) -> x /= 0 ) newCons
-        nonzeroM = Map.filter (/= 0) m
+        -- improve: can we make use of the newly introduced constraints in
+        -- order to reduce the number of tuples to test in this step?
+        tuplePairs = H.kPermutations 2 $ Map.keys $ Map.filter (/= 0) m
       in
-        ( foldl
-            (\ acc (nodes@(x:tailNodes), rel) -> (acc &&) $ Map.foldrWithKey
-                (\nodes2 rel2 acc2 -> (acc2 &&) $
-                    or [ case applyMap (y:tailNodes) m of
-                           Nothing -> True
-                           Just 0 ->  False
-                           Just rel3 -> case applyMap (lefty ++ x:righty) m of
-                               Nothing    -> True
-                               Just 0     -> False
-                               Just rel4  -> rel * rel2 == rel3 * rel4
-                       | y <- nodes2
-                       , let (lefty, _:righty) = break (== y) nodes2
-                       ]
-                ) True nonzeroM
-            ) True nonzeroNewCons
-        ) &&
-        ( Map.foldrWithKey
-            (\nodes@(x:tailNodes) rel acc ->
-                (acc &&) $ foldl
-                    (\acc2 (nodes2, rel2) -> (acc2 &&) $ or
-                        [ case applyMap (y:tailNodes) m of
-                            Nothing -> True
-                            Just 0 ->  False
-                            Just rel3 -> case applyMap (lefty ++ x:righty) m of
-                                Nothing    -> True
-                                Just 0     -> False
-                                Just rel4  -> rel * rel2 == rel3 * rel4
-                        | y <- nodes2
-                        , let (lefty, _:righty) = break (== y) nodes2
-                        ]
-                    ) True nonzeroNewCons
-            ) True nonzeroM
-        )
-    -- TODO: Can we just generate those quadruples of which a corresponding
-    -- triple has been added in the last backtracking step?
--- Complicated repaired version:
---    isAcyclic m = not $ any (\[x,y] -> (null x && (not $ null y))
---                                    || (null y && (not $ null x))
---                            ) $ circuits m
---    circuits m = map fst $ mapMaybe
---        (\combi ->
---          let
---            subCombis = [ ( delete node combi
---                          , ( node, fromJust $ elemIndex node combi )
---                          )
---                        | node <- combi ]
---          in
---            maybe Nothing
---              (Just . foldl
---                    (\([posAcc, negAcc], (subCombi, (node, index)):rSubCombis) rel ->
---                        case (-1)^index * rel of
---                            (-1) -> ([node:posAcc, negAcc], rSubCombis)
---                            1    -> ([posAcc, node:negAcc], rSubCombis)
---                            0    -> ([posAcc, negAcc], rSubCombis)
---                            _    -> error $ "This is not a chirotope!" ++
---                                            show m
---                    ) ([[],[]] , subCombis)
---               ) $ mapM (flip Map.lookup m) $ map fst subCombis
---        ) $ H.kCombinations (rank + 1) domain
----- Simple repaired version:
---    isAcyclic m =
---      let
---        circuits = [ (positiveCircuitOf x m, negativeCircuitOf x m) | x <- combis ] 
---      in
---        not $ any (\(x,y) -> ( null x && not (null y) )
---                          || ( null y && not (null x) )
---                  ) circuits
---    positiveCircuitOf z m = filter
---        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == (-1)) $
---            Map.lookup (delete x z) m
---        ) z
---    negativeCircuitOf z m = filter
---        (\x -> maybe True
---            (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
---            Map.lookup (delete x z) m
---        ) z
-    -- Faster version only testing the newly inserted triples :
+        and [ or
+                [ case applyMap (y:tailTuple1) m of
+                    Nothing    -> True
+                    Just 0     -> False
+                    Just rel3  -> case applyMap (lefty ++ x:righty) m of
+                        Nothing    -> True
+                        Just 0     -> False
+                        Just rel4  -> rel1 * rel2 == rel3 * rel4
+                | y <- tuple2
+                , let (lefty, _:righty) = break (== y) tuple2
+                ]
+            | [tuple1@(x:tailTuple1), tuple2] <- tuplePairs
+            , let rel1 = fromJust $ applyMap tuple1 m
+            , let rel2 = fromJust $ applyMap tuple2 m
+            ]
     -- See "Ralf Gugish: A Construction of Isomorphism Classes of Oriented
     --                   Matroids, in Algorithmic Algebraic Combinatorics and
     --                   Gröbner Bases, p. 236"
-    isAcyclic newCons m = {-# SCC "isAcyclic" #-}
+    isAcyclic newTuples m = {-# SCC "isAcyclic" #-}
       let
         positiveCircuitElemsOf z = filter
             (\x -> maybe True
@@ -247,18 +183,17 @@ isAcyclicChirotope m f onlyTestTheGivenMapForAcyclicity
                 (\y -> (-1)^(fromJust $ elemIndex x z) * y == 1) $
                 Map.lookup (delete x z) m
             ) z
-                               -- /- fixme: is x sorted? No it isn't !
-        combis = [ insert y x | (x,_) <- newCons, y <- domain, not $ elem y x ]
+        combis = [ insert y x | x <- newTuples, y <- domain, not $ elem y x ]
         circuits = [ (positiveCircuitElemsOf c, negativeCircuitElemsOf c)
                    | c <- combis ]
       in
-        not $ any (\(x,y) -> ( null x && not (null y) )
+        not $ any (\(x,y) -> ( null y && not (null x) )
                           --fixme: is it right to include the negative circuits
                           --       here? I did it because the indian tent
                           --       configuration gave either a negative or a
                           --       positive circuit depending on the
                           --       orientation of the tent.
-                          || ( null y && not (null x) )
+                          || ( null x && not (null y) )
                   ) circuits
 
 -- search for a bi-quadratic final polynomial via translation into a

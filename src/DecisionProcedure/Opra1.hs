@@ -28,8 +28,6 @@ instance HasDecisionProcedure Opra1 where
         [ after makeNonAtomic (algebraicClosureGQR str)
         , toFlipFlopsNonAtomic (algebraicReasoning "ff")
         , toFlipFlopsAtomic triangleConsistencyFlipFlop
-        , toFlipFlopsAtomic chirotopeSloppy
-        , toFlipFlopsAtomic biquadraticFinalPolynomialsSloppy
         , toFlipFlopsAtomic chirotope
         , toFlipFlopsAtomic biquadraticFinalPolynomials
         ]

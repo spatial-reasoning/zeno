@@ -1,4 +1,5 @@
 module DecisionProcedure where
+--fixme: split this module!
 
 -- standard modules
 import qualified Data.Set as Set
@@ -8,7 +9,7 @@ import Basics
 import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
 --import qualified Interface.Sparq.Server as SpS
-import qualified Interface.Triangle as T
+import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
 
 class HasDecisionProcedure a where
@@ -27,10 +28,10 @@ after c (a, b) = (a, b . c)
 
 
 algebraicClosureGQR str =
-    ( "AC-GQR", (\(x,_) -> x) . G.algebraicClosure str )
+    ( "BAC-GQR", (\(x,_) -> x) . G.algebraicClosure str )
 
 algebraicClosure str =
-    ( "AC-SparQ", (\(x,_,_) -> x) . S.algebraicClosure str )
+    ( "BAC", (\(x,_,_) -> x) . S.algebraicClosure str )
 
 --algebraicClosureSpS str =
 --    ( "AC", (\(x,_,_) -> x) . SpS.algebraicClosure str )
@@ -45,15 +46,9 @@ algebraicReasoning str =
 triangleConsistencyFlipFlop =
     ( "TC", T.checkConsistency)
 
-chirotopeSloppy =
-    ( "OM s", isAcyclicChirotopeFlipFlop True)
-
-biquadraticFinalPolynomialsSloppy =
-    ( "BFP s", isAcyclicChirotopeWithoutBPFlipFlop True)
-
 chirotope =
-    ( "OM e", isAcyclicChirotopeFlipFlop False)
+    ( "OM", isAcyclicChirotopeFlipFlop)
 
 biquadraticFinalPolynomials =
-    ( "BFP e", isAcyclicChirotopeWithoutBPFlipFlop False)
+    ( "BFP", isAcyclicChirotopeWithoutBPFlipFlop)
 

@@ -38,7 +38,7 @@ opra1ToFlipFlopNet net@Network{ nCons = cons } =
         (\ (pairAcc, inc) node ->
             ( (node, "eris_" ++ show inc):pairAcc
             , inc + 1 )
-        ) ([], 1) $ nodesIn net
+        ) ([], 1) $ nodesIn $ nCons net
     collectOneCon [a, b] rels consAcc =
         Map.insert [b, (Map.!) endpoints b, a] rels2 $
         Map.insert [a, (Map.!) endpoints a, b] rels1 consAcc
