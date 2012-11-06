@@ -21,7 +21,7 @@ import Helpful.Process
 
 -- Debugging and Timing
 --import Data.Time.Clock (diffUTCTime, getCurrentTime)
-import Debug.Trace
+--import Debug.Trace
 
 
 

@@ -212,7 +212,7 @@ ff5sToFF3s net@Network{ nCons = cons } = do
         (d, flipper, new)
             | isJust leftD  = (fst $ fromJust leftD , id   , False)
             | isJust rightD = (fst $ fromJust rightD, fflip, False)
-            | otherwise     = (newD                 , id   , True)
+            | otherwise     = (newD                 , id   , True )
         leftD = Set.minView $ Set.filter
             (\node ->
                 relOfAtomic (Map.union cons consAcc) [a, b, node] == Just L

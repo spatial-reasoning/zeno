@@ -3,12 +3,33 @@ module DecisionProcedure.FlipFlop.TriangleConsistency where
 import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.Map as Map
---import System.Process
 import Data.Maybe
---import Debug.Trace
 
 -- local modules
+import Basics
+import Calculus.FlipFlop
 import Interface.Yices
+
+--import Debug.Trace
+
+checkConsistency :: Network [String] FlipFlop
+                 -> Maybe Bool
+checkConsistency net =
+    ffsToFF5s net >>= (runTCpure . flipFlopsToDominik)
+
+{------------------------------------------------------------------------------
+    FlipFlop to Dominik
+------------------------------------------------------------------------------}
+
+flipFlopsToDominik :: Network [String] FlipFlop -> [Rel]
+flipFlopsToDominik Network { nCons = cons } = Map.foldrWithKey
+    (\ [a, b, c] rel ls -> (Rel a b (showRel rel) c):ls )
+    []
+    (enumerate cons)
+
+-------------------------------------------------------------------------------
+--  Dominiks Stuff:
+-------------------------------------------------------------------------------
 
 type Variable = (Int, Int, Int)
 type Constant = Int

@@ -10,7 +10,8 @@ import Data.Maybe
 import Basics
 import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
-import Convert
+--fixme: split convert into several modules!
+import Convert.LRChirotope
 
 import Helpful
 

@@ -46,6 +46,8 @@ type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
                                -- key is the correct answer given. Only correct
                                -- answers are counted.
             , Double           -- average time (in seconds) needed to check one
+                               -- network, only in case of correct answers
+            , Double           -- average time (in seconds) needed to check one
                                -- network, regardless of success
             )
         )
@@ -107,7 +109,7 @@ markTheBench batch minsize maxsize testThisManyNets
         let newBench = addToBench
                 bench numOfNodes targetDens actualDens net results
         writeFile "BENCHMARK.COLLECTION" $ show newBench
-        appendFile "BENCHMARK.ANSWERS" $ show results ++ "\n"
+        appendFile "BENCHMARK.ANSWERS" $ show (results, numOfNodes, actualDens) ++ "\n"
         markTheBench batch minsize maxsize testThisManyNets
                      funs tymeout rank relations dens newBench
 
@@ -136,7 +138,7 @@ addToBench bench numOfNodes targetDens actualDens net results =
                       , foldl
                           (\acc (desc, (tyme, answer)) ->
                             let
-                              (e, f, g, h, m, oldTyme) =
+                              (e, f, g, h, m, oldTyme, oldTyme2) =
                                   (Map.!) dm desc
                               descIndex =
                                   (1 +) $ fromJust $ elemIndex
@@ -164,11 +166,19 @@ addToBench bench numOfNodes targetDens actualDens net results =
                                   desc
                                   ( nE, nF, nG, nH, nM
                                   , let
-                                      efgh = fromIntegral $
-                                                 e + f + g + h
+                                      ef = fromIntegral $ e + f
                                     in
-                                      (oldTyme * efgh + tyme) /
-                                      (efgh + 1)
+                                      if elem answer
+                                              [ Nothing
+                                              , Just Nothing ]
+                                      then
+                                        oldTyme
+                                      else
+                                        (oldTyme * ef + tyme) / (ef + 1)
+                                  , let
+                                      efgh = fromIntegral $ e + f + g + h
+                                    in
+                                      (oldTyme2 * efgh + tyme) / (efgh + 1)
                                   ) acc
                           ) dm results
                       ) bM
@@ -216,7 +226,7 @@ addToBench bench numOfNodes targetDens actualDens net results =
                             )
                         Nothing -> (0, 0, 0, 1, Map.empty)
                 in
-                ( desc, (e, f, g, h, m, tyme) )
+                ( desc, (e, f, g, h, m, if elem answer [Nothing, Just Nothing] then 0 else tyme, tyme) )
             ) results
         )
 
@@ -341,8 +351,6 @@ showInfo numOfNodes nOfTestedNet targetDens actualDens denomin minNumer =
 --    ++ (printf "%4d" (numerator actualDens :: Int)) ++ " / "
 --    ++ (printf "%4d" (denominator actualDens :: Int)) ++ " │ "
   where
-    --fixme: this needs to take the rank into account:
---    minDens = (numOfNodes - 1) * 2 % (numOfNodes * (numOfNodes + 1))
     minDens = minNumer % denomin
 
 showProcedures results = " │ " ++
@@ -390,7 +398,7 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
     safeReadProcess "gnuplot"
         ["plotPercentageOfInconsistentNetworksPerDensity.plt"] ""
   where
-    plotData = (++ "\nend") $ ("# \"Density\"  \"Percentage\"" ++) $ drop 2 $
+    plotData = ("# \"Density\"  \"Percentage\"" ++) $
         Map.foldlWithKey
             (\ acc numOfNodes (_, _, densMap) -> (acc ++) $
                 "\n" ++ "# # = " ++ show numOfNodes ++ Map.foldlWithKey
@@ -405,23 +413,43 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
             ) "" bench
     plotScript =
         "set output 'plotPercentageOfInconsistentNetworksPerDensity.pdf'\n" ++
-        "set terminal pdf monochrome dashed\n" ++
-        "#set grid\n" ++
-        "#set xlabel 'Angle,\\n in degrees'\n" ++
-        "#set ylabel 'sin(angle)'\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set lmargin at screen 0.09\n" ++
+        "#set bmargin at screen 0.32\n" ++
+        "#set bmargin at screen 0.1\n" ++
+        "#set rmargin at screen 0.2\n" ++
+        "#set tmargin at screen 0.2\n\n" ++
+        "# Line style for grid\n" ++
+        "set style line 81 lt 0              # dashed\n" ++
+        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "set grid back linestyle 81\n" ++
+        "set border 3 back # Remove border on top and right.\n\n"   ++
+        "set xtics 0,0.1,0.6 nomirror\n" ++
+        "set ytics 0,20,100  nomirror\n" ++
+        "#set xtics 0,0.1,0.6\n" ++
+        "#set ytics 0,0.1,0.6\n\n" ++
+        "set xrange [0:0.6]\n" ++
+        "set yrange [0:100]\n\n" ++
+        "#set xlabel \"x axis label\"\n" ++
+        "#set ylabel \"y axis label\"\n\n" ++
+        "#set log x\n" ++
+        "#set mxtics 10    # Makes logscale look good.\n\n" ++
+        "#set key font \",8\"\n" ++
+        "set key bottom center outside horizontal\n\n" ++
         "plot " ++
         ( drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
                 "     '-' using 1:2 title \"# = " ++
                 (show $ fst $ Map.elemAt n bench) ++ "\" with linespoints"
             ) [0..Map.size bench - 1]
-        ) ++ "\n"
+        ) ++ "\n\n"
 
-plotInconsistenciesPerSizeAndMethod bench = do
-    writeFile "plotInconsistenciesPerSizeAndMethod.dat" plotData
-    writeFile "plotInconsistenciesPerSizeAndMethod.plt" plotScript
+plotInconsistenciesPerSizeAndMethodInPercent :: Benchmark -> IO (String)
+plotInconsistenciesPerSizeAndMethodInPercent bench = do
+    writeFile "plotPercentageOfInconsistenciesPerSizeAndMethod.dat" plotData
+    writeFile "plotPercentageOfInconsistenciesPerSizeAndMethod.plt" plotScript
     safeReadProcess "gnuplot"
-        ["plotInconsistenciesPerSizeAndMethod.plt"] ""
+        ["plotPercentageOfInconsistenciesPerSizeAndMethod.plt"] ""
   where
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
@@ -432,26 +460,164 @@ plotInconsistenciesPerSizeAndMethod bench = do
             (\ acc x -> acc ++ "  \"" ++ x ++ "\""
             ) "\"#Nodes\"" allMethods ++
         "\n" ++ Map.foldrWithKey
-            (\ k (_, _, _, _, v) acc -> (++ "\n" ++ acc) $
+            (\ k (totalInconsistent, _, _, _, v) acc -> (++ "\n" ++ acc) $
                 show k ++ "    " ++ Set.foldr
                     (\ method acc2 -> (++ acc2) $
-                        maybe "-" (\ (x, _, _, _, _, _) -> show x)
+--                        -- absolute:
+--                        maybe "-" (\ (x, _, _, _, _, _) -> show x)
+--                      -- relative in percent:
+                        maybe "-" (\ (inconsistent, _, _, _, _, _, _) -> show $
+                                      100 * fromIntegral inconsistent /
+                                            fromIntegral totalInconsistent
+                                  )
                                   (Map.lookup method v)
                         ++ "    "
                     ) "" allMethods
             ) "" refinedBench
     plotScript =
-        "set output 'plotInconsistenciesPerSizeAndMethod.pdf'\n" ++
-        "set terminal pdf monochrome dashed\n" ++
-        "#set grid\n" ++
-        "#set xlabel 'Angle,\\n in degrees'\n" ++
-        "#set ylabel 'sin(angle)'\n" ++
+        "set output 'plotPercentageOfInconsistenciesPerSizeAndMethod.pdf'\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set lmargin at screen 0.09\n" ++
+        "#set bmargin at screen 0.32\n" ++
+        "#set rmargin at screen 0.2\n" ++
+        "#set tmargin at screen 0.2\n\n" ++
+        "# Line style for grid\n" ++
+        "set style line 81 lt 0              # dashed\n" ++
+        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "set grid back linestyle 81\n" ++
+        "set border 3 back # Remove border on top and right.\n\n"   ++
+        "set xtics nomirror\n" ++
+        "#set xtics 0,0.1,0.6 nomirror\n" ++
+        "set ytics 0,20,100  nomirror\n" ++
+        "#set xtics 0,0.1,0.6\n" ++
+        "#set ytics 0,0.1,0.6\n\n" ++
+        "set xrange [4:21]\n" ++
+        "set yrange [0:100]\n\n" ++
+        "#set xlabel \"x axis label\"\n" ++
+        "#set ylabel \"y axis label\"\n\n" ++
+        "#set log x\n" ++
+        "#set mxtics 10    # Makes logscale look good.\n\n" ++
+        "set key bottom center outside horizontal\n\n" ++
         "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
-                "     'plotInconsistenciesPerSizeAndMethod.dat' using 1:" ++ show n ++
+                "     'plotPercentageOfInconsistenciesPerSizeAndMethod.dat' using 1:" ++ show n ++
                 " title column with linespoints"
             ) [2..Set.size allMethods + 1]
-        ) ++ "\n"
+        ) ++ "\n\n"
+
+plotSpeedPerSizeAndMethodSuccessOnly :: Benchmark -> IO (String)
+plotSpeedPerSizeAndMethodSuccessOnly bench = do
+    writeFile "plotSpeedPerSizeAndMethodSuccessOnly.dat" plotData
+    writeFile "plotSpeedPerSizeAndMethodSuccessOnly.plt" plotScript
+    safeReadProcess "gnuplot"
+        ["plotSpeedPerSizeAndMethodSuccessOnly.plt"] ""
+  where
+    refinedBench = answersPerSizeAndMethod bench
+    allMethods = Map.foldr
+        (\ (_, _, _, _, v) acc ->
+            Set.union acc $ Map.keysSet v
+        ) Set.empty refinedBench
+    plotData = Set.foldl
+            (\ acc x -> acc ++ "  \"" ++ x ++ "\""
+            ) "\"#Nodes\"" allMethods ++
+        "\n" ++ Map.foldrWithKey
+            (\ k ( _, _, _, _, v) acc -> (++ "\n" ++ acc) $
+                show k ++ "    " ++ Set.foldr
+                    (\ method acc2 -> (++ acc2) $
+                        maybe "-" (\ (_, _, _, _, _, speed, _) -> show $ speed
+                                  )
+                                  (Map.lookup method v)
+                        ++ "    "
+                    ) "" allMethods
+            ) "" refinedBench
+    plotScript =
+        "set output 'plotSpeedPerSizeAndMethodSuccessOnly.pdf'\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set lmargin at screen 0.09\n" ++
+        "#set bmargin at screen 0.32\n" ++
+        "#set bmargin at screen 0.1\n" ++
+        "#set rmargin at screen 0.2\n" ++
+        "#set tmargin at screen 0.2\n\n" ++
+        "# Line style for grid\n" ++
+        "set style line 81 lt 0              # dashed\n" ++
+        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "set grid back linestyle 81\n" ++
+        "set border 3 back # Remove border on top and right.\n\n"   ++
+        "set xtics nomirror\n" ++
+        "#set xtics 0,0.1,0.6 nomirror\n" ++
+        "set ytics 0,20,100  nomirror\n" ++
+        "#set xtics 0,0.1,0.6\n" ++
+        "#set ytics 0,0.1,0.6\n\n" ++
+        "set xrange [4:21]\n" ++
+        "set yrange [0:100]\n\n" ++
+        "#set xlabel \"x axis label\"\n" ++
+        "#set ylabel \"y axis label\"\n\n" ++
+        "#set log x\n" ++
+        "#set mxtics 10    # Makes logscale look good.\n\n" ++
+        "set key bottom center outside horizontal\n\n" ++
+        "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
+            (\ n ->
+                "     'plotSpeedPerSizeAndMethodSuccessOnly.dat' using 1:" ++ show n ++
+                " title column with linespoints"
+            ) [2..Set.size allMethods + 1]
+        ) ++ "\n\n"
+
+plotSpeedPerSizeAndMethod :: Benchmark -> IO (String)
+plotSpeedPerSizeAndMethod bench = do
+    writeFile "plotSpeedPerSizeAndMethod.dat" plotData
+    writeFile "plotSpeedPerSizeAndMethod.plt" plotScript
+    safeReadProcess "gnuplot"
+        ["plotSpeedPerSizeAndMethod.plt"] ""
+  where
+    refinedBench = answersPerSizeAndMethod bench
+    allMethods = Map.foldr
+        (\ (_, _, _, _, v) acc ->
+            Set.union acc $ Map.keysSet v
+        ) Set.empty refinedBench
+    plotData = Set.foldl
+            (\ acc x -> acc ++ "  \"" ++ x ++ "\""
+            ) "\"#Nodes\"" allMethods ++
+        "\n" ++ Map.foldrWithKey
+            (\ k ( _, _, _, _, v) acc -> (++ "\n" ++ acc) $
+                show k ++ "    " ++ Set.foldr
+                    (\ method acc2 -> (++ acc2) $
+                        maybe "-" (\ (_, _, _, _, _, _, speed) -> show $ speed
+                                  )
+                                  (Map.lookup method v)
+                        ++ "    "
+                    ) "" allMethods
+            ) "" refinedBench
+    plotScript =
+        "set output 'plotSpeedPerSizeAndMethod.pdf'\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set lmargin at screen 0.09\n" ++
+        "#set bmargin at screen 0.32\n" ++
+        "#set bmargin at screen 0.1\n" ++
+        "#set rmargin at screen 0.2\n" ++
+        "#set tmargin at screen 0.2\n\n" ++
+        "# Line style for grid\n" ++
+        "set style line 81 lt 0              # dashed\n" ++
+        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "set grid back linestyle 81\n" ++
+        "set border 3 back # Remove border on top and right.\n\n"   ++
+        "set xtics nomirror\n" ++
+        "#set xtics 0,0.1,0.6 nomirror\n" ++
+        "set ytics 0,20,100  nomirror\n" ++
+        "#set xtics 0,0.1,0.6\n" ++
+        "#set ytics 0,0.1,0.6\n\n" ++
+        "set xrange [4:21]\n" ++
+        "set yrange [0:100]\n\n" ++
+        "#set xlabel \"x axis label\"\n" ++
+        "#set ylabel \"y axis label\"\n\n" ++
+        "#set log x\n" ++
+        "#set mxtics 10    # Makes logscale look good.\n\n" ++
+        "set key bottom center outside horizontal\n\n" ++
+        "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
+            (\ n ->
+                "     'plotSpeedPerSizeAndMethod.dat' using 1:" ++ show n ++
+                " title column with linespoints"
+            ) [2..Set.size allMethods + 1]
+        ) ++ "\n\n"
 
 answersPerSizeAndMethod bench = Map.map
     (\ (_, _, m) -> collectOverAllDensities m)
@@ -463,10 +629,11 @@ getFromOneDens (v,w,x,y,m) (acc, acc2, acc3, acc4, acc5) =
     ( acc + v, acc2 + w, acc3 + x, acc4 + y
     , Map.unionWith joinTwoMethodMaps m acc5 )
 
-joinTwoMethodMaps (a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) =
+joinTwoMethodMaps (a1,b1,c1,d1,e1,f1,g1) (a2,b2,c2,d2,e2,f2,g2) =
     ( a1 + a2, b1 + b2, c1 + c2, d1 + d2
     , Map.unionWith (+) e1 e2
-    , f1 + f2 )
+    , (fromIntegral(a1 + b1) * f1 + fromIntegral(a2 + b2) * f2) / (fromIntegral $ max 1 (a1 + b1 + a2 + b2))
+    , (fromIntegral(a1 + b1 + c1 + d1) * g1 + fromIntegral(a2 + b2 + c2 + d2) * g2) / (fromIntegral $ max 1 ((a1 + b1 + c1 + d1 + a2 + b2 + c2 + d2))) )
 
 -- Analyze the benchmark (old version) ----------------------------------------
 
@@ -478,7 +645,7 @@ analyze bench = do
             ++ "All methods together:\n #No, #Yes, #Undecided, #Timeout =\n "
             ++ (intercalate ", " $ map show [v,w,x,y]) ++ "\n\n"
             ++ Map.foldrWithKey showMethod "" summaryMap ++ "\n"
-            ++ replicate 70 '-' ++ "\n" ++ str' 
+            ++ replicate 70 '-' ++ "\n" ++ str'
     writeFile "BENCHMARK.RESULTS" str
     putStrLn "\nResults saved to 'BENCHMARK.RESULTS'\n"
 
@@ -496,7 +663,8 @@ analyze' a (b,c,d) (accB, accV, accW, accX, accY, acc, acc2) =
   where
     (v,w,x,y,z) = collectOverAllDensities d
 
-showMethod k (v,w,x,y,_,z) acc = k
-    ++ ":\n #No, #Yes, #Undecided, #Timeout, Average Time (seconds) =\n "
+showMethod k (v,w,x,y,_,z,z') acc = k
+    ++ ":\n #No, #Yes, #Undecided, #Timeout, Average Time (Success only, seconds), Average Time (seconds) =\n "
     ++ (intercalate ", " $ map show [v,w,x,y]) ++ ", "
+    ++ showFFloat (Just 3) z "" ++ ", "
     ++ showFFloat (Just 3) z "" ++ "\n\n" ++ acc

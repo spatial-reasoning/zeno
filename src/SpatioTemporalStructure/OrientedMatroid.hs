@@ -9,13 +9,11 @@ import Data.Maybe
 -- local modules
 import Basics
 --import Calculus.Dipole
-import Calculus.FlipFlop
-import Convert
 import qualified Helpful as H
 import Interface.LpSolve
 --import Interface.Clp
 
-import Debug.Trace
+--import Debug.Trace
 
 --type Assignment = Map.Map [Int] Int
 --data Chirotope = Chirotope (Map.Map [Int] Int)

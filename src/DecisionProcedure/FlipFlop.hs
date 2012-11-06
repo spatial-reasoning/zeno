@@ -7,7 +7,6 @@ import qualified Data.Set as Set
 import Basics
 import Calculus.FlipFlop
 import qualified Interface.Sparq as S
-import qualified Interface.Triangle as T
 import DecisionProcedure
 
 str = "ff"
