@@ -280,6 +280,7 @@ instance Opram Opra8 where
 
 instance Calculus Opra8 where
     rank _ = 2
+    calculus _ = "opra-8"
     readRel = readOpram
     showRel = showOpram
     sparqifyRel = sparqifyOpram
@@ -288,4 +289,6 @@ instance Calculus Opra8 where
         (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
             map (\x -> if x == 's' then '1' else x) $ drop 6 $ show a
         ) cBaserelationsList
+
+    bcConvert = opraConvert 8
 

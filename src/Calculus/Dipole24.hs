@@ -18,6 +18,7 @@ data Dipole24 = ELLS24 | ERRS24 | ESES24 | LERE24 | LLLL24 | LLLR24
 
 instance Calculus Dipole24 where
     rank _ = 2
+    calculus _ = "dipole-24"
     readRel x = case y of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a Dipole-24 relation."

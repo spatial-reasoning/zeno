@@ -16,7 +16,7 @@ instance HasDecisionProcedure Opra4 where
     proceduresForAtomicNets _ =
         [
           after makeNonAtomic (algebraicClosureGQR "opra4")
---        , after makeNonAtomic (algebraicClosure "opra-4")
+        , after makeNonAtomic (algebraicClosure "opra-4")
 --        , after makeNonAtomic (algebraicClosureSpS str)
 --        , after makeNonAtomic (algebraicReasoning "opra-4")
         ] ++ map (after opramNetToOpraNetAtomic)

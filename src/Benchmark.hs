@@ -55,7 +55,7 @@ type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
 
 
 
-markTheBench batch minsize maxsize testThisManyNets
+markTheBench scenario batch minsize maxsize testThisManyNets
              funs tymeout rank relations dens bench = do
     let numOfNodes' = filter
             (\a -> maybe
@@ -97,9 +97,13 @@ markTheBench batch minsize maxsize testThisManyNets
                         )
                     ) $ (Map.!) c b
                 ) $ Map.lookup numOfNodes bench
-        let targetDens = targetNumer%denomin
+        let targetDens =
+                if scenario then
+                    (1%1)
+                else
+                    targetNumer%denomin
         (net, results) <-
-            checkNetwork rank relations funs tymeout numOfNodes targetDens
+            checkNetwork scenario rank relations funs tymeout numOfNodes targetDens
         let actualDens = targetDens
         saveSpecialNet
             net results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer
@@ -110,7 +114,7 @@ markTheBench batch minsize maxsize testThisManyNets
                 bench numOfNodes targetDens actualDens net results
         writeFile "BENCHMARK.COLLECTION" $ show newBench
         appendFile "BENCHMARK.ANSWERS" $ show (results, numOfNodes, actualDens) ++ "\n"
-        markTheBench batch minsize maxsize testThisManyNets
+        markTheBench scenario batch minsize maxsize testThisManyNets
                      funs tymeout rank relations dens newBench
 
 
@@ -230,9 +234,11 @@ addToBench bench numOfNodes targetDens actualDens net results =
             ) results
         )
 
-checkNetwork rank relations funs tymeout size dens = do
-    net <- randomConnectedAtomicNetworkWithDensity rank
-                                                   relations size dens
+checkNetwork scenario rank relations funs tymeout size dens = do
+    net <- if scenario then
+               randomScenario rank relations size
+           else
+               randomConnectedAtomicNetworkWithDensity rank relations size dens
     appendFile "BENCHMARK.NETS" $ show net ++ "\n"
     results <- sequence $ map
                   (\(desc, fun) -> do

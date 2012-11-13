@@ -24,19 +24,33 @@ instance Show Opra where
                                                    ++ show b
 
 instance Enum Opra where
-    
 
 instance Bounded Opra where
     minBound = Opra 0 0 0
     maxBound = Opra 20 20 20
 
 instance Calculus Opra where
+    rank _ = 2
+    calculus _ = "opra"
     showRel (Opra m (-1) b) = "Opra_" ++ show m ++ "_s_" ++ show b
     showRel (Opra m a    b) = "Opra_" ++ show m ++ "_" ++ show a ++ "_"
                                                        ++ show b
 
 opraBaserelations m =
     [ Opra m a b | let range = [0..4*m - 1], a <- range ++ [-1], b <- range]
+
+opraConvert :: (Opram a) => Int -> Set.Set a -> Set.Set a
+opraConvert n relSet = Set.map (opraConvertAtomic n) relSet
+
+opraConvertAtomic :: (Opram a) => Int -> a -> a
+opraConvertAtomic n rel = read $ "Opra" ++ show n ++ "_" ++ x' ++ "_" ++ y'
+  where
+    (x, _:y) = break (== '_') $ drop 1 $ dropWhile (/= '_') $ show rel
+    (x', y') =
+        if x == "s" then
+            (x , show $ mod (- read y) (4 * n))
+        else
+            (y, x)
 
 -- fixme: look over this one again.
 class (Read a, Show a, Ord a) => Opram a where

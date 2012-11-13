@@ -15,7 +15,7 @@ instance HasDecisionProcedure FlipFlop where
     proceduresForAtomicNets _ =
         [ after makeNonAtomic (algebraicClosure str)
         , after makeNonAtomic (ternaryAlgebraicClosure str)
-        , after makeNonAtomic (algebraicReasoning str)
+--        , after makeNonAtomic (algebraicReasoning str)
         , triangleConsistencyFlipFlop
         , chirotope
         , biquadraticFinalPolynomials

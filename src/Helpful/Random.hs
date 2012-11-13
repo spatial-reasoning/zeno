@@ -49,3 +49,13 @@ randomsOfIO domain = do
     gen <- newStdGen
     return $ randomsOf domain gen
 
+shuffle :: (RandomGen g) => [a] -> g -> ([a], g)
+shuffle [] gen = ([], gen)
+shuffle lst gen = (shuffle1 ++ x:shuffle2, newGen)
+  where
+    (shuffle1, newGen) = shuffle part1 gen'1
+    (shuffle2, _)      = shuffle part2 gen'2
+    (gen'1, gen'2) = split gen'
+    (n, gen') = oneOf [0..length lst - 1] gen
+    (part1, x:part2) = splitAt n lst
+

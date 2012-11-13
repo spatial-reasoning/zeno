@@ -21,6 +21,7 @@ data FlipFlop = L | R | B | S | I | E | F | D | T
 
 instance Calculus FlipFlop where
     rank _ = 3
+    calculus _ = "flipflop"
     readRel x = case maybeRead $ catchDouTri $ map Char.toUpper x of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a FlipFlop relation."
