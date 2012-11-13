@@ -28,6 +28,7 @@ data Dipole80 = BBBB80  | BBFF80  | BEIE80  | BFII80  | BIIF80  | BLRR80
 
 instance Calculus Dipole80 where
     rank _ = 2
+    calculus _ = "dipole-80"
     readRel x = case y of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a Dipole-80 relation."

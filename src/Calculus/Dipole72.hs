@@ -46,6 +46,7 @@ data Dipole72 = BBBB72 | BBFF72 | BEIE72 | BFII72 | BIIF72 | BLRR72
 
 instance Calculus Dipole72 where
     rank _ = 2
+    calculus _ = "dipole-72"
     readRel x = case y of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a Dipole-72 relation."

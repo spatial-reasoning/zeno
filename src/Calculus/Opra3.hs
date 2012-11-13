@@ -44,8 +44,11 @@ instance Opra Opra3 where
 
 instance Calculus Opra3 where
     rank _ = 2
+    calculus _ = "opra-3"
     readRel = readOpram
     showRel = showOpram
     sparqifyRel = drop 6 . show
     gqrifyRel   = sparqifyRel
+
+    bcConvert = opraConvert 3
 

@@ -8,7 +8,7 @@ import qualified Data.Set as Set
 import Basics
 import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
---import qualified Interface.Sparq.Server as SpS
+--import qualified Interface.Sparq.Server as S
 import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
 import DecisionProcedure.FlipFlop.OrientedMatroid
 

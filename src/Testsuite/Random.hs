@@ -7,22 +7,23 @@ import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Random hiding (shuffle)
-import Data.Random.Distribution.Binomial
-import Data.Random.Extras
+--import Data.Random.Distribution.Binomial
+import qualified Data.Random.Extras as R
 import Data.Ratio
 import Data.RVar
 import qualified Data.Set as Set
+import System.Random
 
 -- local modules
 import Basics
+import Interface.Sparq
+
 import Helpful.General
 import Helpful.Math
 import Helpful.Random
 
 import Debug.Trace
 
-
--- | consistent networks
 
 randomScenario :: (Calculus a)
                => Int
@@ -31,10 +32,50 @@ randomScenario :: (Calculus a)
                -> IO (Network [String] a)
 randomScenario rank domain syze = do
     rels <- randomsOfIO domain
-    let cons = Map.fromList $
+    let cons = fromJust $ consFromListAtomic $
             zip (kCombinations rank $ map show [1..syze]) rels
     let net = eNetwork { nDesc = "Random_Network", nCons = cons }
     return net
+
+randomAClosureConsistentScenario :: (Calculus a)
+                                 => Int
+                                 -> [a]
+                                 -> Int
+                                 -> IO (Network [String] a)
+randomAClosureConsistentScenario rank domain syze = do
+    let t1:t2:tuples = kCombinations rank $ map show [1..syze]
+    rel1 <- oneOfIO domain
+    rel2 <- oneOfIO domain
+    gen <- newStdGen
+    let maybeCons = buildScenario gen [ (t2,rel2), (t1,rel1) ] tuples
+    if isNothing maybeCons then
+        error $ "I could not find an algebraically closed "
+                ++ calculus (head domain) ++ " scenario of size "
+                ++ show syze
+    else do
+        let net = eNetwork { nDesc = "Random_Network"
+                           , nCons = fromJust $ consFromListAtomic $
+                                     fromJust maybeCons }
+        return net
+  where
+    aClosureInconsistent cons = (Just False ==) $ ( \(x,_,_) -> x) $
+        algebraicClosure (calculus $ head domain) $ makeNonAtomic $
+        eNetwork{ nCons = fromJust $ consFromListAtomic cons }
+    buildScenario gen cons tuples =
+        if aClosureInconsistent cons then
+            Nothing
+        else if null tuples then
+            Just cons
+        else
+            listToMaybe $ catMaybes scenarios
+      where
+        (rels, gen') = shuffle domain gen
+        (tuple:tuples') = tuples
+        scenarios = map
+            (\ rel -> buildScenario gen'
+                ((tuple, rel):cons)
+                tuples'
+            ) rels
 
 randomAtomicNetworkWithDensity :: (Calculus a)
                                => Int
@@ -43,7 +84,7 @@ randomAtomicNetworkWithDensity :: (Calculus a)
                                -> Ratio Int
                                -> IO (Network [String] a)
 randomAtomicNetworkWithDensity rank domain syze density = do
-    combis <- sampleRVar $ shuffle $ kCombinations rank $ map show [1..syze]
+    combis <- sampleRVar $ R.shuffle $ kCombinations rank $ map show [1..syze]
     rels <- randomsOfIO domain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)
@@ -89,7 +130,7 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
                   ) [] [rank..syze]
     let combisLeft =
             (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
-    fleshCombis <- sampleRVar $ shuffle combisLeft
+    fleshCombis <- sampleRVar $ R.shuffle combisLeft
     fleshRels <- randomsOfIO domain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)

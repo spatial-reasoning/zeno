@@ -419,8 +419,8 @@ translateToAngles' firstRun
 -- | Translate a network of SECTOR relations into a QF_LRA equation.
 -- The parameter 'useWitnesses' selects whether to use witnesses to decide
 -- whether a pair lies in a 'SAME' relation or not.
-translateToTriangles :: Bool -> Network [String] Otop -> Maybe Formula
-translateToTriangles useWitnesses net@Network{nCons = cons} = do
+translateToTriangles :: Bool -> Bool -> Network [String] Otop -> Maybe Formula
+translateToTriangles useWitnesses useWitness net@Network{nCons = cons} = do
     let allNodes = nodesIn $ nCons net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     -- Fold over all pairs and generate:
@@ -452,45 +452,47 @@ translateToTriangles useWitnesses net@Network{nCons = cons} = do
                     False
             -- This slows down the method dramatically.
             existWitnessesForSameness =
-              False
---              not $ null $ filter
---                (\ [node3, node4] ->
---                  let
---                    n3n  = Map.lookup [node3, node ] cons
---                    n3n2 = Map.lookup [node3, node2] cons
---                    n3n4 = Map.lookup [node3, node4] cons
---                    n4n  = Map.lookup [node4, node ] cons
---                    n4n2 = Map.lookup [node4, node2] cons
---                    n4n3 = Map.lookup [node4, node3] cons
---                    Otop gran_n3n  sec_n3n  = fromJust n3n
---                    Otop gran_n3n2 sec_n3n2 = fromJust n3n2
---                    Otop gran_n3n4 sec_n3n4 = fromJust n3n4
---                    Otop gran_n4n  sec_n4n  = fromJust n4n
---                    Otop gran_n4n2 sec_n4n2 = fromJust n4n2
---                    Otop gran_n4n3 sec_n4n3 = fromJust n4n3
---                  in
---                    -- improve: This could be improved, e.g. by
---                    -- adding gran_n3n == 0 && gran_n3n2 == 0 etc.
---                    isJust n3n && isJust n3n2 && isJust n4n && isJust n4n2
---                    && gran_n3n > 0 && gran_n3n2 > 0
---                    && gran_n4n > 0 && gran_n4n2 > 0 
---                    && even sec_n3n && even sec_n4n
---                    -- n and n2 lie on the same line
---                    && (sec_n3n * gran_n3n2 == sec_n3n2 * gran_n3n)
---                    && (sec_n4n * gran_n4n2 == sec_n4n2 * gran_n4n)
---                    -- n3 and n4 not in line with n and n2
---                    && (  (isJust n3n4
---                          && (sec_n3n * gran_n3n4 /= sec_n3n4 * gran_n3n)
---                          && (sec_n3n * gran_n3n4 /=
---                              mod (sec_n3n4 + 2 * gran_n3n4) (4 * gran_n3n4)
---                              * gran_n3n))
---                       || (isJust n4n3
---                          && (sec_n4n * gran_n4n3 /= sec_n4n3 * gran_n4n)
---                          && (sec_n4n * gran_n4n3 /=
---                              mod (sec_n4n3 + 2 * gran_n4n3) (4 * gran_n4n3)
---                              * gran_n4n))
---                       )
---                ) pairs
+                if useWitness then
+                    not $ null $ filter
+                      (\ [node3, node4] ->
+                        let
+                          n3n  = Map.lookup [node3, node ] cons
+                          n3n2 = Map.lookup [node3, node2] cons
+                          n3n4 = Map.lookup [node3, node4] cons
+                          n4n  = Map.lookup [node4, node ] cons
+                          n4n2 = Map.lookup [node4, node2] cons
+                          n4n3 = Map.lookup [node4, node3] cons
+                          Otop gran_n3n  sec_n3n  = fromJust n3n
+                          Otop gran_n3n2 sec_n3n2 = fromJust n3n2
+                          Otop gran_n3n4 sec_n3n4 = fromJust n3n4
+                          Otop gran_n4n  sec_n4n  = fromJust n4n
+                          Otop gran_n4n2 sec_n4n2 = fromJust n4n2
+                          Otop gran_n4n3 sec_n4n3 = fromJust n4n3
+                        in
+                          -- improve: This could be improved, e.g. by
+                          -- adding gran_n3n == 0 && gran_n3n2 == 0 etc.
+                          isJust n3n && isJust n3n2 && isJust n4n && isJust n4n2
+                          && gran_n3n > 0 && gran_n3n2 > 0
+                          && gran_n4n > 0 && gran_n4n2 > 0 
+                          && even sec_n3n && even sec_n4n
+                          -- n and n2 lie on the same line
+                          && (sec_n3n * gran_n3n2 == sec_n3n2 * gran_n3n)
+                          && (sec_n4n * gran_n4n2 == sec_n4n2 * gran_n4n)
+                          -- n3 and n4 not in line with n and n2
+                          && (  (isJust n3n4
+                                && (sec_n3n * gran_n3n4 /= sec_n3n4 * gran_n3n)
+                                && (sec_n3n * gran_n3n4 /=
+                                    mod (sec_n3n4 + 2 * gran_n3n4) (4 * gran_n3n4)
+                                    * gran_n3n))
+                             || (isJust n4n3
+                                && (sec_n4n * gran_n4n3 /= sec_n4n3 * gran_n4n)
+                                && (sec_n4n * gran_n4n3 /=
+                                    mod (sec_n4n3 + 2 * gran_n4n3) (4 * gran_n4n3)
+                                    * gran_n4n))
+                             )
+                      ) pairs
+                else
+                  False
             sameHelper g s g2 s2 = case sort [ (signum g , signum s )
                                              , (signum g2, signum s2)] of
                 -- signum g = -1 denotes a 'SAME' relation,
@@ -718,6 +720,7 @@ angleConsistency' :: (Network [String] Otop -> Maybe Formula)
 angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
           (\f -> parseOutputFromYices $ readYices $ str f)
+--          (\f -> Just True)
 --          (\f -> parseOutputFromYices $ readYices $ str2 f)  --DEBUG
           formula
   where
@@ -730,7 +733,11 @@ angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
 angleConsistency = angleConsistency' translateToAngles
 
 triangleConsistency =
-    angleConsistency' (translateToTriangles False)
+    angleConsistency' (translateToTriangles False False)
 triangleConsistencyWithWitnesses =
-    angleConsistency' (translateToTriangles True)
+    angleConsistency' (translateToTriangles True False)
+triangleConsistencyWithWitnessesAndWitness =
+    angleConsistency' (translateToTriangles True True)
+triangleConsistencyWithWitness =
+    angleConsistency' (translateToTriangles False True)
 

@@ -1056,6 +1056,7 @@ instance Opram Opra16 where
 
 instance Calculus Opra16 where
     rank _ = 2
+    calculus _ = "opra-16"
     readRel = readOpram
     showRel = showOpram
     sparqifyRel = sparqifyOpram
@@ -1064,4 +1065,6 @@ instance Calculus Opra16 where
         (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
             map (\x -> if x == 's' then '1' else x) $ drop 7 $ show a
         ) cBaserelationsList
+
+    bcConvert = opraConvert 16
 

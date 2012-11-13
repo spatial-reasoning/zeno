@@ -41,6 +41,7 @@ data Options = Options { optMinRange   :: Int
                        , optDensity    :: Float
                        , optAreal      :: Int
                        , optBatch      :: Bool
+                       , optScenario   :: Bool
                        } deriving (Show, Data, Typeable)
 
 defaultOptions = Options
@@ -112,6 +113,11 @@ defaultOptions = Options
         &= name "b"
         &= name "batch"
         &= help "Start in batch mode and don't wait for input."
+    , optScenario = def
+        &= explicit
+        &= name "s"
+        &= name "scenario"
+        &= help "Generate scenarios and don't search for a phase transition."
     } &=
 --    verbosity &=
 --    help "Compares the results of semi-decision procedures for consistency of\
@@ -153,6 +159,7 @@ allBaseRels = concat
 
 helperForCalculus str = case map Char.toUpper str of
     "DIPOLE-72" -> Calc (Set.findMin cBaserelations :: Dipole72)
+    "DIPOLE72"  -> Calc (Set.findMin cBaserelations :: Dipole72)
     "FLIPFLOP"  -> Calc (Set.findMin cBaserelations :: FlipFlop)
     "FF"        -> Calc (Set.findMin cBaserelations :: FlipFlop)
     "OPRA-1"    -> Calc (Set.findMin cBaserelations :: Opra1   )
@@ -160,6 +167,11 @@ helperForCalculus str = case map Char.toUpper str of
     "OPRA-8"    -> Calc (Set.findMin cBaserelations :: Opra8   )
     "OPRA-10"   -> Calc (Set.findMin cBaserelations :: Opra10  )
     "OPRA-16"   -> Calc (Set.findMin cBaserelations :: Opra16  )
+    "OPRA1"     -> Calc (Set.findMin cBaserelations :: Opra1   )
+    "OPRA4"     -> Calc (Set.findMin cBaserelations :: Opra4   )
+    "OPRA8"     -> Calc (Set.findMin cBaserelations :: Opra8   )
+    "OPRA10"    -> Calc (Set.findMin cBaserelations :: Opra10  )
+    "OPRA16"    -> Calc (Set.findMin cBaserelations :: Opra16  )
     otherwise   -> error $
         "Sorry, i don't know about the calculus \"" ++ str ++ "\""
 
@@ -230,7 +242,7 @@ exec rels opts@Options{..} = do
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    bench <- markTheBench optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
+    bench <- markTheBench optScenario optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
     analyze bench
     plotInconsistenciesPerSizeAndMethodInPercent bench
     plotPercentageOfInconsistentNetworksPerDensity bench

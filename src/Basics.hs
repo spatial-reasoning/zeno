@@ -3,6 +3,7 @@ module Basics where
 -- standard modules
 import Control.Monad
 import qualified Data.Char as Char
+import qualified Data.Foldable as Fold
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -27,6 +28,7 @@ data Network a b = Network
 -- fixme: split this into "Non Associative Algebra" and "Relation ..."
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     rank :: a -> Int
+    calculus :: a -> String
 
     cBaserelationsList :: [a]
     cBaserelationsList =  [minBound..maxBound]
@@ -190,9 +192,25 @@ insertConAtomic nodes rel cons
               | sortedNodes == tcNodesHom  nodes  = tcHom
               | sortedNodes == tcNodesHomi nodes  = tcHomi
 
-relOf :: (Calculus a, Ord b)
-      => Map.Map [b] (Set.Set a) -> [b]
-      -> Maybe (Set.Set a)
+consFromList :: (Ord a, Calculus b)
+             => [([a], Set.Set b)]
+             -> Map.Map [a] (Set.Set b)
+consFromList = foldr
+    (\ (nodes, rel) acc ->
+        insertCon nodes rel acc
+    ) Map.empty
+
+consFromListAtomic :: (Ord a, Calculus b)
+                   => [([a], b)]
+                   -> Maybe (Map.Map [a] b)
+consFromListAtomic = Fold.foldrM
+    (\ (nodes, rel) acc ->
+        insertConAtomic nodes rel acc
+    ) Map.empty
+
+relOf :: (Ord a, Calculus b)
+      => Map.Map [a] (Set.Set b) -> [a]
+      -> Maybe (Set.Set b)
 relOf cons nodes = do
     sortedRel <- Map.lookup sortedNodes cons
     let unsortRel 2 | nodes == sortedNodes  = id
@@ -207,9 +225,9 @@ relOf cons nodes = do
   where
     sortedNodes = sort nodes
 
-relOfAtomic :: (Calculus a, Ord b)
-            => Map.Map [b] a -> [b]
-            -> Maybe a
+relOfAtomic :: (Ord a, Calculus b)
+            => Map.Map [a] b -> [a]
+            -> Maybe b
 relOfAtomic cons nodes = do
     sortedRel <- Map.lookup sortedNodes cons
     let unsortRel 2 | nodes == sortedNodes  = id

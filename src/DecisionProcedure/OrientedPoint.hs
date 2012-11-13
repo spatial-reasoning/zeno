@@ -13,7 +13,9 @@ import SpatioTemporalStructure.OrientedPoint
 instance HasDecisionProcedure Otop where
     proceduresForAtomicNets _ =
         [ ("TC", triangleConsistency)
-        , ("TC Wit", triangleConsistencyWithWitnesses)
+        , ("TC WitUn", triangleConsistencyWithWitnesses)
+        , ("TC WitSa", triangleConsistencyWithWitness)
+        , ("TC WitUS", triangleConsistencyWithWitnessesAndWitness)
 --        , ("AngleCon", angleConsistency)
         ]
 

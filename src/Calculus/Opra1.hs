@@ -21,6 +21,7 @@ instance Opram Opra1 where
 
 instance Calculus Opra1 where
     rank _ = 2
+    calculus _ ="opra-1"
     readRel = readOpram
     showRel = showOpram
     sparqifyRel = sparqifyOpram
@@ -31,6 +32,8 @@ instance Calculus Opra1 where
         ) cBaserelationsList
 
     identity = Opra1_s_0
+
+    bcConvert = opraConvert 1
 
     bcConversion = Map.fromList
         [ ( Opra1_0_0 , Set.singleton Opra1_0_0 )
