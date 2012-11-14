@@ -1061,10 +1061,8 @@ instance Calculus Opra16 where
     showRel = showOpram
     sparqifyRel = sparqifyOpram
     gqrifyRel   = sparqifyOpram
-    cBaserelationsArealList = filter
-        (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
-            map (\x -> if x == 's' then '1' else x) $ drop 7 $ show a
-        ) cBaserelationsList
+    cBaserelationsArealList = areal cBaserelationsList
+    cBaserelationsNonArealList = nonAreal cBaserelationsList
 
     bcConvert = opraConvert 16
 
