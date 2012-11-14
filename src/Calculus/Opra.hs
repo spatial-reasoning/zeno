@@ -52,6 +52,16 @@ opraConvertAtomic n rel = read $ "Opra" ++ show n ++ "_" ++ x' ++ "_" ++ y'
         else
             (y, x)
 
+areal baserelations = filter
+    (\ a -> ( \(b, _:c) -> all odd $ map read [b,c]) $ break (== '_') $
+        map (\x -> if x == 's' then '1' else x) $ drop 6 $ show a
+    ) baserelations
+
+nonAreal baserelations = filter
+    (\ a -> ( \(b, _:c) -> all even $ map read [b,c]) $ break (== '_') $
+        map (\x -> if x == 's' then '0' else x) $ drop 6 $ show a
+    ) baserelations
+
 -- fixme: look over this one again.
 class (Read a, Show a, Ord a) => Opram a where
     m :: a -> Int

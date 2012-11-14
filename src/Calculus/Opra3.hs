@@ -49,6 +49,8 @@ instance Calculus Opra3 where
     showRel = showOpram
     sparqifyRel = drop 6 . show
     gqrifyRel   = sparqifyRel
+    cBaserelationsArealList = areal cBaserelationsList
+    cBaserelationsNonArealList = nonAreal cBaserelationsList
 
     bcConvert = opraConvert 3
 

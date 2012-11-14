@@ -20,7 +20,7 @@ import Helpful
 qstrLibLang = L.emptyDef
     { commentLine   = "#"
     , identStart    = alphaNum <|> char '_'
-    , identLetter   = alphaNum <|> char '_'
+    , identLetter   = alphaNum <|> char '_' <|> char '<'
     , caseSensitive = True
     }
 

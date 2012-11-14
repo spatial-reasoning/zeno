@@ -320,18 +320,7 @@ saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens denomin
                                (\(_, (_, answer)) ->
                                    answer == Just (Just False)
                                ) results
-                ) [1,2] )
-       || (    ( length $ filter
-                              (\(_, (_, answer)) ->
-                                  answer == Just (Just False)
-                              ) results
-               ) > 0
-            &&
-               elem (length $ filter
-                                  (\(_, (_, answer)) ->
-                                      answer == Just Nothing
-                                  ) results
-                    ) [1,2] )
+                ) [2] )
     then
         appendFile "BENCHMARK.SPECIAL" $
             showAtomicNet net ++ "\n" ++
