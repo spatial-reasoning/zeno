@@ -420,7 +420,7 @@ translateToAngles' firstRun
 -- The parameter 'useWitnesses' selects whether to use witnesses to decide
 -- whether a pair lies in a 'SAME' relation or not.
 translateToTriangles :: Bool -> Bool -> Network [String] Otop -> Maybe Formula
-translateToTriangles useWitnesses useWitness net@Network{nCons = cons} = do
+translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
     let allNodes = nodesIn $ nCons net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     -- Fold over all pairs and generate:
@@ -437,22 +437,32 @@ translateToTriangles useWitnesses useWitness net@Network{nCons = cons} = do
           let
             -- Can we find a third node for which node and node2 lie in
             -- different relations?
-            existsWitnessForUnsameness =
-                if useWitnesses then
-                    not $ Set.null $ Set.filter
-                      (\ node3 ->
+            -- fixme: rename this function as it also can detect sameness.
+            [existsWitnessForUnsameness, existsWitnessForSameness] =
+                if useWitness then
+                    map (not . Set.null) $ Set.foldr
+                      (\ node3 acc@[accUnsame, accSame] ->
                         let
                           n3n  = Map.lookup [node3, node ] cons
                           n3n2 = Map.lookup [node3, node2] cons
+                          Otop gran_n3n  sec_n3n  = fromJust n3n
+                          Otop gran_n3n2 sec_n3n2 = fromJust n3n2
                         in
-                          node /= node3 && node2 /= node3 &&
-                          isJust n3n && isJust n3n2 && n3n /= n3n2
-                      ) allNodes
+                          if node /= node3 && node2 /= node3 &&
+                             isJust n3n && isJust n3n2 && n3n /= n3n2 then
+                              if 
+                                  signum gran_n3n /= (-1) || signum gran_n3n2 /= (-1)
+                              then
+                                  [Set.insert node3 accUnsame, accSame]
+                              else
+                                  [accUnsame, Set.insert node3 accSame]
+                          else
+                              acc
+                      ) [Set.empty, Set.empty] allNodes
                 else
-                    False
-            -- This slows down the method dramatically.
+                    [False, False]
             existWitnessesForSameness =
-                if useWitness then
+                if useWitnesses then
                     not $ null $ filter
                       (\ [node3, node4] ->
                         let
@@ -515,7 +525,8 @@ translateToTriangles useWitnesses useWitness net@Network{nCons = cons} = do
                 [( 0, _), ( 0, 1)] -> newAccsUnsame
                 [(-1, _), ( 1, _)] -> Nothing
             noInfoHelper = case ( existsWitnessForUnsameness
-                                , existWitnessesForSameness  ) of
+                                , existsWitnessForSameness ||
+                                  existWitnessesForSameness   ) of
                 (True , False) -> newAccsUnsame
                 (False, True ) -> newAccsSame
                 (False, False) -> newAccsUnknown
@@ -734,10 +745,10 @@ angleConsistency = angleConsistency' translateToAngles
 
 triangleConsistency =
     angleConsistency' (translateToTriangles False False)
-triangleConsistencyWithWitnesses =
-    angleConsistency' (translateToTriangles True False)
-triangleConsistencyWithWitnessesAndWitness =
-    angleConsistency' (translateToTriangles True True)
 triangleConsistencyWithWitness =
+    angleConsistency' (translateToTriangles True False)
+triangleConsistencyWithWitnessAndWitnesses =
+    angleConsistency' (translateToTriangles True True)
+triangleConsistencyWithWitnesses =
     angleConsistency' (translateToTriangles False True)
 

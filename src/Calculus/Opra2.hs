@@ -126,13 +126,6 @@ instance Calculus Opra2 where
 
     bcComposition = Map.fromList
         [ ( ( Opra2_0_0 , Opra2_0_0 )
-          , Set.fromList [ Opra2_2_0, Opra2_0_2, Opra2_s_0 ] )
-        , ( ( Opra2_s_3 , Opra2_s_3 )
-          , Set.fromList [ Opra2_s_3, Opra2_s_2, Opra2_s_1 ] )
-        ]
-
-
-        [ ( ( Opra2_0_0 , Opra2_0_0 )
           , Set.fromList [ Opra2_4_0, Opra2_0_4, Opra2_s_0 ] )
         , ( ( Opra2_0_0 , Opra2_0_1 )
           , Set.fromList [ Opra2_s_7, Opra2_4_1, Opra2_0_5 ] )
