@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Interface.Gqr where
 
 -- standard modules
@@ -16,18 +17,19 @@ import Helpful.Process
 --import Debug.Trace
 
 
-algebraicClosure :: (Calculus a)
-                 => String
-                 -> Network [String] (Set.Set a)
-                 -> (Maybe Bool, Network [String] (Set.Set a))
-algebraicClosure cal net = unsafePerformIO $
+algebraicClosure :: ( Relation (a b) b
+                    , Gqrifiable (Network [String] (a b))
+                    , Calculus b )
+                 => Network [String] (a b)
+                 -> (Maybe Bool, Network [String] (GRel b))
+algebraicClosure net = unsafePerformIO $
   withTempDir "Qstrlib_qgr" (\tmpDir -> do
     gqrTempFile <- openTempFile tmpDir "gqrTempFile.csp"
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
     gqrAnswer <- safeReadProcess
-                     "gqr" (["c -C", cal, "-S", fst gqrTempFile]) ""
+        "gqr" (["c -C", cNameGqr ((undefined :: Network [String] (a b) -> b) net), "-S", fst gqrTempFile]) ""
     let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
     let consistent = zeroOne $ last fstline
           where
@@ -48,20 +50,21 @@ algebraicClosure cal net = unsafePerformIO $
     if consistent then do
         return (Nothing, newNet)
     else do
-        return (Just False, net)
+        return (Just False, makeNonAtomic net)
   )
 
-algebraicClosures :: (Calculus a)
-                  => String
-                  -> [Network [String] (Set.Set a)]
+algebraicClosures :: ( Relation (a b) b
+                     , Gqrifiable (Network [String] (a b))
+                     , Calculus b )
+                  => [Network [String] (a b)]
                   -> [Maybe Bool]
-algebraicClosures cal nets = unsafePerformIO $
+algebraicClosures nets = unsafePerformIO $
   withTempDir "Qstrlib-" (\tmpDir -> do
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (fst $ gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
     gqrAnswer <- safeReadProcess
-                     "gqr" (["c -C", cal] ++ (map fst gqrTempFiles)) ""
+        "gqr" (["c -C", cNameGqr((undefined :: [Network [String] (a b)] -> b) nets)] ++ (map fst gqrTempFiles)) ""
     let answer = map zeroOne [ last x | x <- lines gqrAnswer, head x == '#' ]
           where
             zeroOne x

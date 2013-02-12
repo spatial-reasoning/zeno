@@ -84,13 +84,14 @@ instance Opram Opra4 where
 
 instance Calculus Opra4 where
     rank _ = 2
-    calculus _ = "opra-4"
+    cName _ = "opra-4"
+    cNameGqr _ = "opra4"
 
-    readRel = readOpram
-    showRel = showOpram
+    cReadRel = readOpram
+    cShowRel = showOpram
 
-    sparqifyRel = sparqifyOpram
-    gqrifyRel   = sparqifyOpram
+    cSparqifyRel = sparqifyOpram
+    cGqrifyRel   = sparqifyOpram
 
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList

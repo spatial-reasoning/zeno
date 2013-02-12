@@ -1056,11 +1056,12 @@ instance Opram Opra16 where
 
 instance Calculus Opra16 where
     rank _ = 2
-    calculus _ = "opra-16"
-    readRel = readOpram
-    showRel = showOpram
-    sparqifyRel = sparqifyOpram
-    gqrifyRel   = sparqifyOpram
+    cName _ = "opra-16"
+    cNameGqr _ ="opra16"
+    cReadRel = readOpram
+    cShowRel = showOpram
+    cSparqifyRel = sparqifyOpram
+    cGqrifyRel   = sparqifyOpram
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
 

@@ -10,12 +10,11 @@ import Data.Maybe
 import Basics
 import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
---fixme: split convert into several modules!
 import Convert.LRChirotope
 
 import Helpful
 
-isAcyclicChirotopeFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeFlipFlop :: Network [String] (ARel FlipFlop) -> Maybe Bool
 isAcyclicChirotopeFlipFlop net
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) (\_ _ _ _ -> True) =
@@ -28,7 +27,7 @@ isAcyclicChirotopeFlipFlop net
     chiroNet = flipflopsToChirotope net
 
 
-isAcyclicChirotopeWithoutBPFlipFlop :: Network [String] FlipFlop -> Maybe Bool
+isAcyclicChirotopeWithoutBPFlipFlop :: Network [String] (ARel FlipFlop) -> Maybe Bool
 isAcyclicChirotopeWithoutBPFlipFlop net
     | (isJust chiroNet &&) $ isAcyclicChirotope
         (nCons $ fromJust chiroNet) hasNoBiquadraticFinalPolynomial =

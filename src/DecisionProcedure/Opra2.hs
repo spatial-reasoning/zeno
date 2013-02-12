@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 module DecisionProcedure.Opra2
     ( module DecisionProcedure.Opra
     ) where
@@ -10,17 +11,27 @@ import qualified Data.Set as Set
 import Basics
 import Calculus.Opra2
 import DecisionProcedure
+import DecisionProcedure.AlgebraicClosure
+--import DecisionProcedure.AlgebraicGeometric
 import DecisionProcedure.Opra
 
-str = "opra2"
+instance HasBinAClosureGqr   ARel Opra2
+instance HasBinAClosureGqr   GRel Opra2
+instance HasBinAClosureSparq ARel Opra2
+instance HasBinAClosureSparq GRel Opra2
+--instance HasAReasoning       ARel Opra2
+--instance HasAReasoning       GRel Opra2
 
-instance HasDecisionProcedure Opra2 where
-    proceduresForAtomicNets _ =
-        [ after makeNonAtomic (algebraicClosureGQR str)
---        , after makeNonAtomic (algebraicReasoning str)
-        ] ++ map (after opramNetToOpraNetAtomic)
-                 (proceduresForAtomicNets (undefined :: Opra))
+instance HasDecisionProcedure (ARel Opra2) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
+--        , algebraicReasoning
+        ] ++ map (firstApply opramNetToOpraNetAtomic)
+                 (procedures (undefined :: ARel Opra))
 
-    proceduresForNonAtomicNets _ =
-        [ algebraicClosure str
+instance HasDecisionProcedure (GRel Opra2) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
         ]

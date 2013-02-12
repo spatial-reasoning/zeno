@@ -6,49 +6,15 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import qualified Interface.Gqr as G
-import qualified Interface.Sparq as S
---import qualified Interface.Sparq.Server as S
-import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
-import DecisionProcedure.FlipFlop.OrientedMatroid
+import Export
+
+firstApply fun dp = dp{ decProProc = decProProc dp . fun }
+
+data DecisionProcedure a = DecisionProcedure
+        { decProName :: String
+        , decProProc :: Network [String] a -> Maybe Bool
+        }
 
 class HasDecisionProcedure a where
-    proceduresForAtomicNets :: a ->
-        [ ( String
---          , Network [String] (Set.Set a) -> Maybe Bool )
-          , Network [String] a -> Maybe Bool )
-        ]
-
-    proceduresForNonAtomicNets :: a ->
-        [ ( String
-          , Network [String] (Set.Set a) -> Maybe Bool )
-        ]
-
-after c (a, b) = (a, b . c)
-
-
-algebraicClosureGQR str =
-    ( "BAC-GQR", (\(x,_) -> x) . G.algebraicClosure str )
-
-algebraicClosure str =
-    ( "BAC", (\(x,_,_) -> x) . S.algebraicClosure str )
-
---algebraicClosureSpS str =
---    ( "AC", (\(x,_,_) -> x) . SpS.algebraicClosure str )
-
-
-ternaryAlgebraicClosure str =
-    ( "TAC", (\(x,_,_) -> x) . S.ternaryAlgebraicClosure str )
-
-algebraicReasoning str =
-    ( "AR", S.algebraicReasoning str )
-
-triangleConsistencyFlipFlop =
-    ( "TC", T.checkConsistency)
-
-chirotope =
-    ( "OM", isAcyclicChirotopeFlipFlop)
-
-biquadraticFinalPolynomials =
-    ( "BFP", isAcyclicChirotopeWithoutBPFlipFlop)
+    procedures :: a -> [ DecisionProcedure a ]
 

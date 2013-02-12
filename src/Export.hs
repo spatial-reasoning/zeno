@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Export where
 
 -- standard modules
@@ -14,9 +15,9 @@ import Basics
 --qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
 --qstrify net = 
 
-showAtomicNet :: (Calculus b) => Network [String] b -> String
---showAtomicNet :: (Show b) => Network [String] b -> String   -- DEBUGGING
-showAtomicNet net@Network { nCons = cons
+
+showNetwork :: (Relation (a b) b, Calculus b) => Network [String] (a b) -> String
+showNetwork net@Network { nCons = cons
                     , nDesc = desc
                     , nCalc = calc
                     , nNumOfNodes = numOfNodes
@@ -26,34 +27,31 @@ showAtomicNet net@Network { nCons = cons
     "\nnetwork =\n" ++ 
     ( unlines $ map
         (\(nodes, rel) ->
-            "    " ++ (intercalate " " nodes) ++ " ( " ++ showRel rel ++ " )"
---            "    " ++ (intercalate " " nodes) ++ " ( " ++ show rel ++ " )"    --DEBUGGING
+            "    " ++ (intercalate " " nodes) ++
+            "(" ++ showRel rel ++ ")"
         ) $ Map.toList cons
     )
 
-showNonAtomicNet :: (Calculus b) => Network [String] (Set.Set b) -> String
-showNonAtomicNet net@Network { nCons = cons
-                    , nDesc = desc
-                    , nCalc = calc
-                    , nNumOfNodes = numOfNodes
-                    } = 
-    "calculus = " ++ show calc ++ "\ndescription = " ++ show desc ++
-    (maybe "" (("\nnumber of nodes = " ++) . show) numOfNodes) ++
-    "\nnetwork =\n" ++ 
-    ( unlines $ map
-        (\(nodes, rels) ->
-            "    " ++ (intercalate " " nodes) ++ " ( " ++
-            (concatMap showRel $ Set.toList rels) ++
-            " )"
-        ) $ Map.toList cons
-    )
 
-sparqify :: (Calculus a) => Bool -> Network [String] (Set.Set a) -> String
-sparqify oneLine net = desc ++ "(" ++ sep1
+class Sparqifiable a where
+    sparqify :: Bool -> a -> String
+
+    exportToSparq :: a -> FilePath -> IO ()
+    exportToSparq net filename =
+        writeFile filename (sparqify False net ++ "\n")
+
+
+instance (Calculus a) => Sparqifiable (Network [String] (ARel a)) where
+    sparqify = sparqify' (cSparqifyRel . aRel)
+
+instance (Calculus a) => Sparqifiable (Network [String] (GRel a)) where
+    sparqify = sparqify'
+        ( concat . intersperse " " . Set.toList . Set.map cSparqifyRel . gRel )
+
+sparqify' relFun oneLine net = desc ++ "(" ++ sep1
     ++ intercalate sep2 ["(" ++ (concat $ intersperse " " $ init x)
                              ++ " ("
-                             ++ (concat $ intersperse " " $
-                                    Set.toList $ Set.map sparqifyRel y)
+                             ++ relFun y
                              ++ ") " ++ last x ++ ")"
                         | (x, y) <- Map.toList $ nCons net
                         ]
@@ -68,13 +66,28 @@ sparqify oneLine net = desc ++ "(" ++ sep1
            else
                ";; description = " ++ nDesc net ++ "\n"
 
-gqrify :: (Calculus a) => Network [String] (Set.Set a) -> (String, Map.Map Int String)
-gqrify net =
+
+
+class Gqrifiable a where
+    gqrify :: a -> (String, Map.Map Int String)
+
+    exportToGqr :: a -> FilePath -> IO ()
+    exportToGqr net filename =
+        writeFile filename (fst $ gqrify net)
+
+
+instance (Calculus a) => Gqrifiable (Network [String] (ARel a)) where
+    gqrify = gqrify' (cGqrifyRel . aRel)
+
+instance (Calculus a) => Gqrifiable (Network [String] (GRel a)) where
+    gqrify = gqrify'
+        ( concat . intersperse " " . Set.toList . Set.map cGqrifyRel . gRel )
+
+gqrify' relFun net =
     ( show ((Set.size $ nodesIn $ nCons net) - 1)
         ++ " # description = " ++ nDesc net ++ "\n"
         ++ unlines [" " ++ (concat $ intersperse " " $ map show x) ++ " ( "
-                        ++ (concat $ intersperse " " $
-                               Set.toList $ Set.map gqrifyRel y)
+                        ++ relFun y
                         ++ " )" 
                    | (x, y) <- Map.toList numCons
                    ]
@@ -82,12 +95,4 @@ gqrify net =
     , enumeration )
     where
         (numCons, enumeration) = enumerateAndEnumeration $ nCons net
-
-exportToSparq :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
-exportToSparq net filename = do
-    writeFile filename (sparqify False net ++ "\n")
-
-exportToGqr :: (Calculus a) => Network [String] (Set.Set a) -> FilePath -> IO ()
-exportToGqr net filename = do
-    writeFile filename (fst $ gqrify net)
 

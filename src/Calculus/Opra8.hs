@@ -280,11 +280,12 @@ instance Opram Opra8 where
 
 instance Calculus Opra8 where
     rank _ = 2
-    calculus _ = "opra-8"
-    readRel = readOpram
-    showRel = showOpram
-    sparqifyRel = sparqifyOpram
-    gqrifyRel   = sparqifyOpram
+    cName _ = "opra-8"
+    cNameGqr _ = "opra8"
+    cReadRel = readOpram
+    cShowRel = showOpram
+    cSparqifyRel = sparqifyOpram
+    cGqrifyRel   = sparqifyOpram
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
 

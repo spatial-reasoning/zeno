@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+--{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 module DecisionProcedure.Opra16
     ( module DecisionProcedure.Opra
     ) where
@@ -8,20 +10,25 @@ module DecisionProcedure.Opra16
 import Basics
 import Calculus.Opra16
 import DecisionProcedure
+--import DecisionProcedure.AlgebraicClosure
+--import DecisionProcedure.AlgebraicGeometric
 import DecisionProcedure.Opra
 
-str = "opra16"
+--instance HasBinAClosureGqr   ARel Opra16
+--instance HasBinAClosureGqr   GRel Opra16
+--instance HasBinAClosureSparq ARel Opra16
+--instance HasBinAClosureSparq GRel Opra16
+--instance HasAReasoning       ARel Opra16
+--instance HasAReasoning       GRel Opra16
 
-instance HasDecisionProcedure Opra16 where
-    proceduresForAtomicNets _ =
+instance HasDecisionProcedure (ARel Opra16) where
+    procedures _ =
         [
 --          after makeNonAtomic (algebraicClosureGQR str)
 --          after makeNonAtomic (algebraicClosureSpS str)
 --        , after makeNonAtomic (algebraicReasoning str)
-        ] ++ map (after opramNetToOpraNetAtomic)
-                 (proceduresForAtomicNets (undefined :: Opra))
+        ] ++ map (firstApply opramNetToOpraNetAtomic)
+                 (procedures (undefined :: ARel Opra))
 
-    proceduresForNonAtomicNets _ =
-        [
---          algebraicClosure str
-        ]
+instance HasDecisionProcedure (GRel Opra16) where
+    procedures _ = []

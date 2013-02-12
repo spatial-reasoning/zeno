@@ -1,8 +1,12 @@
-module Calculus.Opra3 where
+module Calculus.Opra3
+    ( module Calculus.Opra
+    , Opra3(..)
+    ) where
 
 -- standard modules
 
 -- local modules
+import Basics
 import Calculus.Opra
 
 data Opra3 = Opra3_0_0   | Opra3_0_1   | Opra3_0_2   | Opra3_0_3   | Opra3_0_4
@@ -39,16 +43,20 @@ data Opra3 = Opra3_0_0   | Opra3_0_1   | Opra3_0_2   | Opra3_0_3   | Opra3_0_4
            | Opra3_s_11
            deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
-instance Opra Opra3 where
+instance Opram Opra3 where
     m _ = 3
 
 instance Calculus Opra3 where
     rank _ = 2
-    calculus _ = "opra-3"
-    readRel = readOpram
-    showRel = showOpram
-    sparqifyRel = drop 6 . show
-    gqrifyRel   = sparqifyRel
+    cName _ = "opra-3"
+    cNameGqr _ ="opra3"
+
+    cReadRel = readOpram
+    cShowRel = showOpram
+
+    cSparqifyRel = sparqifyOpram
+    cGqrifyRel   = sparqifyOpram
+
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
 

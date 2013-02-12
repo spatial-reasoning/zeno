@@ -18,11 +18,12 @@ import Text.Printf
 
 -- local modules
 import Basics
+import DecisionProcedure
 import Export
 import Parsing.Qstrlib
 import Testsuite.Random
-import Helpful
 
+import Helpful
 import Debug.Trace
 
 -- improve: we should use records instead of tuples!
@@ -118,10 +119,10 @@ markTheBench scenario batch minsize maxsize testThisManyNets
                      funs tymeout rank relations dens newBench
 
 
-addToBench :: (Calculus a)
+addToBench :: (Relation (a b) b, Calculus b)
            => Benchmark
            -> Int -> (Ratio Int) -> (Ratio Int)
-           -> (Network [String] a)
+           -> (Network [String] (a b))
            -> [(String, (Double, Maybe (Maybe Bool)))]
            -> Benchmark
 addToBench bench numOfNodes targetDens actualDens net results =
@@ -241,10 +242,10 @@ checkNetwork scenario rank relations funs tymeout size dens = do
                randomConnectedAtomicNetworkWithDensity rank relations size dens
     appendFile "BENCHMARK.NETS" $ show net ++ "\n"
     results <- sequence $ map
-                  (\(desc, fun) -> do
-                      res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
-                      return $ (desc, res)
-                  ) funs
+              (\DecisionProcedure{ decProName = desc, decProProc = fun } -> do
+                  res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
+                  return $ (desc, res)
+              ) funs
     return (net, results)
 
 
@@ -309,7 +310,7 @@ saveContradictingResults numOfNodes dens net results = unsafePerformIO $ do
     appendFile "BENCHMARK.ERROR" $
         " Number of Nodes: " ++ show numOfNodes ++
         " | Density: " ++ show dens ++ "\n\n" ++
-        showAtomicNet net ++ "\n" ++
+        showNetwork net ++ "\n" ++
         showProcedures results ++ "\n" ++
         showResults results ++ "\n\n\n"
     error $ "Results contradict each other. Results saved to " ++
@@ -321,9 +322,9 @@ saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens denomin
                                    answer == Just (Just False)
                                ) results
                 ) [2] )
-    then
+    then do
         appendFile "BENCHMARK.SPECIAL" $
-            showAtomicNet net ++ "\n" ++
+            showNetwork net ++ "\n" ++
             showProcedures results ++ "\n" ++
             showResults results ++
             showInfo numOfNodes nOfTestedNet targetDens actualDens denomin minNumer ++

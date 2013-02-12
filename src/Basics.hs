@@ -1,22 +1,24 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FunctionalDependencies #-}
 module Basics where
 
 -- standard modules
 import Control.Monad
-import qualified Data.Char as Char
+import Data.Char
 import qualified Data.Foldable as Fold
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Ratio
 import qualified Data.Set as Set
+import Data.String
 
 -- local modules
 import qualified Helpful.Math as H
+import Helpful.String
 
 -- Debugging and Timing
 import Debug.Trace
 --import Data.Time.Clock (diffUTCTime, getCurrentTime)
-
 
 data Network a b = Network
     { nCons       :: Map.Map a b        -- Constraints
@@ -25,10 +27,23 @@ data Network a b = Network
     , nNumOfNodes :: Maybe Int          -- Number of nodes
     } deriving (Eq, Ord, Read, Show)
 
+newtype ARel a = ARel { aRel :: a }
+                      deriving (Eq, Ord, Read, Show)
+
+newtype GRel a = GRel { gRel :: Set.Set a }
+                      deriving (Eq, Ord, Read, Show)
+
 -- fixme: split this into "Non Associative Algebra" and "Relation ..."
 class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     rank :: a -> Int
-    calculus :: a -> String
+    rankSet :: Set.Set a -> Int
+    rankSet set = rank $ (undefined :: (Set.Set a) -> a) set
+
+    cName      :: a -> String
+    cNameGqr   :: a -> String
+    cNameSparq :: a -> String
+    cNameGqr   = cName
+    cNameSparq = cName
 
     cBaserelationsList :: [a]
     cBaserelationsList =  [minBound..maxBound]
@@ -48,17 +63,17 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     cBaserelationsNonAreal :: Set.Set a
     cBaserelationsNonAreal = Set.fromList cBaserelationsNonArealList
 
-    readRel :: String -> a
-    showRel :: a -> String
+    cReadRel :: String -> a
+    cShowRel :: a -> String
 
-    readRel = read . (map Char.toUpper)
-    showRel = (map Char.toLower) . show
+    cReadRel = read . (map toUpper)
+    cShowRel = (map toLower) . show
 
-    sparqifyRel :: a -> String
-    sparqifyRel = showRel
+    cSparqifyRel :: a -> String
+    cSparqifyRel = cShowRel
 
-    gqrifyRel :: a -> String
-    gqrifyRel = showRel
+    cGqrifyRel :: a -> String
+    cGqrifyRel = cShowRel
 
     identity :: a
     identity = undefined
@@ -71,32 +86,28 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     bcComposition   :: Map.Map (a, a) (Set.Set a)
     bcComposition   = Map.empty
 
-    bcConvert       :: Set.Set a -> Set.Set a
-    bcCompose       :: Set.Set a -> Set.Set a -> Set.Set a
+    bcConvert       :: GRel a -> GRel a
+    bcCompose       :: GRel a -> GRel a
+                    -> GRel a
 
-    bcConvert set =
-      let
-        theRank = rank $ Set.findMin $ Set.insert minBound set
-      in
-        if theRank == 2 then
-            Set.foldr Set.union Set.empty $ Set.map ((Map.!) bcConversion) set
+    bcConvert (GRel set) =
+        if rankSet set == 2 then
+            GRel $ Set.foldr Set.union Set.empty $ Set.map
+                ((Map.!) bcConversion) set
         else
             error $ "bcConvert is not defined for calculi of rank " ++
-                    show theRank ++ "!"
+                    show (rankSet set) ++ "!"
 
-    bcCompose set1 set2 =
-      let
-        theRank = rank $ Set.findMin $ Set.insert minBound set1
-      in
-        if theRank == 2 then
-            Set.foldr Set.union Set.empty $ Set.map
+    bcCompose (GRel set1) (GRel set2) =
+        if rankSet set1 == 2 then
+            GRel $ Set.foldr Set.union Set.empty $ Set.map
                 (\x -> Set.fold Set.union Set.empty $ Set.map
                     (\y -> bcComposition Map.! (x, y))
                     set2
                 ) set1
         else
             error $ "bcCompose is not defined for calculi of rank " ++
-                    show theRank ++ "!"
+                    show (rankSet set1) ++ "!"
 
 
     -- ternary calculi:
@@ -110,144 +121,49 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     tcHomMap = Map.empty
 
 
-    tcInv  :: Set.Set a -> Set.Set a
-    tcSc   :: Set.Set a -> Set.Set a
-    tcSci  :: Set.Set a -> Set.Set a
-    tcHom  :: Set.Set a -> Set.Set a
-    tcHomi :: Set.Set a -> Set.Set a
+    tcInv  :: GRel a -> GRel a
+    tcSc   :: GRel a -> GRel a
+    tcSci  :: GRel a -> GRel a
+    tcHom  :: GRel a -> GRel a
+    tcHomi :: GRel a -> GRel a
 
-    tcInv set =
-      let
-        theRank = rank $ Set.findMin $ Set.insert minBound set
-      in
-        if theRank == 3 then
-            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcInvMap) set
+    tcInv (GRel set) =
+        if rankSet set == 3 then
+            GRel $ Set.foldr Set.union Set.empty $ Set.map
+                ((Map.!) tcInvMap) set
         else
             error $ "tcInv is not defined for calculi of rank " ++
-                    show theRank ++ "!"
-    tcSc set =
-      let
-        theRank = rank $ Set.findMin $ Set.insert minBound set
-      in
-        if theRank == 3 then
-            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcScMap) set
+                    show (rankSet set) ++ "!"
+    tcSc (GRel set) =
+        if rankSet set == 3 then
+            GRel $ Set.foldr Set.union Set.empty $ Set.map
+                ((Map.!) tcScMap) set
         else
             error $ "tcInv is not defined for calculi of rank " ++
-                    show theRank ++ "!"
-    tcHom set =
-      let
-        theRank = rank $ Set.findMin $ Set.insert minBound set
-      in
-        if theRank == 3 then
-            Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcHomMap) set
+                    show (rankSet set) ++ "!"
+    tcHom (GRel set) =
+        if rankSet set == 3 then
+            GRel $ Set.foldr Set.union Set.empty $ Set.map
+                ((Map.!) tcHomMap) set
         else
             error $ "tcInv is not defined for calculi of rank " ++
-                    show theRank ++ "!"
-    tcSci  = tcInv . tcSc
-    tcHomi = tcInv . tcHom
-
-
--- fixme: should we return Nothing in case of an empty relation?
-insertCon :: (Calculus a, Ord b)
-          => [b] -> Set.Set a -> Map.Map [b] (Set.Set a)
-          -> Map.Map [b] (Set.Set a)
-insertCon nodes rel cons
-    | isNothing relInCons  = Map.insert sortedNodes sortedRel cons
-    | otherwise  = Map.insert
-        sortedNodes (Set.intersection sortedRel $ fromJust relInCons) cons
-  where
-    relInCons = Map.lookup sortedNodes cons
-    sortedNodes = sort nodes
-    sortedRel = sortRel (length nodes) rel
-    sortRel 2 | sortedNodes == nodes      = id
-              | otherwise                 = bcConvert
-    sortRel 3 | sortedNodes == nodes              = id
-              | sortedNodes == tcNodesInv  nodes  = tcInv
-              | sortedNodes == tcNodesSc   nodes  = tcSc
-              | sortedNodes == tcNodesSci  nodes  = tcSci
-              | sortedNodes == tcNodesHom  nodes  = tcHom
-              | sortedNodes == tcNodesHomi nodes  = tcHomi
-
-insertConAtomic :: (Calculus a, Ord b)
-                => [b] -> a -> Map.Map [b] a
-                -> Maybe (Map.Map [b] a)
-insertConAtomic nodes rel cons
-    | Set.null sortedRel'      = Nothing
-    | Set.size sortedRel' > 1  = error $
-        "insertConAtomic: " ++ show sortedRel' ++ " is not atomic!"
-    | isNothing relInCons  = Just $ Map.insert sortedNodes sortedRel cons
-    | fromJust relInCons /= sortedRel  = Nothing
-    | otherwise  = Just cons
-  where
-    relInCons = Map.lookup sortedNodes cons
-    sortedNodes = sort nodes
-    sortedRel = Set.findMin sortedRel'
-    sortedRel' = sortRel (length nodes) (Set.singleton rel)
-    sortRel 2 | sortedNodes == nodes      = id
-              | otherwise                 = bcConvert
-    sortRel 3 | sortedNodes == nodes              = id
-              | sortedNodes == tcNodesInv  nodes  = tcInv
-              | sortedNodes == tcNodesSc   nodes  = tcSc
-              | sortedNodes == tcNodesSci  nodes  = tcSci
-              | sortedNodes == tcNodesHom  nodes  = tcHom
-              | sortedNodes == tcNodesHomi nodes  = tcHomi
-
-consFromList :: (Ord a, Calculus b)
-             => [([a], Set.Set b)]
-             -> Map.Map [a] (Set.Set b)
-consFromList = foldr
-    (\ (nodes, rel) acc ->
-        insertCon nodes rel acc
-    ) Map.empty
-
-consFromListAtomic :: (Ord a, Calculus b)
-                   => [([a], b)]
-                   -> Maybe (Map.Map [a] b)
-consFromListAtomic = Fold.foldrM
-    (\ (nodes, rel) acc ->
-        insertConAtomic nodes rel acc
-    ) Map.empty
-
-relOf :: (Ord a, Calculus b)
-      => Map.Map [a] (Set.Set b) -> [a]
-      -> Maybe (Set.Set b)
-relOf cons nodes = do
-    sortedRel <- Map.lookup sortedNodes cons
-    let unsortRel 2 | nodes == sortedNodes  = id
-                    | otherwise             = bcConvert
-    let unsortRel 3 | nodes == sortedNodes              = id
-                    | nodes == tcNodesInv  sortedNodes  = tcInv
-                    | nodes == tcNodesSc   sortedNodes  = tcSc
-                    | nodes == tcNodesSci  sortedNodes  = tcSci
-                    | nodes == tcNodesHom  sortedNodes  = tcHom
-                    | nodes == tcNodesHomi sortedNodes  = tcHomi
-    return $ unsortRel (length nodes) sortedRel
-  where
-    sortedNodes = sort nodes
-
-relOfAtomic :: (Ord a, Calculus b)
-            => Map.Map [a] b -> [a]
-            -> Maybe b
-relOfAtomic cons nodes = do
-    sortedRel <- Map.lookup sortedNodes cons
-    let unsortRel 2 | nodes == sortedNodes  = id
-                    | otherwise             = bcConvert
-    let unsortRel 3 | nodes == sortedNodes              = id
-                    | nodes == tcNodesInv  sortedNodes  = tcInv
-                    | nodes == tcNodesSc   sortedNodes  = tcSc
-                    | nodes == tcNodesSci  sortedNodes  = tcSci
-                    | nodes == tcNodesHom  sortedNodes  = tcHom
-                    | nodes == tcNodesHomi sortedNodes  = tcHomi
-    let unsortedRel = unsortRel (length nodes) (Set.singleton sortedRel)
-    -- fixme: what about a possiple empty set? Is Nothing the appropriate
-    -- answer in this case?
-    if Set.size unsortedRel > 1 then
-        Nothing
-    else
-        Just $ Set.findMin unsortedRel
-  where
-    sortedNodes = sort nodes
-
+                    show (rankSet set) ++ "!"
+    tcSci (GRel set) =
+        if rankSet set == 3 then
+            GRel $
+                Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcInvMap) $
+                Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcScMap) set
+        else
+            error $ "tcSci is not defined for calculi of rank " ++
+                    show (rankSet set) ++ "!"
+    tcHomi (GRel set) =
+        if rankSet set == 3 then
+            GRel $
+                Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcInvMap) $
+                Set.foldr Set.union Set.empty $ Set.map ((Map.!) tcHomMap) set
+        else
+            error $ "tcHomi is not defined for calculi of rank " ++
+                    show (rankSet set) ++ "!"
 
 tcNodesInv  :: [b] -> [b]
 tcNodesSc   :: [b] -> [b]
@@ -271,6 +187,154 @@ tcNodesSciInv  [c, a, b] = [a, b, c]
 tcNodesHomInv  [b, c, a] = [a, b, c]
 tcNodesHomiInv [c, b, a] = [a, b, c]
 
+
+class Relation a b | a -> b where
+    readRel :: String -> a
+    showRel :: a -> String
+
+    insertCon :: (Ord c) => [c] -> a -> Map.Map [c] a -> Maybe (Map.Map [c] a)
+    consFromList :: (Ord c) => [([c], a)] -> Maybe (Map.Map [c] a)
+    relOf :: (Ord c) => Map.Map [c] a -> [c] -> Maybe a
+    
+    toARel :: a -> Maybe (Maybe (ARel b))
+    toGRel :: a -> GRel b
+
+instance (Calculus a) => Relation (ARel a) a where
+    readRel str = ARel $ cReadRel str
+    showRel (ARel rel) = cShowRel rel
+
+    insertCon nodes rel cons = case relInCons of
+        Nothing  -> case Set.size sortedRel of
+            1 -> Just $ Map.insert sortedNodes
+                                   (ARel $ Set.findMin sortedRel)
+                                   cons
+            0 -> Nothing
+            _ -> Just cons
+        Just (ARel relInCons')  ->
+            if Set.member relInCons' sortedRel then
+                Just cons
+            else
+                Nothing
+      where
+        relInCons = Map.lookup sortedNodes cons
+        sortedNodes = sort nodes
+        GRel sortedRel = sortRel (length nodes)
+                                            (toGRel rel)
+        sortRel 2 | sortedNodes == nodes      = id
+                  | otherwise                 = bcConvert
+        sortRel 3 | sortedNodes == nodes              = id
+                  | sortedNodes == tcNodesInv  nodes  = tcInv
+                  | sortedNodes == tcNodesSc   nodes  = tcSc
+                  | sortedNodes == tcNodesSci  nodes  = tcSci
+                  | sortedNodes == tcNodesHom  nodes  = tcHom
+                  | sortedNodes == tcNodesHomi nodes  = tcHomi
+
+    consFromList = Fold.foldrM (\ (nodes, rel) acc -> insertCon nodes rel acc
+                               ) Map.empty
+
+    relOf cons nodes = do
+        let sortedNodes = sort nodes
+        sortedRel <- Map.lookup sortedNodes cons
+        let unsortRel 2 | nodes == sortedNodes  = id
+                        | otherwise             = bcConvert
+        let unsortRel 3 | nodes == sortedNodes              = id
+                        | nodes == tcNodesInv  sortedNodes  = tcInv
+                        | nodes == tcNodesSc   sortedNodes  = tcSc
+                        | nodes == tcNodesSci  sortedNodes  = tcSci
+                        | nodes == tcNodesHom  sortedNodes  = tcHom
+                        | nodes == tcNodesHomi sortedNodes  = tcHomi
+        let unsortedRel =
+                unsortRel (length nodes) (toGRel sortedRel)
+        let unsortedRelAtomic = toARel unsortedRel
+        case unsortedRelAtomic of
+            Just (Just x)  -> Just x
+            Just Nothing   -> Nothing
+            Nothing        -> error $ "relOf found an empty relation in an " ++
+                "atomic network. We should fix something about how we " ++
+                "handle permutations of relations!"
+
+    toARel rel = Just (Just rel)
+    toGRel = GRel . Set.singleton . aRel
+
+
+instance (Calculus a) => Relation (GRel a) a where
+    readRel str = GRel $ Set.fromList $
+        map cReadRel $ words $ str
+    showRel (GRel rels) = " " ++ Set.foldl
+        (\acc rel -> cShowRel rel ++ " " ++ acc
+        ) "" rels
+
+    insertCon nodes rel cons
+        | isNothing relInCons  = Just $
+            Map.insert sortedNodes (GRel sortedRel) cons
+        | Set.null newRel  = Nothing
+        | otherwise  = Just $
+            Map.insert sortedNodes (GRel newRel) cons
+      where
+        newRel = Set.intersection sortedRel $ gRel $ fromJust relInCons
+        relInCons = Map.lookup sortedNodes cons
+        sortedNodes = sort nodes
+        GRel sortedRel = sortRel (length nodes) rel
+        sortRel 2 | sortedNodes == nodes      = id
+                  | otherwise                 = bcConvert
+        sortRel 3 | sortedNodes == nodes              = id
+                  | sortedNodes == tcNodesInv  nodes  = tcInv
+                  | sortedNodes == tcNodesSc   nodes  = tcSc
+                  | sortedNodes == tcNodesSci  nodes  = tcSci
+                  | sortedNodes == tcNodesHom  nodes  = tcHom
+                  | sortedNodes == tcNodesHomi nodes  = tcHomi
+
+    consFromList = Fold.foldrM (\ (nodes, rel) acc -> insertCon nodes rel acc
+                               ) Map.empty
+
+    relOf cons nodes = do
+        sortedRel <- Map.lookup sortedNodes cons
+        let unsortRel 2 | nodes == sortedNodes  = id
+                        | otherwise             = bcConvert
+        let unsortRel 3 | nodes == sortedNodes              = id
+                        | nodes == tcNodesInv  sortedNodes  = tcInv
+                        | nodes == tcNodesSc   sortedNodes  = tcSc
+                        | nodes == tcNodesSci  sortedNodes  = tcSci
+                        | nodes == tcNodesHom  sortedNodes  = tcHom
+                        | nodes == tcNodesHomi sortedNodes  = tcHomi
+        return $ unsortRel (length nodes) sortedRel
+      where
+        sortedNodes = sort nodes
+
+    toARel (GRel rel) = case Set.size rel of
+        1  -> Just $ Just $ ARel $ Set.findMin rel
+        0  -> Nothing
+        _  -> Just Nothing
+
+    toGRel = id
+
+
+
+isAtomic :: Network [a] (GRel b) -> Bool
+isAtomic = Map.fold (\x y -> y && ( (== 1) $ Set.size $ gRel x)) True . nCons
+
+-- This function only keeps atomic relations and generalizes all other
+-- relations to the universal relation.
+-- fixme: handle empty relations.
+makeAtomic :: (Ord a, Relation (b c) c)
+           => Network [a] (b c)
+           -> Network [a] (ARel c)
+makeAtomic net@Network { nCons = cons } =
+    net { nCons = Map.foldrWithKey
+            (\nodes rel consAcc -> case toARel rel of
+                Just (Just rel')  -> Map.insert nodes rel' consAcc
+                Just Nothing      -> consAcc
+                Nothing           -> error $
+                    "\"makeAtomic\" got an empty relation: This casestill " ++
+                    "needs to be implemented."
+            ) Map.empty cons
+        }
+
+makeNonAtomic :: (Relation (b c) c)
+              => Network [a] (b c)
+              -> Network [a] (GRel c)
+makeNonAtomic net@Network { nCons = cons } =
+    net { nCons = Map.map toGRel cons }
 
 {------------------------------------------------------------------------------
  - Empty constants
@@ -374,27 +438,4 @@ density net@Network{nCons = cons}
 --            (\x -> (compose a s x == x) && (compose a x s == x))
 --            (bcBaserelations a)))
 --    (Set.fold Set.union Set.empty $ bcBaserelations a)
-
-isAtomic :: Network [a] (Set.Set b) -> Bool
-isAtomic = Map.fold (\x y -> y && ( (== 1) $ Set.size x)) True . nCons
-
--- This function only keeps atomic relations and generalizes all other
--- relations to the universal relation.
-makeAtomic :: (Ord a)
-           => Network [a] (Set.Set b)
-           -> Network [a] b
-makeAtomic net@Network { nCons = cons } =
-    net { nCons = Map.foldrWithKey
-            (\nodes rel consAcc ->
-                if Set.size rel == 1 then
-                    Map.insert nodes (Set.findMin rel) consAcc
-                else
-                    consAcc
-            ) Map.empty cons
-        }
-
-makeNonAtomic :: Network [a] b -> Network [a] (Set.Set b)
-makeNonAtomic net@Network { nCons = cons } =
-    net { nCons = Map.map Set.singleton cons }
-
 

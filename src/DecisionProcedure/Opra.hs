@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module DecisionProcedure.Opra
     ( module DecisionProcedure.OrientedPoint
     , module Calculus.Opra
@@ -12,10 +13,11 @@ import Convert.OpraToOtop
 import DecisionProcedure
 import DecisionProcedure.OrientedPoint
 
-instance HasDecisionProcedure Opra where
-    proceduresForAtomicNets _ =
+instance HasDecisionProcedure (ARel Opra) where
+    procedures _ =
         [
-        ] ++ map (after opraNetToOtopNetAtomic)
-                 (proceduresForAtomicNets (undefined :: Otop))
+        ] ++ map (firstApply opraNetToOtopNetAtomic)
+                 (procedures (undefined :: ARel Otop))
 
-    proceduresForNonAtomicNets _ = []
+instance HasDecisionProcedure (GRel Opra) where
+    procedures _ = []

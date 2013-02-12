@@ -25,11 +25,11 @@ opra1ToFlipFlopRel [a,b] c =
         '2' -> B
         '3' -> R
         'S' -> S
-    showC = showRel c
+    showC = cShowRel c
 
 
-opra1ToFlipFlopNet :: Network [String] (Set.Set Opra1)
-                   -> Network [String] (Set.Set FlipFlop)
+opra1ToFlipFlopNet :: Network [String] (GRel Opra1)
+                   -> Network [String] (GRel FlipFlop)
 opra1ToFlipFlopNet net@Network{ nCons = cons } =
     net{ nCons = Map.foldrWithKey collectOneCon Map.empty cons
        }
@@ -39,13 +39,13 @@ opra1ToFlipFlopNet net@Network{ nCons = cons } =
             ( (node, "eris_" ++ show inc):pairAcc
             , inc + 1 )
         ) ([], 1) $ nodesIn $ nCons net
-    collectOneCon [a, b] rels consAcc =
+    collectOneCon [a, b] (GRel rels) consAcc =
         Map.insert [b, (Map.!) endpoints b, a] rels2 $
         Map.insert [a, (Map.!) endpoints a, b] rels1 consAcc
       where
-        rels1 = Set.map (convertRel 1) $ rels
-        rels2 = Set.map (convertRel 2) $ rels
-        convertRel n r = case (showRel r)!!(n+5) of
+        rels1 = GRel $ Set.map (convertRel 1) $ rels
+        rels2 = GRel $ Set.map (convertRel 2) $ rels
+        convertRel n r = case (cShowRel r)!!(n+5) of
             '0' -> F
             '1' -> L
             '2' -> B

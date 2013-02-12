@@ -12,7 +12,7 @@ import Interface.Yices
 
 --import Debug.Trace
 
-checkConsistency :: Network [String] FlipFlop
+checkConsistency :: Network [String] (ARel FlipFlop)
                  -> Maybe Bool
 checkConsistency net =
     ffsToFF5s net >>= (runTCpure . flipFlopsToDominik)
@@ -21,7 +21,7 @@ checkConsistency net =
     FlipFlop to Dominik
 ------------------------------------------------------------------------------}
 
-flipFlopsToDominik :: Network [String] FlipFlop -> [Rel]
+flipFlopsToDominik :: Network [String] (ARel FlipFlop) -> [Rel]
 flipFlopsToDominik Network { nCons = cons } = Map.foldrWithKey
     (\ [a, b, c] rel ls -> (Rel a b (showRel rel) c):ls )
     []

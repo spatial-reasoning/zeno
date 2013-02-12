@@ -6,6 +6,7 @@ module Calculus.All
     , module Calculus.Opra
     , module Calculus.Opra1
     , module Calculus.Opra2
+    , module Calculus.Opra3
     , module Calculus.Opra4
     , module Calculus.Opra8
     , module Calculus.Opra10
@@ -19,6 +20,7 @@ import Calculus.FlipFlop
 import Calculus.Opra
 import Calculus.Opra1
 import Calculus.Opra2
+import Calculus.Opra3
 import Calculus.Opra4
 import Calculus.Opra8
 import Calculus.Opra10
