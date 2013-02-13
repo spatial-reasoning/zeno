@@ -43,6 +43,8 @@ instance Calculus Opra2 where
     cGqrifyRel   = sparqifyOpram
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
+    cBaserelationsSameList     = same     cBaserelationsList
+    cBaserelationsNonSameList  = nonSame  cBaserelationsList
 
     identity = Opra2_s_0
 

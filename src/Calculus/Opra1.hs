@@ -27,8 +27,10 @@ instance Calculus Opra1 where
     cShowRel = showOpram
     cSparqifyRel = sparqifyOpram
     cGqrifyRel   = sparqifyOpram
-    cBaserelationsArealList = areal cBaserelationsList
+    cBaserelationsArealList    = areal    cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
+    cBaserelationsSameList     = same     cBaserelationsList
+    cBaserelationsNonSameList  = nonSame  cBaserelationsList
 
     identity = Opra1_s_0
 

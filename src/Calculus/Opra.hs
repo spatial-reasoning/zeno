@@ -64,6 +64,9 @@ nonAreal baserelations = filter
         map (\x -> if x == 's' then '0' else x) $ drop 6 $ show a
     ) baserelations
 
+same    baserelations = filter (\a -> ((show a)!!6) == 's') baserelations
+nonSame baserelations = filter (\a -> ((show a)!!6) /= 's') baserelations
+
 -- fixme: look over this one again.
 class (Read a, Show a, Ord a) => Opram a where
     m :: a -> Int

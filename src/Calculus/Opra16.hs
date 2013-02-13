@@ -1064,6 +1064,8 @@ instance Calculus Opra16 where
     cGqrifyRel   = sparqifyOpram
     cBaserelationsArealList = areal cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
+    cBaserelationsSameList     = same     cBaserelationsList
+    cBaserelationsNonSameList  = nonSame  cBaserelationsList
 
     bcConvert = opraConvert 16
 

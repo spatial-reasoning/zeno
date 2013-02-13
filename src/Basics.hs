@@ -63,6 +63,18 @@ class (Ord a, Enum a, Bounded a, Read a, Show a) => Calculus a where
     cBaserelationsNonAreal :: Set.Set a
     cBaserelationsNonAreal = Set.fromList cBaserelationsNonArealList
 
+    cBaserelationsSameList :: [a]
+    cBaserelationsSameList = cBaserelationsList \\ cBaserelationsNonSameList
+
+    cBaserelationsSame :: Set.Set a
+    cBaserelationsSame = Set.fromList cBaserelationsSameList
+
+    cBaserelationsNonSameList :: [a]
+    cBaserelationsNonSameList = cBaserelationsList
+
+    cBaserelationsNonSame :: Set.Set a
+    cBaserelationsNonSame = Set.fromList cBaserelationsNonSameList
+
     cReadRel :: String -> a
     cShowRel :: a -> String
 

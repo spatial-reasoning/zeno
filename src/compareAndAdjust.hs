@@ -26,7 +26,7 @@ import DecisionProcedure
 import DecisionProcedure.All
 import Helpful.String
 
---import Debug.Trace
+import Debug.Trace
 --import Helpful.General
 
 
@@ -42,6 +42,7 @@ data Options = Options { optMinRange   :: Int
 --                       , optNumOfNodes :: Int
                        , optDensity    :: Float
                        , optAreal      :: Int
+                       , optSame       :: Int
                        , optBatch      :: Bool
                        , optScenario   :: Bool
                        } deriving (Show, Data, Typeable)
@@ -110,6 +111,13 @@ defaultOptions = Options
         &= name "areal"
         &= typ "NUMBER"
         &= help "1 = Only use areal relations.          2 = Only use non-areal relations.      Any other number = No restriction. (Default = 0)"
+    , optSame = 0
+        &= opt (0 :: Int)
+        &= explicit
+        &= name "s"
+        &= name "same"
+        &= typ "NUMBER"
+        &= help "1 = Only use same relations.           2 = Only use non-same relations.      Any other number = No restriction. (Default = 0)"
     , optBatch = def
         &= explicit
         &= name "b"
@@ -117,7 +125,7 @@ defaultOptions = Options
         &= help "Start in batch mode and don't wait for input."
     , optScenario = def
         &= explicit
-        &= name "s"
+        &= name "S"
         &= name "scenario"
         &= help "Generate scenarios and don't search for a phase transition."
     } &=
@@ -212,6 +220,11 @@ optionHandler opts@Options{..} = do
 
 unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
     let rels =
+            ( case optSame of
+                  1 -> intersect (tail $ typeHelper:cBaserelationsSameList)
+                  2 -> intersect (tail $ typeHelper:cBaserelationsNonSameList)
+                  _ -> id
+            ) $
             ( case optAreal of
                   1 -> intersect (tail $ typeHelper:cBaserelationsArealList)
                   2 -> intersect (tail $ typeHelper:cBaserelationsNonArealList)
@@ -223,10 +236,14 @@ unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
     exec rels opts
 
 useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
-    let rels = tail $ typeHelper:case optAreal of
-                                     1 -> cBaserelationsArealList
-                                     2 -> cBaserelationsNonArealList
-                                     _ -> cBaserelationsList
+    let rels = ( case optSame of
+                   1 -> intersect (tail $ typeHelper:cBaserelationsSameList)
+                   2 -> intersect (tail $ typeHelper:cBaserelationsNonSameList)
+                   _ -> id
+               ) $ tail $ typeHelper:case optAreal of
+                   1 -> cBaserelationsArealList
+                   2 -> cBaserelationsNonArealList
+                   _ -> cBaserelationsList
     exec rels opts
 
 exec rels opts@Options{..} = do

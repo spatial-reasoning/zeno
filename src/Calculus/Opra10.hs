@@ -434,8 +434,10 @@ instance Calculus Opra10 where
     cShowRel = showOpram
     cSparqifyRel = sparqifyOpram
     cGqrifyRel   = sparqifyOpram
-    cBaserelationsArealList = areal cBaserelationsList
+    cBaserelationsArealList    = areal    cBaserelationsList
     cBaserelationsNonArealList = nonAreal cBaserelationsList
+    cBaserelationsSameList     = same     cBaserelationsList
+    cBaserelationsNonSameList  = nonSame  cBaserelationsList
 
     bcConvert = opraConvert 10
 
