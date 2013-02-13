@@ -4,7 +4,9 @@ module Parsing.Qstrlib where
 --import Control.Applicative ((<*))
 import Control.Monad
 import qualified Data.Map as Map
+import Data.Maybe
 import qualified Data.Set as Set
+import Data.String
 import qualified Text.Parsec.Language as L
 import Text.Parsec.Perm
 import Text.ParserCombinators.Parsec
@@ -52,22 +54,24 @@ parseNetworkRaw = qstrWhiteSpace >> permute
     where
         tuple a b c d = (a,b,c,d)
 
-parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
+parseNetwork :: (Relation (a b) b, Calculus b) => Parser (Network [String] (a b))
 parseNetwork = do
     (calc, desc, net, numOfNodes) <- parseNetworkRaw
     let parsedNet = eNetwork
             { nCons = foldl
                 (\acc (nodes, rel) ->
-                    insertCon nodes rel acc
-                ) Map.empty [(x, Set.fromList (map readRel y)) | (x, y) <- net]
+                    -- improve: change "fromJust" to catch inconsistent
+                    -- networks
+                    fromJust $ insertCon nodes rel acc
+                ) Map.empty [(x, readRel $ unwords y) | (x, y) <- net]
             , nDesc = desc
             , nCalc = calc
             , nNumOfNodes = numOfNodes
             }
     return parsedNet
 
-loadNetwork :: (Calculus a)
-            => FilePath -> IO (Network [String] (Set.Set a))
+loadNetwork :: (Relation (a b) b, Calculus b)
+            => FilePath -> IO (Network [String] (a b))
 loadNetwork filename = do
     network <- parseFromFile parseNetwork filename
     case network of

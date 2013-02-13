@@ -12,6 +12,7 @@ import System.IO.Unsafe
 -- local modules
 import Basics
 import Helpful.General
+import Helpful.TimeIt
 import Interface.Yices
 import SpatioTemporalStructure.OrientedPoint
 
@@ -19,15 +20,14 @@ import SpatioTemporalStructure.OrientedPoint
 
 -- this is for debugging:
 --import System.IO.Unsafe
-import Export
-import Debug.Trace
+--import Debug.Trace
 mytrace  a b = id b
 mytrace2 a b = id b
 --mytrace  = trace
 --mytrace2 = trace
 
 -- maximal granularity for which this code should work.
-maxgran = 10
+maxgran = 4
 
 halfcircle :: Integer
 halfcircle = foldr1 lcm [1..maxgran]
@@ -35,6 +35,10 @@ halfcircle = foldr1 lcm [1..maxgran]
 circle = halfcircle * 2
 
 angle g s = quot (halfcircle * fromIntegral (quot s 2)) (fromIntegral g)
+
+minAngle g s = if even s then angle g s else angle g (s - 1)
+
+maxAngle g s = if even s then angle g s else angle g (s + 1)
 
 data Term = Fo  Formula
           | Con Integer
@@ -129,298 +133,32 @@ getVarsFo Fals           = Set.empty
 
 
 -- This function assumes, that the Otop relations are similar to the
--- corresponding opra relations. "Same" relations are mapped to a granularity
--- of 0 and then indicate the direction of the second opoint with respect to
+-- corresponding opra relations.
+-- "Same" relations are mapped to a negative granularity
+-- and then indicate the direction of the second opoint with respect to
 -- the first.
+--
+-- signum g = -1 denotes a 'SAME' relation,
+-- signum g =  1 denotes a non-'SAME' relation,
+-- signum g =  0 and signum s = -1 denotes the sole knowledge
+-- that the pair is in a 'SAME' relation (without any knowledge
+-- about directions)
+-- signum g =  0 and signum s =  1 denotes the sole knowledge
+-- that the pair is in a non-'SAME' relation (without any
+-- knowledge about directions)
+-- signum g =  0 and signum s =  0 denotes no knowledge at all.
+--
 -- Note: Add converses of same relations before giving the network to this
 -- function in order to improve the reasoning.
 -- improve: catch empty network.
 -- improve: find a better way to preprocess the network.
-translateToAngles :: Network [String] Otop -> Maybe Formula
-translateToAngles net@Network{nCons = cons} = do
-    let allNodes = nodesIn $ nCons net
-    let pairs    = kCombinations 2 $ Set.toAscList allNodes
-    ps_u <- Fold.foldlM         -- pairsWithSameness_and_unknownPairs
-        (\ (acc, acc2, acc3) pair@[node, node2] ->
-          let 
-            existsWitnessForUnSameness = not $ Set.null $ Set.filter
-                (\ node3 ->
-                  let
-                    n3n  = Map.lookup [node3, node ] cons
-                    n3n2 = Map.lookup [node3, node2] cons
-                  in
-                    node /= node3 && node2 /= node3 &&
-                    isJust n3n && isJust n3n2 && n3n /= n3n2
-                ) allNodes
-            -- not sure if this increases the speed.
-            existWitnessesForSameness =
-              not $ null $ filter
-                (\ [node3, node4] ->
-                  let
-                    n3n  = Map.lookup [node3, node ] cons
-                    n3n2 = Map.lookup [node3, node2] cons
-                    n3n4 = Map.lookup [node3, node4] cons
-                    n4n  = Map.lookup [node4, node ] cons
-                    n4n2 = Map.lookup [node4, node2] cons
-                    n4n3 = Map.lookup [node4, node3] cons
-                    Otop gran_n3n  sec_n3n  = fromJust n3n
-                    Otop gran_n3n2 sec_n3n2 = fromJust n3n2
-                    Otop gran_n3n4 sec_n3n4 = fromJust n3n4
-                    Otop gran_n4n  sec_n4n  = fromJust n4n
-                    Otop gran_n4n2 sec_n4n2 = fromJust n4n2
-                    Otop gran_n4n3 sec_n4n3 = fromJust n4n3
-                  in
-                    -- improve: This could be improved, e.g. by
-                    -- adding gran_n3n == 0 && gran_n3n2 == 0 etc.
-                    isJust n3n && isJust n3n2 && isJust n4n && isJust n4n2
-                    && gran_n3n > 0 && gran_n3n2 > 0
-                    && gran_n4n > 0 && gran_n4n2 > 0 
-                    && even sec_n3n && even sec_n4n
-                    -- n and n2 lie on the same line
-                    && (sec_n3n * gran_n3n2 == sec_n3n2 * gran_n3n)
-                    && (sec_n4n * gran_n4n2 == sec_n4n2 * gran_n4n)
-                    -- n3 and n4 not in line with n and n2
-                    && (  (isJust n3n4
-                          && (sec_n3n * gran_n3n4 /= sec_n3n4 * gran_n3n)
-                          && (sec_n3n * gran_n3n4 /=
-                              mod (sec_n3n4 + 2 * gran_n3n4) (4 * gran_n3n4)
-                              * gran_n3n))
-                       || (isJust n4n3
-                          && (sec_n4n * gran_n4n3 /= sec_n4n3 * gran_n4n)
-                          && (sec_n4n * gran_n4n3 /=
-                              mod (sec_n4n3 + 2 * gran_n4n3) (4 * gran_n4n3)
-                              * gran_n4n))
-                       )
-                ) pairs
-            sameHelper g s g2 s2 = case sort [ (signum g , signum s )
-                                             , (signum g2, signum s2)] of
-                -- (-1) = same, 1 = not same, 0 = partial or no knowledge.
-                [(-1, _), (-1, _)] -> newAccsTrue
-                [( 1, _), ( 1, _)] -> newAccsFalse
-                [(-1, _), ( 0, 1)] -> Nothing
-                [(-1, _), ( 0, _)] -> newAccsTrue
-                [( 0,-1), ( 1, _)] -> Nothing
-                [( 0, _), ( 1, _)] -> newAccsFalse
-                [( 0,-1), ( 0, 1)] -> Nothing
-                [( 0,-1), ( 0, _)] -> newAccsTrue
-                [( 0, _), ( 0, 1)] -> newAccsFalse
-                [(-1, _), ( 1, _)] -> Nothing
-            noInfoHelper = case ( existsWitnessForUnSameness
-                                , existWitnessesForSameness  ) of
-                (True , False) -> mytrace ("Wittness for Unsame. " ++ show pair) newAccsFalse
-                (False, True ) -> mytrace ("Wittnesses for Same. " ++ show pair) newAccsTrue
-                (False, False) -> newAccsUnknown
-                (True , True ) -> mytrace ("Wittnesses!" ++ node) Nothing
-            newAccsTrue  = Just (Map.insert pair True  acc, newAcc2, acc3)
-            newAccsFalse = Just (Map.insert pair False acc, newAcc2, acc3)
-            newAccsUnknown = Just (acc, acc2, pair:acc3)
---            newAcc2 = Map.insertWith Set.union node2 (Set.singleton node ) $
---                      Map.insertWith Set.union node  (Set.singleton node2) acc2
-            newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
-          in
-            -- improve:find more contradictions here by looking into g g2 s s2.
-            -- e.g. same but angles dont match or g not negative.
-            -- maybe even use witnesses and compare to given information.
--- THIS IS A SNIPPET I USED BEFORE.
---                        if (even s2 && angle (-g) s /= angle (-g2) s2) ||
---                           (odd s2 &&
---                               (angle (-g) s <= angle (-g2) (s2 - 1)) ||
---                               (angle (-g) s >= angle (-g2) (s2 + 1))    )
---                        then Nothing
-            case ( Map.lookup [node, node2] cons
-                 , Map.lookup [node2, node] cons ) of
-                (Just (Otop 0 0), Just (Otop 0  0 )) -> noInfoHelper
-                (Just (Otop g s), Just (Otop g2 s2)) -> sameHelper g s g2 s2
-                (Just (Otop g s), Nothing)           -> sameHelper g s g s
-                (Nothing, Just (Otop g s))           -> sameHelper g s g s
-                (Nothing, Nothing)                   -> noInfoHelper
-        ) (Map.empty, Map.empty, []) pairs
-    let (pairsWithSameness, relatedNodes, unknownPairs) = ps_u
-    translateToAngles' True cons pairsWithSameness
-                                 pairsWithSameness relatedNodes unknownPairs
 
-
-translateToAngles' :: Bool
-                   -> Map.Map [String] Otop
-                   -> Map.Map [String] Bool
-                   -> Map.Map [String] Bool
-                   -> Map.Map  String  (Set.Set String)
-                   -> [[String]]
-                   -> Maybe Formula
-translateToAngles' firstRun
-                   cons newPairs pairsToRelateTo relatedNodes unknownPairs =
-    if null unknownPairs then
-        equNewPairs
-    else do
-        a <- equNewPairs
-        b <- equUnknownPairs
-        Just $ And a b
-  where
-    equNewPairs = Key.foldrWithKeyM
-        (\ pair@[node, node2] same acc -> do
-          let
-            revPair = [node2, node]
-            varPair = Var pair
-            varRevPair = Var revPair
-            noInfoSame =
-                And (Leq (Con 0) varPair) (Le varPair (Con circle))
-            noInfoNotSame = And
-                (And (Leq (Con 0) varPair   )
-                     (Le varPair    (Con circle)))
-                (And (Leq (Con 0) varRevPair)
-                     (Le varRevPair (Con circle)))
-            fstSame g s = equKnownVar varPair (-g) s
-            sndSame g s =
-                if even s then
-                    Eq varPair (Con $ circle - angle (-g) s)
-                else
-                    And (Le (Con $ circle - angle (-g) (s + 1))
-                            varPair)
-                        (Le varPair
-                            (Con $ circle - angle (-g) (s - 1)))
-            fstNotSame g s = notSame varPair varRevPair g s
-            sndNotSame g s = notSame varRevPair varPair g s
-            notSame knownVar unknownVar g s = And
-                (And (Leq (Con 0) unknownVar)
-                     (Le unknownVar (Con circle))) $
-                equKnownVar knownVar g s
-            equKnownVar var g s =
-                if even s then
-                    Eq var (Con $ angle g s)
-                else
-                    And (Le (Con $ angle g (s - 1)) var)
-                        (Le var (Con $ angle g (s + 1)))
-            equPair = case ( Map.lookup pair cons
-                           , Map.lookup revPair cons
-                           , same
-                           ) of
-                (Just (Otop 0 _), Just (Otop 0  _ ), True ) -> noInfoSame
-                (Nothing, Nothing                  , True ) -> noInfoSame
-                (Just (Otop 0 _), Just (Otop 0  _ ), False) -> noInfoNotSame
-                (Nothing, Nothing                  , False) -> noInfoNotSame
-                (Just (Otop g s), Just (Otop 0  _ ), True ) -> fstSame    g s
-                (Just (Otop g s), Nothing          , True ) -> fstSame    g s
-                (Just (Otop g s), Just (Otop 0  _ ), False) -> fstNotSame g s
-                (Just (Otop g s), Nothing          , False) -> fstNotSame g s
-                (Just (Otop 0 _), Just (Otop g  s ), True ) -> sndSame    g s
-                (Nothing, Just (Otop g s)          , True ) -> sndSame    g s
-                (Just (Otop 0 _), Just (Otop g  s ), False) -> sndNotSame g s
-                (Nothing, Just (Otop g s)          , False) -> sndNotSame g s
-                (Just (Otop g s), Just (Otop g2 s2), True ) -> 
-                    if even s then
-                        Eq varPair $ Con $ angle (-g) s
-                    else if even s2 then
-                        Eq varPair (Con $ circle - angle (-g2) s2)
-                    else
-                        And (Le (Con $ max (angle (-g) (s - 1))
-                                           (circle - angle (-g2) (s2 + 1)))
-                                varPair)
-                            (Le varPair
-                                (Con $ min (angle (-g) (s + 1))
-                                           (circle - angle (-g2) (s2 - 1))))
-                (Just (Otop g s), Just (Otop g2 s2), False) ->
-                    And (equKnownVar varPair g s)
-                        (equKnownVar varRevPair g2 s2)
-
-          equTriples <- Fold.foldrM
-              (\ node3 acc2 -> do
-                let
-                  pair2 = sort [node , node3]
-                  pair3 = sort [node2, node3]
-                  thirdNode a = head $ [node, node2, node3]\\a
-                  startToThird [a,b] = [a, thirdNode [a,b]]
-                  endToThird   [a,b] = [b, thirdNode [a,b]]
-                  triple [a,b] = [a, thirdNode [a,b], b]
-                  equUnsameTriple a b c =
-                      And (
-                      And (
-                      And
-                      (equUnsameTriple' a)
-                      (equUnsameTriple' b))
-                      (equUnsameTriple' c))
-                      (Eq (Add (Var $ triple a) $ Add (Var $ triple b)
-                                                      (Var $ triple c))
-                          (Con halfcircle))
-                  equUnsameTriple' a@[a1,a2] =
-                      Eq (Var $ triple a)
-                         (Fo $ Ite (Leq (Var [thirdNode a, a1])
-                                        (Var [thirdNode a, a2]))
-                                   (Te $ Sub (Var [thirdNode a, a2])
-                                             (Var [thirdNode a, a1]))
-                                   (Te $ Add (Var [thirdNode a, a2])
-                                             (Sub (Con circle)
-                                                  (Var [thirdNode a, a1]))))
-
-                helper <- case sort [ (same, pair)
-                                    , (pairsToRelateTo Map.! pair2, pair2)
-                                    , (pairsToRelateTo Map.! pair3, pair3)
-                                    ] of
-                  -- improve: use sectors to check whether we need "Ite".
-                  -- This replaces the "ite"s and might dramatically improve
-                  -- this method.
-                      [(False, a), (False, b), (False, c)] -> Just $
-                          Ite (Or (And (Leq (Con 0)
-                                            (Sub (Var b) (Var a)))
-                                       (Leq (Sub (Var b) (Var a))
-                                            (Con halfcircle)))
-                                  (And (Leq (Con 0)
-                                            (Add (Sub (Var b) (Var a))
-                                                 (Con circle)))
-                                       (Leq (Add (Sub (Var b) (Var a))
-                                                 (Con circle))
-                                            (Con halfcircle))))
-                              (equUnsameTriple c (reverse b) a)
-                              (equUnsameTriple (reverse c) b (reverse a))
-                         -- improve: use sectors to check whether we need "Ite"
-                      [(False, _), (False, _), (True , c)] -> Just $
-                          (Eq (Var $ startToThird c)
-                              (Fo $ Ite (Le (Add (Var c) (Var $ endToThird c))
-                                            (Con circle))
-                                        (Te $ Add (Var c) (Var $ endToThird c))
-                                        (Te $ Sub (Add (Var c)
-                                                       (Var $ endToThird c))
-                                                  (Con circle))))
-                      [(True , a), (True , b), (True , c)] -> Just $
-                         -- improve: use sectors to check whether we need "Ite"
-                          (Eq (Var b)
-                              (Fo $ Ite (Le (Add (Var a) (Var c))
-                                            (Con circle))
-                                        (Te $ Add (Var a) (Var c))
-                                        (Te $ Sub (Add (Var a) (Var c))
-                                                  (Con circle)) ))
-                      [(False, a), (True , b), (True , c)] -> Nothing
-                Just $ And acc2 helper
-              ) acc $ (if firstRun then Set.filter (> node2) else id) $
-                  Set.intersection
-                      (maybe Set.empty id $ Map.lookup node  relatedNodes)
-                      (maybe Set.empty id $ Map.lookup node2 relatedNodes)
-          Just $ And equPair equTriples
-        ) Tru newPairs
-    equUnknownPairs = case (a, b) of 
-        (Nothing, Nothing) -> Nothing
-        (Nothing, f      ) -> f
-        (f      , Nothing) -> f
-        (Just f , Just f2) -> Just $ Or f f2
-      where
-        a = equUnknownPairs' True
-        b = equUnknownPairs' False
-    equUnknownPairs' s =
-        translateToAngles' False cons (Map.singleton newPair s)
-                                      (Map.union newPairs pairsToRelateTo)
-                                      (Map.insertWith
-                                          Set.union b (Set.singleton a) $
-                                          Map.insertWith
-                                              Set.union
-                                              a (Set.singleton b)
-                                              relatedNodes)
-                                      remUnknownPairs
-    (newPair@[a,b]:remUnknownPairs) = unknownPairs
 
 -- | Translate a network of SECTOR relations into a QF_LRA equation.
 -- The parameter 'useWitnesses' selects whether to use witnesses to decide
 -- whether a pair lies in a 'SAME' relation or not.
-translateToTriangles :: Bool -> Bool -> Network [String] Otop -> Maybe Formula
-translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
+translateToTrianglesOrig :: Bool -> Bool -> Network [String] (ARel Otop) -> Maybe Formula
+translateToTrianglesOrig useWitness useWitnesses net@Network{nCons = cons} = do
     let allNodes = nodesIn $ nCons net
     let pairs    = kCombinations 2 $ Set.toAscList allNodes
     -- Fold over all pairs and generate:
@@ -438,15 +176,17 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
             -- Can we find a third node for which node and node2 lie in
             -- different relations?
             -- fixme: rename this function as it also can detect sameness.
-            [existsWitnessForUnsameness, existsWitnessForSameness] =
+            [foundWitnessForUnsameness, foundWitnessForSameness] =
                 if useWitness then
                     map (not . Set.null) $ Set.foldr
                       (\ node3 acc@[accUnsame, accSame] ->
                         let
                           n3n  = Map.lookup [node3, node ] cons
                           n3n2 = Map.lookup [node3, node2] cons
-                          Otop gran_n3n  sec_n3n  = fromJust n3n
-                          Otop gran_n3n2 sec_n3n2 = fromJust n3n2
+                          ARel (Otop gran_n3n  sec_n3n) =
+                              fromJust n3n
+                          ARel (Otop gran_n3n2 sec_n3n2) =
+                              fromJust n3n2
                         in
                           if node /= node3 && node2 /= node3 &&
                              isJust n3n && isJust n3n2 && n3n /= n3n2 then
@@ -461,7 +201,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
                       ) [Set.empty, Set.empty] allNodes
                 else
                     [False, False]
-            existWitnessesForSameness =
+            foundWitnessesForSameness =
                 if useWitnesses then
                     not $ null $ filter
                       (\ [node3, node4] ->
@@ -472,12 +212,18 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
                           n4n  = Map.lookup [node4, node ] cons
                           n4n2 = Map.lookup [node4, node2] cons
                           n4n3 = Map.lookup [node4, node3] cons
-                          Otop gran_n3n  sec_n3n  = fromJust n3n
-                          Otop gran_n3n2 sec_n3n2 = fromJust n3n2
-                          Otop gran_n3n4 sec_n3n4 = fromJust n3n4
-                          Otop gran_n4n  sec_n4n  = fromJust n4n
-                          Otop gran_n4n2 sec_n4n2 = fromJust n4n2
-                          Otop gran_n4n3 sec_n4n3 = fromJust n4n3
+                          ARel (Otop gran_n3n  sec_n3n)  =
+                              fromJust n3n
+                          ARel (Otop gran_n3n2 sec_n3n2) =
+                              fromJust n3n2
+                          ARel (Otop gran_n3n4 sec_n3n4) =
+                              fromJust n3n4
+                          ARel (Otop gran_n4n  sec_n4n)  =
+                              fromJust n4n
+                          ARel (Otop gran_n4n2 sec_n4n2) =
+                              fromJust n4n2
+                          ARel (Otop gran_n4n3 sec_n4n3) =
+                              fromJust n4n3
                         in
                           -- improve: This could be improved, e.g. by
                           -- adding gran_n3n == 0 && gran_n3n2 == 0 etc.
@@ -500,7 +246,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
                                     mod (sec_n4n3 + 2 * gran_n4n3) (4 * gran_n4n3)
                                     * gran_n4n))
                              )
-                      ) pairs
+                      ) $ filter (/= pair) pairs
                 else
                   False
             sameHelper g s g2 s2 = case sort [ (signum g , signum s )
@@ -524,9 +270,10 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
                 [( 0,-1), ( 0, _)] -> newAccsSame
                 [( 0, _), ( 0, 1)] -> newAccsUnsame
                 [(-1, _), ( 1, _)] -> Nothing
-            noInfoHelper = case ( existsWitnessForUnsameness
-                                , existsWitnessForSameness ||
-                                  existWitnessesForSameness   ) of
+                [( 0, 0), ( 0, 0)] -> newAccsUnknown
+            noInfoHelper = case ( foundWitnessForUnsameness
+                                , foundWitnessForSameness ||
+                                  foundWitnessesForSameness   ) of
                 (True , False) -> newAccsUnsame
                 (False, True ) -> newAccsSame
                 (False, False) -> newAccsUnknown
@@ -536,32 +283,23 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
             newAccsUnknown = Just (acc, acc2)
             newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
           in
-            -- improve:find more contradictions here by looking into g g2 s s2.
-            -- e.g. same but angles dont match or g not negative.
-            -- maybe even use witnesses and compare to given information.
--- THIS IS A SNIPPET I USED BEFORE.
---                        if (even s2 && angle (-g) s /= angle (-g2) s2) ||
---                           (odd s2 &&
---                               (angle (-g) s <= angle (-g2) (s2 - 1)) ||
---                               (angle (-g) s >= angle (-g2) (s2 + 1))    )
---                        then Nothing
             case ( Map.lookup [node, node2] cons
                  , Map.lookup [node2, node] cons ) of
-                (Just (Otop 0 0), Just (Otop 0  0 )) -> noInfoHelper
-                (Just (Otop g s), Just (Otop g2 s2)) -> sameHelper g s g2 s2
-                (Just (Otop g s), Nothing)           -> sameHelper g s g s
-                (Nothing, Just (Otop g s))           -> sameHelper g s g s
-                (Nothing, Nothing)                   -> noInfoHelper
+                (Just (ARel (Otop 0 0)), Just (ARel (Otop 0  0 ))) -> noInfoHelper
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2))) -> sameHelper g s g2 s2
+                (Just (ARel (Otop g s)), Nothing) -> sameHelper g s g s
+                (Nothing, Just (ARel (Otop g s))) -> sameHelper g s g s
+                (Nothing, Nothing) -> noInfoHelper
         ) (Map.empty, Map.empty) pairs
     let (pairsWithSameness, relatedNodes) = ps_rn
-    translateToTriangles' cons pairsWithSameness relatedNodes
+    translateToTrianglesOrig' cons pairsWithSameness relatedNodes
 
 
-translateToTriangles' :: Map.Map [String] Otop
-                      -> Map.Map [String] Bool
-                      -> Map.Map  String  (Set.Set String)
-                      -> Maybe Formula
-translateToTriangles' cons pairsWithSameness relatedNodes =
+translateToTrianglesOrig' :: Map.Map [String] (ARel Otop)
+                          -> Map.Map [String] Bool
+                          -> Map.Map  String  (Set.Set String)
+                          -> Maybe Formula
+translateToTrianglesOrig' cons pairsWithSameness relatedNodes =
     equNewPairs
   where
     equNewPairs = Key.foldrWithKeyM
@@ -570,6 +308,8 @@ translateToTriangles' cons pairsWithSameness relatedNodes =
             revPair = [node2, node]
             varPair = Var pair
             varRevPair = Var revPair
+            pairCons = Map.lookup pair cons
+            revPairCons = Map.lookup revPair cons
             noInfoSame =
                 And (Leq (Con 0) varPair) (Le varPair (Con circle))
             noInfoNotSame = And
@@ -598,23 +338,23 @@ translateToTriangles' cons pairsWithSameness relatedNodes =
                 else
                     And (Le (Con $ angle g (s - 1)) var)
                         (Le var (Con $ angle g (s + 1)))
-            equPair = case ( Map.lookup pair cons
-                           , Map.lookup revPair cons
+            equPair = case ( pairCons
+                           , revPairCons
                            , same
                            ) of
-                (Just (Otop 0 _), Just (Otop 0  _ ), True ) -> noInfoSame
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop 0  _ )), True ) -> noInfoSame
                 (Nothing        , Nothing          , True ) -> noInfoSame
-                (Just (Otop 0 _), Just (Otop 0  _ ), False) -> noInfoNotSame
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop 0  _ )), False) -> noInfoNotSame
                 (Nothing        , Nothing          , False) -> noInfoNotSame
-                (Just (Otop g s), Just (Otop 0  _ ), True ) -> fstSame    g s
-                (Just (Otop g s), Nothing          , True ) -> fstSame    g s
-                (Just (Otop g s), Just (Otop 0  _ ), False) -> fstNotSame g s
-                (Just (Otop g s), Nothing          , False) -> fstNotSame g s
-                (Just (Otop 0 _), Just (Otop g  s ), True ) -> sndSame    g s
-                (Nothing        , Just (Otop g  s ), True ) -> sndSame    g s
-                (Just (Otop 0 _), Just (Otop g  s ), False) -> sndNotSame g s
-                (Nothing        , Just (Otop g  s ), False) -> sndNotSame g s
-                (Just (Otop g s), Just (Otop g2 s2), True ) -> 
+                (Just (ARel (Otop g s)), Just (ARel (Otop 0  _ )), True ) -> fstSame    g s
+                (Just (ARel (Otop g s)), Nothing          , True ) -> fstSame    g s
+                (Just (ARel (Otop g s)), Just (ARel (Otop 0  _ )), False) -> fstNotSame g s
+                (Just (ARel (Otop g s)), Nothing          , False) -> fstNotSame g s
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop g  s )), True ) -> sndSame    g s
+                (Nothing        , Just (ARel (Otop g  s )), True ) -> sndSame    g s
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop g  s )), False) -> sndNotSame g s
+                (Nothing        , Just (ARel (Otop g  s )), False) -> sndNotSame g s
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2)), True ) -> 
                     if even s then
                         Eq varPair $ Con $ angle (-g) s
                     else if even s2 then
@@ -626,38 +366,44 @@ translateToTriangles' cons pairsWithSameness relatedNodes =
                             (Le varPair
                                 (Con $ min (angle (-g) (s + 1))
                                            (circle - angle (-g2) (s2 - 1))))
-                (Just (Otop g s), Just (Otop g2 s2), False) ->
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2)), False) ->
                     And (equKnownVar varPair g s)
                         (equKnownVar varRevPair g2 s2)
 
           equTriples <- Fold.foldrM
               (\ node3 acc2 -> do
                 let
-                  pair2 = sort [node , node3]
-                  pair3 = sort [node2, node3]
+                  pair2 = [node , node3]
+                  pair3 = [node2, node3]
+                  revPair2 = [node3, node ]
+                  revPair3 = [node3, node2]
+                  pair2Cons = Map.lookup pair2 cons
+                  revPair2Cons = Map.lookup revPair2 cons
+                  pair3Cons = Map.lookup pair3 cons
+                  revPair3Cons = Map.lookup revPair3 cons
                   thirdNode a = head $ [node, node2, node3]\\a
                   startToThird [a,b] = [a, thirdNode [a,b]]
                   endToThird   [a,b] = [b, thirdNode [a,b]]
                   triple [a,b] = [a, thirdNode [a,b], b]
-                  equUnsameTriple a b c =
+                  equUnsameTriple pairA pairB pairC =
                       And (
                       And (
                       And
-                      (equUnsameTriple' a)
-                      (equUnsameTriple' b))
-                      (equUnsameTriple' c))
-                      (Eq (Add (Var $ triple a) $ Add (Var $ triple b)
-                                                      (Var $ triple c))
+                      (equUnsameTriple' pairA)
+                      (equUnsameTriple' pairB))
+                      (equUnsameTriple' pairC))
+                      (Eq (Add (Var $ triple pairA) $ Add (Var $ triple pairB)
+                                                          (Var $ triple pairC))
                           (Con halfcircle))
-                  equUnsameTriple' a@[a1,a2] =
-                      Eq (Var $ triple a)
-                         (Fo $ Ite (Leq (Var [thirdNode a, a1])
-                                        (Var [thirdNode a, a2]))
-                                   (Te $ Sub (Var [thirdNode a, a2])
-                                             (Var [thirdNode a, a1]))
-                                   (Te $ Add (Var [thirdNode a, a2])
+                  equUnsameTriple' pair'@[pair'1,pair'2] =
+                      Eq (Var $ triple pair')
+                         (Fo $ Ite (Leq (Var [thirdNode pair', pair'1])
+                                        (Var [thirdNode pair', pair'2]))
+                                   (Te $ Sub (Var [thirdNode pair', pair'2])
+                                             (Var [thirdNode pair', pair'1]))
+                                   (Te $ Add (Var [thirdNode pair', pair'2])
                                              (Sub (Con circle)
-                                                  (Var [thirdNode a, a1]))))
+                                                  (Var [thirdNode pair', pair'1]))))
 
                 helper <- case sort [ (same, pair)
                                     , (pairsWithSameness Map.! pair2, pair2)
@@ -672,31 +418,395 @@ translateToTriangles' cons pairsWithSameness relatedNodes =
                                        (Leq (Sub (Var b) (Var a))
                                             (Con halfcircle)))
                                   (And (Leq (Con 0)
-                                            (Add (Sub (Var b) (Var a))
-                                                 (Con circle)))
-                                       (Leq (Add (Sub (Var b) (Var a))
-                                                 (Con circle))
+                                            (Add (Var b)
+                                                 (Sub (Con circle) (Var a))))
+                                       (Leq (Add (Var b)
+                                                 (Sub (Con circle) (Var a)))
                                             (Con halfcircle))))
                               (equUnsameTriple c (reverse b) a)
                               (equUnsameTriple (reverse c) b (reverse a))
+                      [(False, _), (False, _), (True , pairC)] -> Just $
                          -- improve: use sectors to check whether we need "Ite"
-                      [(False, _), (False, _), (True , c)] -> Just $
-                          (Eq (Var $ startToThird c)
-                              (Fo $ Ite (Le (Add (Var c) (Var $ endToThird c))
+                          (Eq (Var $ startToThird pairC)
+                              (Fo $ Ite (Le (Add (Var pairC) (Var $ endToThird pairC))
                                             (Con circle))
-                                        (Te $ Add (Var c) (Var $ endToThird c))
-                                        (Te $ Sub (Add (Var c)
-                                                       (Var $ endToThird c))
+                                        (Te $ Add (Var pairC) (Var $ endToThird pairC))
+                                        (Te $ Sub (Add (Var pairC)
+                                                       (Var $ endToThird pairC))
                                                   (Con circle))))
-                      [(True , a), (True , b), (True , c)] -> Just $
+                      [(True , pairA), (True , pairB), (True , pairC)] -> Just $
                          -- improve: use sectors to check whether we need "Ite"
-                          (Eq (Var b)
-                              (Fo $ Ite (Le (Add (Var a) (Var c))
+                          (Eq (Var pairB)
+                              (Fo $ Ite (Le (Add (Var pairA) (Var pairC))
                                             (Con circle))
-                                        (Te $ Add (Var a) (Var c))
-                                        (Te $ Sub (Add (Var a) (Var c))
+                                        (Te $ Add (Var pairA) (Var pairC))
+                                        (Te $ Sub (Add (Var pairA) (Var pairC))
                                                   (Con circle)) ))
-                      [(False, a), (True , b), (True , c)] -> Nothing
+                      [(False, _), (True, _), (True, _)] -> Nothing
+                Just $ And acc2 helper
+              ) acc $ Set.intersection
+                          (maybe Set.empty id $ Map.lookup node  relatedNodes)
+                          (maybe Set.empty id $ Map.lookup node2 relatedNodes)
+          Just $ And equPair equTriples
+        ) Tru pairsWithSameness
+
+
+
+translateToTriangles :: Bool -> Bool -> Network [String] (ARel Otop) -> Maybe Formula
+translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
+    let allNodes = Set.toAscList $ nodesIn $ nCons net
+    let pairs    = kCombinations 2 allNodes
+    -- Fold over all pairs and generate:
+    --   1. the map mapping pairs to either True or False depending on whether
+    --      they are in a 'SAME' relation or not. Pairs for which we have no
+    --      information are left out of the map.
+    --   2. the map mapping nodes to the set of nodes of which we know whether
+    --      the node lies in a 'SAME' relation to them or not. Nodes for which
+    --      we have no information are left out of the map respectively the
+    --      set.
+    -- abbr.: pairsWithSameness_and_relatedNodes
+    ps_rn <- Fold.foldlM
+        (\ (acc, acc2) pair@[node, node2] ->
+          let
+            -- Can we find a third node for which node and node2 lie in
+            -- different relations - or both in the same relation?
+            [foundWitnessForUnsameness, foundWitnessForSameness] =
+                if useWitness then
+                    foldr
+                      (\ node3 acc@[accUnsame, accSame] ->
+                        let
+                          n3n  = Map.lookup [node3, node ] cons
+                          n3n2 = Map.lookup [node3, node2] cons
+                          ARel (Otop g1 s1) = fromJust n3n
+                          ARel (Otop g2 s2) = fromJust n3n2
+                          newAccSame = [accUnsame, True]
+                          newAccUnsame = [True, accSame]
+                          anglesDontMatch = case (odd s1, odd s2) of
+                              (False, False) -> angle g1 s1 /= angle g2 s2
+                              (False, True ) ->
+                                  angle g1 s1 <= minAngle g2 s2 ||
+                                  angle g1 s1 >= maxAngle g2 s2
+                              (True, False) ->
+                                  angle g2 s2 <= minAngle g1 s1 ||
+                                  angle g2 s2 >= maxAngle g1 s1
+                              (True , True ) -> 
+                                  maxAngle g1 s1 <= minAngle g2 s2 ||
+                                  minAngle g1 s1 >= maxAngle g2 s2
+                        in
+                          if node /= node3 && node2 /= node3 &&
+                             isJust n3n && isJust n3n2
+                          then case sort [ (signum g1, signum s1)
+                                         , (signum g2, signum s2) ] of
+                              [(-1, _), (-1, _)] -> newAccSame
+                              [(-1, _), ( 0,-1)] -> newAccSame
+                              [(-1, _), ( 0, 1)] -> newAccUnsame
+                              [(-1, _), ( 1, _)] -> newAccUnsame
+                              [( 0,-1), ( 0,-1)] -> newAccSame
+                              [( 0,-1), ( 0, 1)] -> newAccUnsame
+                              [( 0,-1), ( 1, _)] -> newAccSame
+                              [( 1, _), ( 1, _)] ->
+                                  if anglesDontMatch then newAccUnsame else acc
+                              otherwise          -> acc
+                          else
+                             acc
+                      ) [False, False] allNodes
+                else
+                    [False, False]
+            foundWitnessesForSameness =
+                if useWitnesses then
+                    not $ null $ filter
+                      (\ [node3, node4] ->
+                        let
+                          n3n  = Map.lookup [node3, node ] cons
+                          n3n2 = Map.lookup [node3, node2] cons
+                          n3n4 = Map.lookup [node3, node4] cons
+                          n4n  = Map.lookup [node4, node ] cons
+                          n4n2 = Map.lookup [node4, node2] cons
+                          n4n3 = Map.lookup [node4, node3] cons
+                          ARel (Otop gran_n3n  sec_n3n ) = fromJust n3n
+                          ARel (Otop gran_n3n2 sec_n3n2) = fromJust n3n2
+                          ARel (Otop gran_n3n4 sec_n3n4) = fromJust n3n4
+                          ARel (Otop gran_n4n  sec_n4n ) = fromJust n4n
+                          ARel (Otop gran_n4n2 sec_n4n2) = fromJust n4n2
+                          ARel (Otop gran_n4n3 sec_n4n3) = fromJust n4n3
+                        in
+                          -- improve: This could be improved, e.g. by
+                          -- adding gran_n3n == 0 && gran_n3n2 == 0 etc.
+                          isJust n3n && isJust n3n2 && isJust n4n && isJust n4n2
+                          && gran_n3n > 0 && gran_n3n2 > 0
+                          && gran_n4n > 0 && gran_n4n2 > 0 
+                          && even sec_n3n && even sec_n4n
+                          -- n and n2 lie on the same line
+                          && (sec_n3n * gran_n3n2 == sec_n3n2 * gran_n3n)
+                          && (sec_n4n * gran_n4n2 == sec_n4n2 * gran_n4n)
+                          -- n3 and n4 not in line with n and n2
+                          && (  (isJust n3n4
+                                && (sec_n3n * gran_n3n4 /= sec_n3n4 * gran_n3n)
+                                && (sec_n3n * gran_n3n4 /=
+                                    mod (sec_n3n4 + 2 * gran_n3n4) (4 * gran_n3n4)
+                                    * gran_n3n))
+                             || (isJust n4n3
+                                && (sec_n4n * gran_n4n3 /= sec_n4n3 * gran_n4n)
+                                && (sec_n4n * gran_n4n3 /=
+                                    mod (sec_n4n3 + 2 * gran_n4n3) (4 * gran_n4n3)
+                                    * gran_n4n))
+                             )
+                      ) $ filter (/= pair) pairs
+                else
+                  False
+            firstTestAnglesForSames g s g2 s2 =
+                if (even s && even s2 && angle (-g) s /= circle - angle (-g2) s2) ||
+                   (even s && odd s2 &&
+                       (angle (-g) s <= circle - angle (-g2) (s2 + 1)) ||
+                       (angle (-g) s >= circle - angle (-g2) (s2 - 1))    ) ||
+                   (odd s && even s2 &&
+                       (angle (-g2) s2 <= circle - angle (-g) (s + 1)) ||
+                       (angle (-g2) s2 >= circle - angle (-g) (s - 1))    ) ||
+                   (angle (-g) (s - 1) <= circle - angle (-g2) (s2 + 1)) ||
+                   (angle (-g) (s + 1) >= circle - angle (-g2) (s2 - 1))
+                then
+                    Nothing
+                else
+                    newAccsSame
+            newAccsSame  =
+                if foundWitnessForUnsameness then
+                    Nothing
+                else
+                    newAccsSame'
+            newAccsSame'  = Just (Map.insert pair True  acc, newAcc2)
+            newAccsUnsame =
+                if foundWitnessForSameness || foundWitnessesForSameness then
+                    Nothing
+                else
+                    newAccsUnsame'
+            newAccsUnsame' = Just (Map.insert pair False acc, newAcc2)
+            newAccsUnknown = Just (acc, acc2)
+            newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
+            noInfoHelper = case ( foundWitnessForUnsameness
+                                , foundWitnessForSameness ||
+                                  foundWitnessesForSameness   ) of
+                (True , False) -> newAccsUnsame'
+                (False, True ) -> newAccsSame'
+                (False, False) -> newAccsUnknown
+                (True , True ) -> Nothing
+            sameHelper g s g2 s2 = case sort [ (signum g , signum s )
+                                             , (signum g2, signum s2)] of
+                [(-1, 1), (-1, 1)] -> firstTestAnglesForSames g s g2 s2
+                [(-1, _), (-1, _)] -> newAccsSame
+                [( 1, _), ( 1, _)] -> newAccsUnsame
+                [(-1, _), ( 0, 1)] -> Nothing
+                [(-1, _), ( 0, _)] -> newAccsSame
+                [( 0,-1), ( 1, _)] -> Nothing
+                [( 0, _), ( 1, _)] -> newAccsUnsame
+                [( 0,-1), ( 0, 1)] -> Nothing
+                [( 0,-1), ( 0, _)] -> newAccsSame
+                [( 0, _), ( 0, 1)] -> newAccsUnsame
+                [(-1, _), ( 1, _)] -> Nothing
+                [( 0, 0), ( 0, 0)] -> noInfoHelper
+          in
+            case ( Map.lookup [node, node2] cons
+                 , Map.lookup [node2, node] cons ) of
+                (Just (ARel (Otop 0 0)), Just (ARel (Otop 0  0 ))) -> noInfoHelper
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2))) -> sameHelper g s g2 s2
+                (Just (ARel (Otop g s)), Nothing)  -> sameHelper g s 0 0
+                (Nothing, Just (ARel (Otop g s)))  -> sameHelper 0 0 g s
+                (Nothing, Nothing)                 -> noInfoHelper
+        ) (Map.empty, Map.empty) pairs
+    let (pairsWithSameness, relatedNodes) = ps_rn
+    translateToTriangles' cons pairsWithSameness relatedNodes
+
+
+translateToTriangles' :: Map.Map [String] (ARel Otop)
+                      -> Map.Map [String] Bool
+                      -> Map.Map  String  (Set.Set String)
+                      -> Maybe Formula
+translateToTriangles' cons pairsWithSameness relatedNodes =
+    equNewPairs
+  where
+    -- try to make a foldrWithKeyM1
+    equNewPairs = Key.foldrWithKeyM
+        (\ pair@[node, node2] same acc -> do
+          let
+            revPair = [node2, node]
+            varPair = Var pair
+            varRevPair = Var revPair
+            pairCons = Map.lookup pair cons
+            revPairCons = Map.lookup revPair cons
+            noInfoSame = Just $
+                And (Leq (Con 0) varPair) (Le varPair (Con circle))
+            noInfoNotSame = Just $ And
+                (And (Leq (Con 0) varPair   )
+                     (Le varPair    (Con circle)))
+                (And (Leq (Con 0) varRevPair)
+                     (Le varRevPair (Con circle)))
+            fstSame g s = Just $ equKnownVar varPair (-g) s
+            sndSame g s = Just $
+                if even s then
+                    Eq varPair (Con $ circle - angle (-g) s)
+                else
+                    And (Le (Con $ circle - angle (-g) (s + 1))
+                            varPair)
+                        (Le varPair
+                            (Con $ circle - angle (-g) (s - 1)))
+            fstNotSame g s = Just $ notSame varPair varRevPair g s
+            sndNotSame g s = Just $ notSame varRevPair varPair g s
+            notSame knownVar unknownVar g s = And
+                (And (Leq (Con 0) unknownVar)
+                     (Le unknownVar (Con circle))) $
+                equKnownVar knownVar g s
+            equKnownVar var g s =
+                if even s then
+                    Eq var (Con $ angle g s)
+                else
+                    And (Le (Con $ angle g (s - 1)) var)
+                        (Le var (Con $ angle g (s + 1)))
+          equPair <- case ( pairCons
+                          , revPairCons
+                          , same
+                          ) of
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop 0  _ )), True ) -> noInfoSame
+                (Nothing        , Nothing          , True ) -> noInfoSame
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop 0  _ )), False) -> noInfoNotSame
+                (Nothing        , Nothing          , False) -> noInfoNotSame
+                (Just (ARel (Otop g s)), Just (ARel (Otop 0  _ )), True ) -> fstSame    g s
+                (Just (ARel (Otop g s)), Nothing          , True ) -> fstSame    g s
+                (Just (ARel (Otop g s)), Just (ARel (Otop 0  _ )), False) -> fstNotSame g s
+                (Just (ARel (Otop g s)), Nothing          , False) -> fstNotSame g s
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop g  s )), True ) -> sndSame    g s
+                (Nothing        , Just (ARel (Otop g  s )), True ) -> sndSame    g s
+                (Just (ARel (Otop 0 _)), Just (ARel (Otop g  s )), False) -> sndNotSame g s
+                (Nothing        , Just (ARel (Otop g  s )), False) -> sndNotSame g s
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2)), True ) ->
+                    -- improve by testing if angles match:
+                    case (even s, even s2) of
+                        (True , True ) ->
+                            if angle (-g) s /= circle - angle (-g2) s2 then
+                                Nothing
+                            else
+                                Just $ Eq varPair $ Con $ angle (-g) s
+                        (True , False) ->
+                            if angle (-g) s <= circle - angle (-g2) (s2 + 1) ||
+                               angle (-g) s >= circle - angle (-g2) (s2 - 1)
+                            then
+                                Nothing
+                            else
+                                Just $ Eq varPair $ Con $ angle (-g) s
+                        (False, True ) ->
+                            if angle (-g2) s2 <= circle - angle (-g) (s + 1) ||
+                               angle (-g2) s2 >= circle - angle (-g) (s - 1)
+                            then
+                                Nothing
+                            else
+                                Just $ Eq varPair
+                                          (Con $ circle - angle (-g2) s2)
+                        (False, False) -> Just $
+                            And (Le (Con $ max (angle (-g) (s - 1))
+                                               (circle - angle (-g2) (s2 + 1)))
+                                    varPair)
+                                (Le varPair
+                                    (Con $ min (angle (-g) (s + 1))
+                                               (circle - angle (-g2) (s2-1))))
+                (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2)), False) -> Just $
+                    And (equKnownVar varPair g s)
+                        (equKnownVar varRevPair g2 s2)
+
+          -- improve: try to make a foldrM1
+          equTriples <- Fold.foldrM
+              (\ node3 acc2 -> do
+                let
+                  pair2 = [node , node3]
+                  pair3 = [node2, node3]
+                  revPair2 = [node3, node ]
+                  revPair3 = [node3, node2]
+                  thirdNode a = head $ [node, node2, node3]\\a
+                  startToThird [a,b] = [a, thirdNode [a,b]]
+                  endToThird   [a,b] = [b, thirdNode [a,b]]
+                  triple [a,b] = [a, thirdNode [a,b], b]
+                  equUnsameTriple tripleA tripleB tripleC =
+                      And (
+                      And (
+                      And
+                      (equUnsameTriple' tripleA)
+                      (equUnsameTriple' tripleB))
+                      (equUnsameTriple' tripleC))
+                      (Eq (Add (Var tripleA) $ Add (Var tripleB) (Var tripleC))
+                          (Con halfcircle))
+                  equUnsameTriple' triple'@[triple'1, triple'2, triple'3] =
+                    let
+                      anglepointToFirst  = [triple'2, triple'1]
+                      anglepointToSecond = [triple'2, triple'3]
+                    in
+                      Eq (Var triple')
+                         (Fo $ Ite (Leq (Var anglepointToFirst)
+                                        (Var anglepointToSecond))
+                                   (Te $ Sub (Var anglepointToSecond)
+                                             (Var anglepointToFirst))
+                                   (Te $ Add (Var anglepointToSecond)
+                                             (Sub (Con circle)
+                                                  (Var anglepointToFirst))))
+
+                helper <- case sort [ (same, pair)
+                                    , (pairsWithSameness Map.! pair2, pair2)
+                                    , (pairsWithSameness Map.! pair3, pair3)
+                                    ] of
+                      [(False, [a,b]), (False, [_,c]), (False, _)] ->
+                       Just $
+                        let
+                          cornersWithFullInfo = filter
+                              (\ (x, y) -> isJust x && isJust y)
+                              [ (Map.lookup [a,b] cons, Map.lookup [a,c] cons)
+                              , (Map.lookup [b,c] cons, Map.lookup [b,a] cons)
+                              , (Map.lookup [c,a] cons, Map.lookup [c,b] cons)]
+                          generalCase =
+                              Ite (Or (And (Leq (Con 0)
+                                                (Sub (Var [a,c]) (Var [a,b])))
+                                           (Leq (Sub (Var [a,c]) (Var [a,b]))
+                                                (Con halfcircle)))
+                                      (And (Leq (Con 0)
+                                                (Add (Var [a,c])
+                                                     (Sub (Con circle)
+                                                          (Var [a,b]))))
+                                           (Leq (Add (Var [a,c])
+                                                     (Sub (Con circle)
+                                                          (Var [a,b])))
+                                                (Con halfcircle))))
+                                  (equUnsameTriple [b,a,c] [c,b,a] [a,c,b])
+                                  (equUnsameTriple [c,a,b] [a,b,c] [b,c,a])
+                        in
+                          if False && any
+                             (\ (Just (ARel (Otop g s)), Just (ARel (Otop g2 s2))) ->
+                               (0 <= minAngle g2 s2 - maxAngle g s && maxAngle g2 s2 - minAngle g s <= halfcircle)
+                               || maxAngle g2 s2 + (circle - minAngle g s) <= halfcircle
+                             ) cornersWithFullInfo
+                          then
+                              equUnsameTriple [b,a,c] [c,b,a] [a,c,b]
+                          else if False && any
+                             (\ (Just (ARel (Otop g2 s2)), Just (ARel (Otop g s))) ->
+                               (0 <= minAngle g2 s2 - maxAngle g s && maxAngle g2 s2 - minAngle g s <= halfcircle)
+                               || maxAngle g2 s2 + (circle - minAngle g s) <= halfcircle
+                             ) cornersWithFullInfo
+                          then
+                              equUnsameTriple [c,a,b] [a,b,c] [b,c,a]
+                          else
+                              generalCase
+                      [(False, _), (False, _), (True , xY)] -> Just $
+                         -- improve: use sectors to check whether we need "Ite"
+                          (Eq (Var $ startToThird xY)
+                              (Fo $ Ite (Le (Add (Var xY) (Var $ endToThird xY))
+                                            (Con circle))
+                                        (Te $ Add (Var xY) (Var $ endToThird xY))
+                                        (Te $ Sub (Add (Var xY)
+                                                       (Var $ endToThird xY))
+                                                  (Con circle))))
+                      [(True , aB), (True , aC), (True , bC)] -> Just $
+                         -- improve: use sectors to check whether we need "Ite"
+                          (Eq (Var aC)
+                              (Fo $ Ite (Le (Add (Var aB) (Var bC))
+                                            (Con circle))
+                                        (Te $ Add (Var aB) (Var bC))
+                                        (Te $ Sub (Add (Var aB) (Var bC))
+                                                  (Con circle)) ))
+                      [(False, _), (True, _), (True, _)] -> Nothing
                 Just $ And acc2 helper
               ) acc $ Set.intersection
                           (maybe Set.empty id $ Map.lookup node  relatedNodes)
@@ -725,14 +835,13 @@ parseOutputFromYices str =
         (False, True) -> Just False
         (_, _)        -> error $ "Help! Yices answered:\n" ++ str
 
-angleConsistency' :: (Network [String] Otop -> Maybe Formula)
-                  -> Network [String] Otop
+angleConsistency' :: (Network [String] (ARel Otop) -> Maybe Formula)
+                  -> Network [String] (ARel Otop)
                   -> Maybe Bool
 angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
+--          (\f -> parseOutputFromYices $ traceTime (readYices $ traceTime $ str f))  --DEBUGGING
           (\f -> parseOutputFromYices $ readYices $ str f)
---          (\f -> Just True)
---          (\f -> parseOutputFromYices $ readYices $ str2 f)  --DEBUG
           formula
   where
     formula = fun net
@@ -740,8 +849,6 @@ angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
 --    str2 f = unsafePerformIO $ do                      --DEBUG
 --        appendFile "BENCHMARK.EQUATIONS" (str f)       --DEBUG
 --        return (str f)                                 --DEBUG
-
-angleConsistency = angleConsistency' translateToAngles
 
 triangleConsistency =
     angleConsistency' (translateToTriangles False False)
@@ -751,4 +858,13 @@ triangleConsistencyWithWitnessAndWitnesses =
     angleConsistency' (translateToTriangles True True)
 triangleConsistencyWithWitnesses =
     angleConsistency' (translateToTriangles False True)
+
+angleConsistency =
+    angleConsistency' (translateToTrianglesOrig False False)
+angleConsistencyWithWitness =
+    angleConsistency' (translateToTrianglesOrig True False)
+angleConsistencyWithWitnessAndWitnesses =
+    angleConsistency' (translateToTrianglesOrig True True)
+angleConsistencyWithWitnesses =
+    angleConsistency' (translateToTrianglesOrig False True)
 

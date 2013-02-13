@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 module DecisionProcedure.Opra1 where
 
 -- standard modules
@@ -9,29 +10,37 @@ import Basics
 import Calculus.Opra1
 import Calculus.Opra1.ToFlipFlop
 import DecisionProcedure
-
-str = "opra1"
+import DecisionProcedure.FlipFlop
+import DecisionProcedure.AlgebraicClosure
+import DecisionProcedure.AlgebraicGeometric
 
 -- fixme: make this nonatomic from the beginning.
-toFlipFlopsAtomic (a,fun) =
-    ( a
-    , fun . makeAtomic . opra1ToFlipFlopNet . makeNonAtomic
-    )
+toFlipFlopsAtomic dp@(DecisionProcedure { decProName = a, decProProc = fun }) =
+    dp{ decProProc = fun . makeAtomic . opra1ToFlipFlopNet . makeNonAtomic }
 
-toFlipFlopsNonAtomic (a,fun) =
-    ( a
-    , fun . opra1ToFlipFlopNet . makeNonAtomic
-    )
+toFlipFlopsNonAtomic dp@(DecisionProcedure { decProName = a
+                                           , decProProc = fun }) =
+    dp{ decProProc = fun . opra1ToFlipFlopNet . makeNonAtomic }
 
-instance HasDecisionProcedure Opra1 where
-    proceduresForAtomicNets _ =
-        [ after makeNonAtomic (algebraicClosureGQR str)
-        , toFlipFlopsNonAtomic (algebraicReasoning "ff")
-        , toFlipFlopsAtomic triangleConsistencyFlipFlop
+instance HasBinAClosureGqr   ARel Opra1
+instance HasBinAClosureGqr   GRel Opra1
+instance HasBinAClosureSparq ARel Opra1
+instance HasBinAClosureSparq GRel Opra1
+instance HasAReasoning       ARel Opra1
+instance HasAReasoning       GRel Opra1
+
+instance HasDecisionProcedure (ARel Opra1) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
+        , toFlipFlopsNonAtomic algebraicReasoning
+        , toFlipFlopsAtomic triangleConsistency
         , toFlipFlopsAtomic chirotope
         , toFlipFlopsAtomic biquadraticFinalPolynomials
         ]
 
-    proceduresForNonAtomicNets _ =
-        [ algebraicClosure str
+instance HasDecisionProcedure (GRel Opra1) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
         ]

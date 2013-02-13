@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Interface.Sparq where
 
 -- standard modules
@@ -22,6 +23,7 @@ import Helpful.Process
 -- Debugging and Timing
 --import Data.Time.Clock (diffUTCTime, getCurrentTime)
 --import Debug.Trace
+import Helpful.General
 
 
 
@@ -100,20 +102,23 @@ readOneLine hOut = do
  - Use SparQ standalone to calculate A-Closure and such things
 ------------------------------------------------------------------------------}
 
-algebraicClosure :: (Calculus a)
-                 => String
-                 -> Network [String] (Set.Set a)
-                 -> (Maybe Bool, Bool, Network [String] (Set.Set a))
-algebraicClosure cal net =
+algebraicClosure :: ( Relation (a b) b
+                    , Sparqifiable (Network [String] (a b))
+                    , Calculus b )
+                 => Network [String] (a b)
+                 -> (Maybe Bool, Bool, Network [String] (GRel b))
+algebraicClosure net =
     if Map.null $ nCons net then
-        (Just True, False, net)
+        (Just True, False, makeNonAtomic net)
     else case modified of
-        False -> (consistent, modified, net)
+        False -> (consistent, modified, makeNonAtomic net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
     sparqNet = sparqify True net
     sparqModified:rest = lines $ unsafeReadProcess "sparq"
-        ["constraint-reasoning " ++ cal ++ " a-closure " ++ sparqNet] ""
+        ["constraint-reasoning " ++
+         cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
+         " a-closure " ++ sparqNet] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
@@ -132,20 +137,23 @@ algebraicClosure cal net =
                             "Actual answer: " ++ unlines rest
         Right success -> success
 
-ternaryAlgebraicClosure :: (Calculus a)
-                        => String
-                        -> Network [String] (Set.Set a)
-                        -> (Maybe Bool, Bool, Network [String] (Set.Set a))
-ternaryAlgebraicClosure cal net =
+ternaryAlgebraicClosure :: ( Relation (a b) b
+                           , Sparqifiable (Network [String] (a b))
+                           , Calculus b )
+                        => Network [String] (a b)
+                        -> (Maybe Bool, Bool, Network [String] (GRel b))
+ternaryAlgebraicClosure net =
     if Map.null $ nCons net then
-        (Just True, False, net)
+        (Just True, False, makeNonAtomic net)
     else case modified of
-        False -> (consistent, modified, net)
+        False -> (consistent, modified, makeNonAtomic net)
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
     sparqNet = sparqify True net
     sparqModified:rest = lines $ unsafeReadProcess "sparq"
-        ["constraint-reasoning " ++ cal ++ " ternary-closure " ++ sparqNet] ""
+        ["constraint-reasoning " ++
+         cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
+         " ternary-closure " ++ sparqNet] ""
     (consistent, modified) = case sparqModified of
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
@@ -165,11 +173,12 @@ ternaryAlgebraicClosure cal net =
         Right success -> success
 
 
-algebraicReasoning :: (Calculus a)
-                   => String
-                   -> Network [String] (Set.Set a)
+algebraicReasoning :: ( Relation (a b) b
+                      , Sparqifiable (Network [String] (a b))
+                      , Calculus b )
+                   => Network [String] (a b)
                    -> Maybe Bool
-algebraicReasoning cal net =
+algebraicReasoning net =
     if Map.null $ nCons net then do
         Just True
     else case answer of
@@ -181,6 +190,11 @@ algebraicReasoning cal net =
                                       sparqNet )
   where
     sparqNet = sparqify True net
-    answer = head $ lines $ unsafeReadProcess "sparq"
-        ["a-reasoning " ++ cal ++ " consistency " ++ sparqNet] ""
+    answer = case answer' of
+        []  -> error $ "Sparq gives no answer on \"algebraicReasoning\" over network:\n\n" ++ sparqNet
+        x   -> head x
+    answer' = lines $ unsafeReadProcess "sparq"
+        ["a-reasoning " ++
+         cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
+         " consistency " ++ sparqNet] ""
 

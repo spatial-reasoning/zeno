@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FunctionalDependencies #-}
 module Parsing.Gqr where
 
 -- standard modules
@@ -60,39 +61,40 @@ parseEntity = do
     parseWhiteSpace
     return a
 
-parseConstraint :: Parser ([String], Set.Set String)
-parseConstraint = do
-    a <- parseEntity
-    b <- parseEntity
-    char '('
-    parseWhiteSpace
-    c <- sepBy parseEntity parseWhiteSpace
-    char ')'
-    parseWhiteSpace
-    return ( [map Char.toLower a, map Char.toLower b]
-           , Set.fromList [map Char.toLower x | x <- c]
-           )
+class (Relation a b) => GqrParsable a b | a -> b where
+    parseConstraint :: Parser ([String], a)
+    parseNetwork :: Parser (Network [String] a)
+    parseNetwork = do
+        (numOfNodes, desc, calc) <- parseInfo
+        parseWhiteSpace
+        cons <- many1 parseConstraint
+        -- improve: change "fromJust" to catch inconsistent networks
+        return eNetwork { nCons = foldl (\ acc (x, y) -> fromJust $
+                                            insertCon x y acc
+                                        ) Map.empty cons
+                        , nDesc = desc
+                        , nCalc = calc
+                        , nNumOfNodes = Just numOfNodes }
 
-parseNetwork :: (Calculus a) => Parser (Network [String] (Set.Set a))
-parseNetwork = do
-    (numOfNodes, desc, calc) <- parseInfo
-    parseWhiteSpace
-    cons <- many1 parseConstraint
-      -- fixme: does not respect the ordering restriction on cons.
---    return eNetwork { nCons = Map.map (Set.map readRel) $ Map.fromList cons
-    return eNetwork { nCons = foldl (\ acc (x, y) ->
-                                        insertCon x (Set.map readRel y) acc
-                                    ) Map.empty cons
-                    , nDesc = desc
-                    , nCalc = calc
-                    , nNumOfNodes = Just numOfNodes }
+    loadNetwork :: FilePath -> IO (Network [String] a)
+    loadNetwork filename = do
+        network <- parseFromFile parseNetwork filename
+        case network of
+            Left error -> do
+                fail $ "parse error in " ++ filename ++ " at " ++ show(error)
+            Right success ->
+                return success
 
-loadNetwork :: (Calculus a) => FilePath -> IO (Network [String] (Set.Set a))
-loadNetwork filename = do
-    network <- parseFromFile parseNetwork filename
-    case network of
-        Left error -> do
-            fail $ "parse error in " ++ filename ++ " at " ++ show(error)
-        Right success ->
-            return success
+instance (Calculus a) => GqrParsable (GRel a) a where
+    parseConstraint = do
+        a <- parseEntity
+        b <- parseEntity
+        char '('
+        parseWhiteSpace
+        c <- sepBy parseEntity parseWhiteSpace
+        char ')'
+        parseWhiteSpace
+        return ( [map Char.toLower a, map Char.toLower b]
+               , GRel $ Set.fromList [cReadRel x | x <- c]
+               )
 

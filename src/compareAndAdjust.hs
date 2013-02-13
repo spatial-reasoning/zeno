@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards, ExistentialQuantification #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, ExistentialQuantification, FlexibleContexts #-}
 module Main where
 
 -- standard modules
@@ -24,8 +24,10 @@ import Benchmark
 import Calculus.All
 import DecisionProcedure
 import DecisionProcedure.All
+import Helpful.String
 
-import Debug.Trace
+--import Debug.Trace
+--import Helpful.General
 
 
 -- begin commandline option handling ------------------------------------------
@@ -137,7 +139,7 @@ defaultOptions = Options
 
 -- end commandline option handling --------------------------------------------
 
-data Calc = forall a. (Calculus a, HasDecisionProcedure a) => Calc a
+data Calc = forall b . (Calculus b, HasDecisionProcedure (ARel b)) => Calc b
 
 instance Show Calc where
 --    show (Calc a) = "Calc " ++ show a
@@ -152,24 +154,30 @@ allBaseRels = concat
     , map Calc (Set.toList cBaserelations :: [Dipole72])
 --    , map Calc (Set.toList cBaserelations :: [Dipole80])
     , map Calc (Set.toList cBaserelations :: [Opra1])
+    , map Calc (Set.toList cBaserelations :: [Opra2])
+    , map Calc (Set.toList cBaserelations :: [Opra3])
     , map Calc (Set.toList cBaserelations :: [Opra4])
     , map Calc (Set.toList cBaserelations :: [Opra8])
     , map Calc (Set.toList cBaserelations :: [Opra10])
+    , map Calc (Set.toList cBaserelations :: [Opra16])
     ]
 
-helperForCalculus str = case map Char.toUpper str of
+helperForCalculus str = case map Char.toUpper $ trim str of
     "DIPOLE-72" -> Calc (Set.findMin cBaserelations :: Dipole72)
     "DIPOLE72"  -> Calc (Set.findMin cBaserelations :: Dipole72)
     "FLIPFLOP"  -> Calc (Set.findMin cBaserelations :: FlipFlop)
     "FF"        -> Calc (Set.findMin cBaserelations :: FlipFlop)
+    "LR"        -> Calc (Set.findMin cBaserelations :: FlipFlop)
     "OPRA-1"    -> Calc (Set.findMin cBaserelations :: Opra1   )
     "OPRA-2"    -> Calc (Set.findMin cBaserelations :: Opra2   )
+    "OPRA-3"    -> Calc (Set.findMin cBaserelations :: Opra3   )
     "OPRA-4"    -> Calc (Set.findMin cBaserelations :: Opra4   )
     "OPRA-8"    -> Calc (Set.findMin cBaserelations :: Opra8   )
     "OPRA-10"   -> Calc (Set.findMin cBaserelations :: Opra10  )
     "OPRA-16"   -> Calc (Set.findMin cBaserelations :: Opra16  )
     "OPRA1"     -> Calc (Set.findMin cBaserelations :: Opra1   )
     "OPRA2"     -> Calc (Set.findMin cBaserelations :: Opra2   )
+    "OPRA3"     -> Calc (Set.findMin cBaserelations :: Opra3   )
     "OPRA4"     -> Calc (Set.findMin cBaserelations :: Opra4   )
     "OPRA8"     -> Calc (Set.findMin cBaserelations :: Opra8   )
     "OPRA10"    -> Calc (Set.findMin cBaserelations :: Opra10  )
@@ -190,16 +198,16 @@ optionHandler opts@Options{..} = do
              (error $ "Which relations or calculus should i use?")
         let typeHelperStr = head $ wordsOptRelations
         let helperLst = filter
-                (\ (Calc a) -> showRel a == map Char.toLower typeHelperStr)
+                (\ (Calc a) -> cShowRel a == map Char.toLower typeHelperStr)
                 allBaseRels
         when (null helperLst)
              (error $ "\"" ++ typeHelperStr ++
                       "\" is not a valid relation in any known calculus.")
         let boxedTypeHelper = head helperLst
         unboxAndExec boxedTypeHelper wordsOptRelations opts
-    else if null optRelations then
+    else if null optRelations then do
         useWholeCalculusAndExec (helperForCalculus optCalculus) opts
-    else
+    else do
         unboxAndExec (helperForCalculus optCalculus) wordsOptRelations opts
 
 unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
@@ -208,7 +216,7 @@ unboxAndExec (Calc typeHelper) wordsOptRelations opts@Options{..} = do
                   1 -> intersect (tail $ typeHelper:cBaserelationsArealList)
                   2 -> intersect (tail $ typeHelper:cBaserelationsNonArealList)
                   _ -> id
-            ) $ tail $ typeHelper:(map readRel wordsOptRelations)
+            ) $ tail $ typeHelper:(map cReadRel wordsOptRelations)
     -- force full evaluation of rels. Is there a better way to do this?
     -- ( `seq` does not help here )
     when (rels == rels) (return ())
@@ -224,27 +232,31 @@ useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
 exec rels opts@Options{..} = do
     let head' = head rels
     let rank' = rank head'
-    let procedures = proceduresForAtomicNets head'
+    let procedures' = procedures $ ARel head'
     let startStr = "Starting a new Benchmarking"
             ++ ( if optBatch then
                      " (running in batch mode)"
                  else
                      " (press 'q' to quit)" )
             ++ "...\n"
-    startBenchString <- catch
-        (readFile "BENCHMARK.COLLECTION")
-        ((\e -> do
-            putStrLn startStr
-            return "fromList []"
-         ) :: SomeException -> IO String
-        )
+-- restore:
+--    startBenchString <- catch
+--        (readFile "BENCHMARK.COLLECTION")
+--        ((\e -> do
+--            putStrLn startStr
+--            return "fromList []"
+--         ) :: SomeException -> IO String
+--        )
+-- delete:
+    putStrLn startStr
+    let startBenchString = "fromList []"
     let startBenchRead = reads startBenchString
     startBench <- if startBenchRead == [] || (snd $ head startBenchRead) /= "" then do
                           putStrLn startStr
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    bench <- markTheBench optScenario optBatch optMinRange optMaxRange optNumOfNets procedures optTimeout rank' rels optDensity startBench
+    bench <- markTheBench optScenario optBatch optMinRange optMaxRange optNumOfNets procedures' optTimeout rank' rels optDensity startBench
     analyze bench
     plotInconsistenciesPerSizeAndMethodInPercent bench
     plotPercentageOfInconsistentNetworksPerDensity bench

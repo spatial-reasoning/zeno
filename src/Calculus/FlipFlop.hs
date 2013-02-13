@@ -21,17 +21,17 @@ data FlipFlop = L | R | B | S | I | E | F | D | T
 
 instance Calculus FlipFlop where
     rank _ = 3
-    calculus _ = "flipflop"
-    readRel x = case maybeRead $ catchDouTri $ map Char.toUpper x of
+    cName _ = "flipflop"
+    cReadRel x = case maybeRead $ catchDouTri $ map Char.toUpper x of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a FlipFlop relation."
       where
         catchDouTri "DOU" = "D"
         catchDouTri "TRI" = "T"
         catchDouTri x = x
-    showRel D = "dou"
-    showRel T = "tri"
-    showRel x = (map Char.toLower) $ show x
+    cShowRel D = "dou"
+    cShowRel T = "tri"
+    cShowRel x = (map Char.toLower) $ show x
     cBaserelationsArealList = [L, R]
 
 
@@ -79,8 +79,8 @@ fflip B = F
 fflip I = I
 
 
-ffsToFF5s :: Network [String] FlipFlop
-          -> Maybe (Network [String] FlipFlop)
+ffsToFF5s :: Network [String] (ARel FlipFlop)
+          -> Maybe (Network [String] (ARel FlipFlop))
 ffsToFF5s net@Network { nCons = cons } = do
     consWithSamesIdentified <- consWithSamesIdentifiedMaybe
     acc <- Key.foldlWithKeyM
@@ -90,14 +90,14 @@ ffsToFF5s net@Network { nCons = cons } = do
     let firstOfTriple (x, _, _) = x
     return $ net{ nCons = firstOfTriple acc}
   where
-    checkOneCon acc@(consAcc, allConsAcc, nodesAcc) nodes@[a, b, c] rel
+    checkOneCon acc@(consAcc, allConsAcc, nodesAcc) nodes@[a, b, c] rel@(ARel rel')
         -- Ensure the existence of a witness for the unsame nodes.
-        | rel == S  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
-        | rel == E  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
-        | rel == D  = ite (a /= c) (ensureUnsamenessOf b c acc) Nothing
-        | rel == T  = Just acc
+        | rel' == S  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
+        | rel' == E  = ite (a /= b) (ensureUnsamenessOf a b acc) Nothing
+        | rel' == D  = ite (a /= c) (ensureUnsamenessOf b c acc) Nothing
+        | rel' == T  = Just acc
         | otherwise = ite ((a /= b) && (a /= c) && (b /= c))
-                          (Just ( fromJust $ insertConAtomic nodes rel consAcc
+                          (Just ( fromJust $ insertCon nodes rel consAcc
                                 , allConsAcc
                                 , nodesAcc ))
                           Nothing
@@ -110,30 +110,30 @@ ffsToFF5s net@Network { nCons = cons } = do
         if
             Map.null $ Map.filterWithKey
                 (isWitnessForUnsamenessOf x y)
-                allConsAccInter  --fixme: this should be allConsAccInter, no?
+                allConsAccInter
         then
           let
             newNode = newMaxNode nodesAccInter
           in
-            ( fromJust $ insertConAtomic [x, y, newNode] L consAccInter
-            , fromJust $ insertConAtomic [x, y, newNode] L allConsAccInter
+            ( fromJust $ insertCon [x, y, newNode] (ARel L) consAccInter
+            , fromJust $ insertCon [x, y, newNode] (ARel L) allConsAccInter
             , Set.insert newNode nodesAccInter )
         else
             acc
     isWitnessForUnsamenessOf x y k v =
-        (null $ [x, y] \\ k) && (elem v [L, R, B, I, F])
+        (null $ [x, y] \\ k) && (elem v $ map ARel [L, R, B, I, F])
     consWithSamesIdentifiedMaybe =
         Key.foldlWithKeyM buildConsWithSamesIdentifiedMaybe Map.empty cons
-    buildConsWithSamesIdentifiedMaybe consAcc nodes rel = insertConAtomic
+    buildConsWithSamesIdentifiedMaybe consAcc nodes rel = insertCon
         (map (applyMap nodesMap) nodes)
         rel
         consAcc
     nodesMap = Map.foldlWithKey buildNodesMap Map.empty cons
-    buildNodesMap mapAcc nodes@[a, b, c] rel
-        | rel == S = insertNodeMap c a mapAcc
-        | rel == E = insertNodeMap c b mapAcc
-        | rel == D = insertNodeMap b a mapAcc
-        | rel == T = let eris = insertNodeMap b a mapAcc in
+    buildNodesMap mapAcc nodes@[a, b, c] rel@(ARel rel')
+        | rel' == S = insertNodeMap c a mapAcc
+        | rel' == E = insertNodeMap c b mapAcc
+        | rel' == D = insertNodeMap b a mapAcc
+        | rel' == T = let eris = insertNodeMap b a mapAcc in
                      insertNodeMap c a eris
         | otherwise = mapAcc
     insertNodeMap node node2 m = case Map.lookup node m of
@@ -157,8 +157,8 @@ bifToI x = x
 
 -- Returns a network of FlipFlop3 constraints equivalent to the given FlipFlop5
 -- network.
-ff5sToFF3s :: Network [String] FlipFlop
-           -> Maybe (Network [String] FlipFlop)
+ff5sToFF3s :: Network [String] (ARel FlipFlop)
+           -> Maybe (Network [String] (ARel FlipFlop))
 ff5sToFF3s net@Network{ nCons = cons } = do
     (newCons, _) <- Key.foldrWithKeyM
                         collectOneCon
@@ -168,40 +168,40 @@ ff5sToFF3s net@Network{ nCons = cons } = do
   where
     -- TODO: How to best handle the problem of conversion from atomic to nonatomic and back?
     collectOneCon [a, b, c] rel (consAcc, nodesAcc)
-        | rel == L || rel == R  = do
-            maybeConsAcc <- insertConAtomic [a, b, c] rel consAcc
+        | rel == ARel L || rel == ARel R  = do
+            maybeConsAcc <- insertCon [a, b, c] rel consAcc
             Just (maybeConsAcc, nodesAcc)
-        | rel == B  = do
-            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+        | rel == ARel B  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertCon)
                                 consAcc $
-                                [ ([a, b, c], I)
-                                , ([a, b, d], flipper L)
-                                , ([d, a, c], flipper R)
+                                [ ([a, b, c], ARel I)
+                                , ([a, b, d], ARel $ flipper L)
+                                , ([d, a, c], ARel $ flipper R)
                                 ] ++
                                 if new then
                                     inlineNodes
                                 else
                                     []
             Just (maybeConsAcc, newNodesAcc)
-        | rel == I  = do
-            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+        | rel == ARel I  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertCon)
                                 consAcc $
-                                [ ([a, b, c], I)
-                                , ([a, b, d], flipper L)
-                                , ([d, a, c], flipper L)
-                                , ([d, b, c], flipper R) ]
+                                [ ([a, b, c], ARel $ I)
+                                , ([a, b, d], ARel $ flipper L)
+                                , ([d, a, c], ARel $ flipper L)
+                                , ([d, b, c], ARel $ flipper R) ]
                                 ++
                                 if new then
                                     inlineNodes
                                 else
                                     []
             Just (maybeConsAcc, newNodesAcc)
-        | rel == F  = do
-            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertConAtomic)
+        | rel == ARel F  = do
+            maybeConsAcc <- Fold.foldlM (flip $ uncurry insertCon)
                                 consAcc $
-                                [ ([a, b, c], I)
-                                , ([a, b, d], flipper L)
-                                , ([d, b, c], flipper L) ]
+                                [ ([a, b, c], ARel $ I)
+                                , ([a, b, d], ARel $ flipper L)
+                                , ([d, b, c], ARel $ flipper L) ]
                                 ++
                                 if new then
                                     inlineNodes
@@ -216,11 +216,11 @@ ff5sToFF3s net@Network{ nCons = cons } = do
             | otherwise     = (newD                 , id   , True )
         leftD = Set.minView $ Set.filter
             (\node ->
-                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just L
+                relOf (Map.union cons consAcc) [a, b, node] == Just (ARel L)
             ) nodesAcc
         rightD = Set.minView $ Set.filter
             (\node ->
-                relOfAtomic (Map.union cons consAcc) [a, b, node] == Just R
+                relOf (Map.union cons consAcc) [a, b, node] == Just (ARel R)
             ) nodesAcc
         -- if we could generalize the generation of newD we wouldn't be
         -- restricted to Strings as the type of the nodes.
@@ -233,32 +233,32 @@ ff5sToFF3s net@Network{ nCons = cons } = do
           (\y pairAcc2 ->
             if
                  (x /= y)
-              && (    (    relOfAtomic cons [a, b, x] == Just B
-                        && (    (    relOfAtomic cons [a, b, y] == Just B
-                                  && relOfAtomic cons [x, y, a] == Just F
-                                  && relOfAtomic cons [x, y, b] == Just F )
+              && (    (    relOf cons [a, b, x] == Just (ARel B)
+                        && (    (    relOf cons [a, b, y] == Just (ARel B)
+                                  && relOf cons [x, y, a] == Just (ARel F)
+                                  && relOf cons [x, y, b] == Just (ARel F) )
                              || y == a
-                             || relOfAtomic cons [a, b, y] == Just I
+                             || relOf cons [a, b, y] == Just (ARel I)
                              || y == b
-                             || relOfAtomic cons [a, b, y] == Just F ))
+                             || relOf cons [a, b, y] == Just (ARel F) ))
                    || (    x == a
-                        && (    relOfAtomic cons [a, b, y] == Just I
+                        && (    relOf cons [a, b, y] == Just (ARel I)
 --                             || y == b
-                             || relOfAtomic cons [a, b, y] == Just F ))
-                   || (    relOfAtomic cons [a, b, x] == Just I
-                        && (    (    relOfAtomic cons [a, b, y] == Just I
-                                  && relOfAtomic cons [x, y, a] == Just B
-                                  && relOfAtomic cons [x, y, b] == Just F )
+                             || relOf cons [a, b, y] == Just (ARel F) ))
+                   || (    relOf cons [a, b, x] == Just (ARel I)
+                        && (    (    relOf cons [a, b, y] == Just (ARel I)
+                                  && relOf cons [x, y, a] == Just (ARel B)
+                                  && relOf cons [x, y, b] == Just (ARel F) )
                              || y == b
-                             || relOfAtomic cons [a, b, y] == Just F ))
+                             || relOf cons [a, b, y] == Just (ARel F) ))
                    || (    x == b
-                        && relOfAtomic cons [a, b, y] == Just F )
-                   || (    relOfAtomic cons [a, b, x] == Just F
-                        && relOfAtomic cons [a, b, y] == Just F
-                        && relOfAtomic cons [x, y, a] == Just B
-                        && relOfAtomic cons [x, y, b] == Just B ))
+                        && relOf cons [a, b, y] == Just (ARel F) )
+                   || (    relOf cons [a, b, x] == Just (ARel F)
+                        && relOf cons [a, b, y] == Just (ARel F)
+                        && relOf cons [x, y, a] == Just (ARel B)
+                        && relOf cons [x, y, b] == Just (ARel B) ))
             then
-                ([x, y, d], flipper L):pairAcc2
+                ([x, y, d], ARel (flipper L)):pairAcc2
             else
                 pairAcc2
           ) pairAcc nodesAcc ) [] nodesAcc

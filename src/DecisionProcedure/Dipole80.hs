@@ -1,4 +1,5 @@
-module DecisionProcedure.Dipole72 () where
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+module DecisionProcedure.Dipole80 () where
 
 -- standard modules
 import Data.Maybe
@@ -9,15 +10,23 @@ import Basics
 import Calculus.Dipole80
 import DecisionProcedure
 
-str = "dra-80"
+instance HasBinAClosureGqr   ARel Dipole80
+instance HasBinAClosureGqr   GRel Dipole80
+instance HasBinAClosureSparq ARel Dipole80
+instance HasBinAClosureSparq GRel Dipole80
+instance HasAReasoning       ARel Dipole80
+instance HasAReasoning       GRel Dipole80
 
-instance HasDecisionProcedure Dipole72 where
-    proceduresForAtomicNets _ =
-        [ after makeNonAtomic (algebraicClosure str)
-        , after makeNonAtomic (algebraicReasoning str)
+instance HasDecisionProcedure (ARel Dipole80) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
+        , algebraicReasoning
         ]
 
-    proceduresForNonAtomicNets _ =
-        [ algebraicClosure str
-        , algebraicReasoning str
+instance HasDecisionProcedure (GRel Dipole80) where
+    procedures _ =
+        [ algebraicClosureGQR
+        , algebraicClosure
+        , algebraicReasoning
         ]

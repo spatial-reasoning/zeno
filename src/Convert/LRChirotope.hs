@@ -16,7 +16,7 @@ import Helpful.General
  - FlipFlop to Chirotope
 ------------------------------------------------------------------------------}
 
-flipflopsToChirotope :: Network [String] FlipFlop
+flipflopsToChirotope :: Network [String] (ARel FlipFlop)
                      -> Maybe (Network [Int] Int)
 flipflopsToChirotope net
     | isNothing net5 || isNothing net3  = Nothing
@@ -38,7 +38,7 @@ flipflopsToChirotope net
                     )
                     mapAcc
                     nodes
-                newRel = case rel of
+                newRel = case aRel rel of
                     R -> (-1)
                     I -> 0
                     L -> 1

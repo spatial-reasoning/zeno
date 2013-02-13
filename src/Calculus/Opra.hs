@@ -31,19 +31,21 @@ instance Bounded Opra where
 
 instance Calculus Opra where
     rank _ = 2
-    calculus _ = "opra"
-    showRel (Opra m (-1) b) = "Opra_" ++ show m ++ "_s_" ++ show b
-    showRel (Opra m a    b) = "Opra_" ++ show m ++ "_" ++ show a ++ "_"
-                                                       ++ show b
+    cName _ = "opra"
+    cShowRel (Opra m (-1) b) = "Opra_" ++ show m ++ "_s_" ++ show b
+    cShowRel (Opra m a    b) = "Opra_" ++ show m ++ "_" ++ show a ++ "_"
+                                                        ++ show b
 
 opraBaserelations m =
     [ Opra m a b | let range = [0..4*m - 1], a <- range ++ [-1], b <- range]
 
-opraConvert :: (Opram a) => Int -> Set.Set a -> Set.Set a
-opraConvert n relSet = Set.map (opraConvertAtomic n) relSet
+opraConvert :: (Opram a) => Int -> GRel a -> GRel a
+opraConvert n (GRel relSet) =
+    GRel $ Set.map (aRel . opraConvertAtomic n . ARel) relSet
 
-opraConvertAtomic :: (Opram a) => Int -> a -> a
-opraConvertAtomic n rel = read $ "Opra" ++ show n ++ "_" ++ x' ++ "_" ++ y'
+opraConvertAtomic :: (Opram a) => Int -> ARel a -> ARel a
+opraConvertAtomic n (ARel rel) =
+    ARel $ read $ "Opra" ++ show n ++ "_" ++ x' ++ "_" ++ y'
   where
     (x, _:y) = break (== '_') $ drop 1 $ dropWhile (/= '_') $ show rel
     (x', y') =
@@ -104,11 +106,11 @@ class (Read a, Show a, Ord a) => Opram a where
             "s" -> (-1)
             y   -> read y
 
-    opramNetToOpraNetAtomic :: Network b a -> Network b Opra
+    opramNetToOpraNetAtomic :: Network b (ARel a) -> Network b (ARel Opra)
     opramNetToOpraNetAtomic net@Network{nCons = cons} =
-        net { nCons = Map.map opramToOpra cons }
+        net { nCons = Map.map (ARel . opramToOpra . aRel) cons }
 
-    opramNetToOpraNet :: Network b (Set.Set a) -> Network b (Set.Set Opra)
+    opramNetToOpraNet :: Network b (GRel a) -> Network b (GRel Opra)
     opramNetToOpraNet net@Network{nCons = cons} =
-        net { nCons = Map.map (Set.map opramToOpra) cons }
+        net { nCons = Map.map (GRel . Set.map opramToOpra . gRel) cons }
 

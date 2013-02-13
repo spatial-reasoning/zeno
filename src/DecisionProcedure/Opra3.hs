@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
-module DecisionProcedure.Opra8
+module DecisionProcedure.Opra3
     ( module DecisionProcedure.Opra
     ) where
 
@@ -7,20 +7,20 @@ module DecisionProcedure.Opra8
 
 -- local modules
 import Basics
-import Calculus.Opra8
+import Calculus.Opra3
 import DecisionProcedure
 import DecisionProcedure.AlgebraicClosure
 --import DecisionProcedure.AlgebraicGeometric
 import DecisionProcedure.Opra
 
-instance HasBinAClosureGqr   ARel Opra8
-instance HasBinAClosureGqr   GRel Opra8
-instance HasBinAClosureSparq ARel Opra8
-instance HasBinAClosureSparq GRel Opra8
---instance HasAReasoning       ARel Opra8
---instance HasAReasoning       GRel Opra8
+instance HasBinAClosureGqr   ARel Opra3
+instance HasBinAClosureGqr   GRel Opra3
+instance HasBinAClosureSparq ARel Opra3
+instance HasBinAClosureSparq GRel Opra3
+--instance HasAReasoning       ARel Opra3
+--instance HasAReasoning       GRel Opra3
 
-instance HasDecisionProcedure (ARel Opra8) where
+instance HasDecisionProcedure (ARel Opra3) where
     procedures _ =
         [ algebraicClosureGQR
         , algebraicClosure
@@ -29,8 +29,7 @@ instance HasDecisionProcedure (ARel Opra8) where
         ] ++ map (firstApply opramNetToOpraNetAtomic)
                  (procedures (undefined :: ARel Opra))
 
-instance HasDecisionProcedure (GRel Opra8) where
+instance HasDecisionProcedure (GRel Opra3) where
     procedures _ =
-        [
---          algebraicClosure
+        [ algebraicClosure
         ]

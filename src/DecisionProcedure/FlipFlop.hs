@@ -1,4 +1,9 @@
-module DecisionProcedure.FlipFlop () where
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+module DecisionProcedure.FlipFlop
+    ( triangleConsistency
+    , chirotope
+    , biquadraticFinalPolynomials
+    ) where
 
 -- standard modules
 import qualified Data.Set as Set
@@ -6,23 +11,44 @@ import qualified Data.Set as Set
 -- local modules
 import Basics
 import Calculus.FlipFlop
-import qualified Interface.Sparq as S
 import DecisionProcedure
+import DecisionProcedure.AlgebraicClosure
+import DecisionProcedure.AlgebraicGeometric
+import DecisionProcedure.FlipFlop.TriangleConsistency as T
+import DecisionProcedure.FlipFlop.OrientedMatroid
 
-str = "ff"
+triangleConsistency = DecisionProcedure
+    { decProName = "TC"
+    , decProProc = T.checkConsistency }
 
-instance HasDecisionProcedure FlipFlop where
-    proceduresForAtomicNets _ =
-        [ after makeNonAtomic (algebraicClosure str)
-        , after makeNonAtomic (ternaryAlgebraicClosure str)
---        , after makeNonAtomic (algebraicReasoning str)
-        , triangleConsistencyFlipFlop
+chirotope = DecisionProcedure
+    { decProName = "OM"
+    , decProProc = isAcyclicChirotopeFlipFlop }
+
+biquadraticFinalPolynomials = DecisionProcedure
+    { decProName = "BFP"
+    , decProProc = isAcyclicChirotopeWithoutBPFlipFlop }
+
+instance HasBinAClosureSparq ARel FlipFlop
+instance HasBinAClosureSparq GRel FlipFlop
+instance HasTerAClosureSparq ARel FlipFlop
+instance HasTerAClosureSparq GRel FlipFlop
+instance HasAReasoning       ARel FlipFlop
+instance HasAReasoning       GRel FlipFlop
+
+instance HasDecisionProcedure (ARel FlipFlop) where
+    procedures _ =
+        [ algebraicClosure
+        , ternaryAlgebraicClosure
+--        , algebraicReasoning
+        , triangleConsistency
         , chirotope
         , biquadraticFinalPolynomials
         ]
 
-    proceduresForNonAtomicNets _ =
-        [ algebraicClosure str
-        , ternaryAlgebraicClosure str
-        , algebraicReasoning str
+instance HasDecisionProcedure (GRel FlipFlop) where
+    procedures _ =
+        [ algebraicClosure
+        , ternaryAlgebraicClosure
+        , algebraicReasoning
         ]
