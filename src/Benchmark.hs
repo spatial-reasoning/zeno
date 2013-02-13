@@ -246,7 +246,27 @@ checkNetwork scenario rank relations funs tymeout size dens = do
                   res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
                   return $ (desc, res)
               ) funs
-    return (net, results)
+    -- Delete this after the Opra testrun:
+    let (resultTC'time, resultTC'answer)   = fromJust $ lookup "TC WitUn"  results
+    let (resultBAC'time, resultBAC'answer) = fromJust $ lookup "BAC" results
+    let mergedTcBac =
+          ( "BAC + TC-WU"
+          , case (resultTC'answer, resultBAC'answer) of
+                (Just (Just False), Just (Just False)) ->
+                    (min resultTC'time resultBAC'time, Just (Just False))
+                (Just (Just False), _) -> (resultTC'time, Just (Just False))
+                (_, Just (Just False)) -> (resultBAC'time, Just (Just False))
+                (Just (Just True), Just (Just True)) ->
+                    (min resultTC'time resultBAC'time, Just (Just True))
+                (Just (Just True), _) -> (resultTC'time, Just (Just True))
+                (_, Just (Just True)) -> (resultBAC'time, Just (Just True))
+                (Nothing, _) -> (max resultTC'time resultBAC'time, Nothing)
+                (_, Nothing) -> (max resultTC'time resultBAC'time, Nothing)
+                otherwise -> (max resultTC'time resultBAC'time, Just Nothing)
+          )
+    let results' = results ++ [mergedTcBac]
+    return (net, results')     -- delete
+--    return (net, results)   -- restore
 
 
 -- find phase transition ------------------------------------------------------
@@ -444,7 +464,7 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
             ) [0..Map.size bench - 1]
         ) ++ "\n\n"
 
-plotInconsistenciesPerSizeAndMethodInPercent :: Benchmark -> IO (String)
+plotInconsistenciesPerSizeAndMethodInPercent :: Benchmark -> IO ((String, String))
 plotInconsistenciesPerSizeAndMethodInPercent bench = do
     writeFile "plotPercentageOfInconsistenciesPerSizeAndMethod.dat" plotData
     writeFile "plotPercentageOfInconsistenciesPerSizeAndMethod.plt" plotScript
@@ -493,8 +513,8 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
         "set xrange [" ++
-        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
+        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
@@ -508,7 +528,7 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
             ) [2..Set.size allMethods + 1]
         ) ++ "\n\n"
 
-plotSpeedPerSizeAndMethodSuccessOnly :: Benchmark -> IO (String)
+plotSpeedPerSizeAndMethodSuccessOnly :: Benchmark -> IO ((String, String))
 plotSpeedPerSizeAndMethodSuccessOnly bench = do
     writeFile "plotSpeedPerSizeAndMethodSuccessOnly.dat" plotData
     writeFile "plotSpeedPerSizeAndMethodSuccessOnly.plt" plotScript
@@ -553,8 +573,8 @@ plotSpeedPerSizeAndMethodSuccessOnly bench = do
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
         "set xrange [" ++
-        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
+        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
@@ -568,7 +588,7 @@ plotSpeedPerSizeAndMethodSuccessOnly bench = do
             ) [2..Set.size allMethods + 1]
         ) ++ "\n\n"
 
-plotSpeedPerSizeAndMethod :: Benchmark -> IO (String)
+plotSpeedPerSizeAndMethod :: Benchmark -> IO ((String, String))
 plotSpeedPerSizeAndMethod bench = do
     writeFile "plotSpeedPerSizeAndMethod.dat" plotData
     writeFile "plotSpeedPerSizeAndMethod.plt" plotScript
@@ -613,8 +633,8 @@ plotSpeedPerSizeAndMethod bench = do
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
         "set xrange [" ++
-        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
+        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++

@@ -28,7 +28,7 @@ showNetwork net@Network { nCons = cons
     ( unlines $ map
         (\(nodes, rel) ->
             "    " ++ (intercalate " " nodes) ++
-            "(" ++ showRel rel ++ ")"
+            " (" ++ showRel rel ++ ")"
         ) $ Map.toList cons
     )
 

@@ -22,9 +22,9 @@ zeroObjective p = case head answer of
         else
             error $ "lp_solve answered in an unexpected way.\n" ++
                 "Expected Answer: \"Value of objective function: " ++
-                "NUMBER\"\nActual Answer: " ++ lpAnswer
+                "NUMBER\"\nActual Answer: " ++ lpAnswer ++ "\n" ++ lpError
   where
-    lpAnswer = unsafeReadProcess "lp_solve" [] p
+    (lpAnswer, lpError) = unsafeReadProcess "lp_solve" [] p
     answer = lines lpAnswer
 
 -- old version

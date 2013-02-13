@@ -28,9 +28,9 @@ algebraicClosure net = unsafePerformIO $
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
-    gqrAnswer <- safeReadProcess
+    (gqrOut, gqrErr) <- safeReadProcess
         "gqr" (["c -C", cNameGqr ((undefined :: Network [String] (a b) -> b) net), "-S", fst gqrTempFile]) ""
-    let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrAnswer
+    let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrOut
     let consistent = zeroOne $ last fstline
           where
             zeroOne x
@@ -39,7 +39,8 @@ algebraicClosure net = unsafePerformIO $
                 | otherwise = error ("GQR answered in an unexpected way.\n\
                                      \Expected answer: Gqr information on \
                                      \consistency of a network.\n\
-                                     \Actual answer  : " ++ gqrAnswer)
+                                     \Actual answer  : " ++ gqrOut ++ "\n" ++
+                                     gqrErr )
     let parsedNet = case parse parseNetwork "" gqrNewNet of
             Left err -> error $ "Gqr answered in an unexpected way.\n\
                                 \Expected: a Gqr network definition.\n\
@@ -63,9 +64,9 @@ algebraicClosures nets = unsafePerformIO $
     gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (fst $ gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
-    gqrAnswer <- safeReadProcess
+    (gqrOut, gqrErr) <- safeReadProcess
         "gqr" (["c -C", cNameGqr((undefined :: [Network [String] (a b)] -> b) nets)] ++ (map fst gqrTempFiles)) ""
-    let answer = map zeroOne [ last x | x <- lines gqrAnswer, head x == '#' ]
+    let answer = map zeroOne [ last x | x <- lines gqrOut, head x == '#' ]
           where
             zeroOne x
                 | x == '0'  = Just False
@@ -73,7 +74,8 @@ algebraicClosures nets = unsafePerformIO $
                 | otherwise = error ("GQR answered in an unexpected way.\n\
                                      \Expected answer: Gqr information on \
                                      \consistency of a network.\n\
-                                     \Actual answer  : " ++ gqrAnswer)
+                                     \Actual answer  : " ++ gqrOut ++ "\n" ++
+                                     gqrErr )
     return answer
   )
 

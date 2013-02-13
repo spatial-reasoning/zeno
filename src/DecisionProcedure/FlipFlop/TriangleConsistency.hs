@@ -1,7 +1,6 @@
 module DecisionProcedure.FlipFlop.TriangleConsistency where
 
 import qualified Data.Set as Set
-import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe
 
@@ -14,8 +13,7 @@ import Interface.Yices
 
 checkConsistency :: Network [String] (ARel FlipFlop)
                  -> Maybe Bool
-checkConsistency net =
-    ffsToFF5s net >>= (runTCpure . flipFlopsToDominik)
+checkConsistency net = ffsToFF5s net >>= (runTC . flipFlopsToDominik)
 
 {------------------------------------------------------------------------------
     FlipFlop to Dominik
@@ -458,7 +456,7 @@ showSMT lst =
     in
         "(benchmark Triangles \n\n" ++
 --        ":logic QF_AUFLIA\n\n" ++    -- This is the original line.
-        -- But this lines seems to be ignored by yices anyway!
+        -- But these lines seems to be ignored by yices anyway!
         ":logic QF_LRA\n\n" ++
         vars ++ "\n\n:formula\n" ++
         (if length tr > 1 then
@@ -490,69 +488,19 @@ showSMT lst =
                                         ++ showSMTT t2 ++ ")"
                 Negation t1    -> "(- 0 " ++ showSMTT t1 ++ ")"
 
-parseOutputSMT :: String
-               -> IO (Maybe Bool)
-parseOutputSMT str =
-    do
-      let   sat = or $ map (\x -> "sat" `List.isPrefixOf` x) $ lines str
-      let unsat = or $ map (\x -> "unsat" `List.isPrefixOf` x) $ lines str
-      case (sat, unsat) of
-        (True, False) -> return Nothing
-        (False, True) -> return $ Just False
-        (_, _)        -> error $ "Help! Yices answered: " ++ str
-
-parseOutputSMTpure :: String
-                   -> Maybe Bool
-parseOutputSMTpure str =
-    let
-          sat = or $ map (\x -> "sat" `List.isPrefixOf` x) $ lines str
-          unsat = or $ map (\x -> "unsat" `List.isPrefixOf` x) $ lines str
-    in
-      case (sat, unsat) of
-        (True, False) -> Nothing
-        (False, True) -> Just False
-        (_, _)        -> error $ "Help! Yices answered: " ++ str
-
 -- Check for Triangle Consistency
-runTC :: [Rel] -> IO (Maybe Bool)
-runTC scen =
-    do
-      let subst    = verifySubs $ applySubs scen
-      let failSubs = or $ map (== Nothing) subst
-      if (failSubs)
-       then
-          do
-            return $ Just False
-       else
-           if (subst == []) then
-               return $ Just True
-           else
-               do
-                 let angles   = translateToAngles $ addPermutations $
-                                map fromJust subst
-                 let str      = showSMT angles
-                 let out = readYices str
-                 suc <- parseOutputSMT out
-                 return suc
-
--- Check for Triangle Consistency
-runTCpure :: [Rel] -> Maybe Bool
-runTCpure scen =
-  let
-      subst    = verifySubs $ applySubs scen
-      failSubs = or $ map (== Nothing) subst
-  in
-      if (failSubs) then
-            Just False
-      else if (subst == []) then
-           Just True
-      else
-        let
-            angles   = translateToAngles $ addPermutations $
-                       map fromJust subst
-            str      = showSMT angles
-        in
-            parseOutputSMTpure $ readYices str
+runTC :: [Rel] -> Maybe Bool
+runTC scen = if failSubs then
+                 Just False
+             else if (subst == []) then
+                 Just True
+             else
+                 if yicesSat str then Nothing else Just False
+  where
+    subst    = verifySubs $ applySubs scen
+    failSubs = or $ map (== Nothing) subst
+    str      = showSMT angles
+    angles   = translateToAngles $ addPermutations $ map fromJust subst
 
 -- constraint network for testing
 eris :: [Rel]

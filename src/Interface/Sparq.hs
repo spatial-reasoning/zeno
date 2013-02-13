@@ -115,7 +115,10 @@ algebraicClosure net =
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
     sparqNet = sparqify True net
-    sparqModified:rest = lines $ unsafeReadProcess "sparq"
+    sparqModified:rest = case lines answerOut of
+        []  -> oops
+        x   -> x
+    (answerOut, answerErr) = unsafeReadProcess "sparq"
         ["constraint-reasoning " ++
          cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
          " a-closure " ++ sparqNet] ""
@@ -123,19 +126,18 @@ algebraicClosure net =
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
         "Not consistent." -> (Just False, False)
-        _ -> error $ "SparQ answered in an unexpected way.\n" ++
+        _ -> oops
+    newNet = case parse parseNetwork "" (unlines rest) of
+        Left err -> oops
+        Right success -> success
+    oops = error $ "SparQ answered in an unexpected way.\n" ++
                      "On Network:\n" ++ sparqNet ++ "\n" ++
                      "Expected: Modified network.\n" ++
                      "      OR: Unmodified Network.\n" ++
                      "      OR: Not consistent.\n" ++
-                     "Actual answer: \"" ++ sparqModified
-                                         ++ unlines rest ++ "\""
-    newNet = case parse parseNetwork "" (unlines rest) of
-        Left err -> error $ "SparQ answered in an unexpected way.\n" ++
-                            "On Network:\n" ++ sparqNet ++ "\n" ++
-                            "Expected: a SparQ network definition.\n" ++
-                            "Actual answer: " ++ unlines rest
-        Right success -> success
+                     "Actual answer: \"" ++ answerOut ++ "\n" ++ answerErr ++
+                     "\""
+
 
 ternaryAlgebraicClosure :: ( Relation (a b) b
                            , Sparqifiable (Network [String] (a b))
@@ -150,7 +152,10 @@ ternaryAlgebraicClosure net =
         True  -> (consistent, modified, net {nCons = nCons newNet})
   where
     sparqNet = sparqify True net
-    sparqModified:rest = lines $ unsafeReadProcess "sparq"
+    sparqModified:rest = case lines answerOut of
+        []  -> oops
+        x   -> x
+    (answerOut, answerErr) = unsafeReadProcess "sparq"
         ["constraint-reasoning " ++
          cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
          " ternary-closure " ++ sparqNet] ""
@@ -158,19 +163,17 @@ ternaryAlgebraicClosure net =
         "Modified network."   -> (Nothing, True)
         "Unmodified network." -> (Nothing, False)
         "Not consistent." -> (Just False, False)
-        _ -> error $ "SparQ answered in an unexpected way.\n" ++
+        _ -> oops
+    newNet = case parse parseNetwork "" (unlines rest) of
+        Left err -> oops
+        Right success -> success
+    oops = error $ "SparQ answered in an unexpected way.\n" ++
                      "On Network:\n" ++ sparqNet ++ "\n" ++
                      "Expected: Modified network.\n" ++
                      "      OR: Unmodified Network.\n" ++
                      "      OR: Not consistent.\n" ++
-                     "Actual answer: \"" ++ sparqModified
-                                         ++ unlines rest ++ "\""
-    newNet = case parse parseNetwork "" (unlines rest) of
-        Left err -> error $ "SparQ answered in an unexpected way.\n" ++
-                            "On Network:\n" ++ sparqNet ++ "\n" ++
-                            "Expected: a SparQ network definition.\n" ++
-                            "Actual answer: " ++ unlines rest
-        Right success -> success
+                     "Actual answer: \"" ++ answerOut ++ "\n" ++ answerErr ++
+                     "\""
 
 
 algebraicReasoning :: ( Relation (a b) b
@@ -185,15 +188,16 @@ algebraicReasoning net =
         "IS SATISFIABLE."  -> Just True
         "NOT SATISFIABLE." -> Just False
         "CANNOT DECIDE."   -> Nothing
-        otherwise          -> error ( "SparQ answered " ++
-                                      show answer ++ " on network " ++
-                                      sparqNet )
+        otherwise          -> oops
   where
     sparqNet = sparqify True net
-    answer = case answer' of
-        []  -> error $ "Sparq gives no answer on \"algebraicReasoning\" over network:\n\n" ++ sparqNet
+    oops = error ( "SparQ's algebraic reasoning answered " ++
+                   show (answerOut ++ "\n" ++ answerErr) ++
+                   " on network " ++ sparqNet )
+    answer = case lines answerOut of
+        []  -> oops
         x   -> head x
-    answer' = lines $ unsafeReadProcess "sparq"
+    (answerOut, answerErr) = unsafeReadProcess "sparq"
         ["a-reasoning " ++
          cNameSparq ((undefined :: Network [String] (a b) -> b) net) ++
          " consistency " ++ sparqNet] ""

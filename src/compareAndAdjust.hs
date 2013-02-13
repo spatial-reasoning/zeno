@@ -129,7 +129,7 @@ defaultOptions = Options
 --    versionArg [ignore] &=
     versionArg [help "Show version information."] &=
     program "compareAndAdjust" &=
-    summary "compare version 12.02.23, (K) André Scholz" &=
+    summary "compare version 13.02.13, (K) André Scholz" &=
     details [ ""
 --              "This progam compares several semi-decision procedures for the consistency of constraint networks using the given relations."
 --            , "To compare the procedures on 13 networks of density 0.3 with 5 nodes type:"

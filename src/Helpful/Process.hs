@@ -31,20 +31,26 @@ safeCreateProcess prog args streamIn streamOut streamErr fun = bracket
     fun
 {-# NOINLINE safeCreateProcess #-}
 
-safeReadProcess :: String -> [String] -> String -> IO String
+safeReadProcess :: String -> [String] -> String -> IO (String, String)
 safeReadProcess prog args str =
     safeCreateProcess prog args CreatePipe CreatePipe Inherit
-      (\(Just inh, Just outh, _, ph) -> do
+      (\(Just inh, Just outh, Just errh, ph) -> do
         hPutStr inh str
         hClose inh
         -- fork a thread to consume output
         output <- hGetContents outh
         outMVar <- newEmptyMVar
         forkIO $ evaluate (length output) >> putMVar outMVar ()
+        -- fork a thread to consume output
+        outputErr <- hGetContents errh
+        errMVar <- newEmptyMVar
+        forkIO $ evaluate (length outputErr) >> putMVar errMVar ()
         -- wait on output
         takeMVar outMVar
         hClose outh
-        return output
+        takeMVar errMVar
+        hClose errh
+        return (output, outputErr)
 --        ex <- waitForProcess ph
 --        case ex of
 --            ExitSuccess -> return output
@@ -52,7 +58,7 @@ safeReadProcess prog args str =
 --                fail ("spawned process " ++ prog ++ " exit: " ++ show r)
       )
 
-unsafeReadProcess :: String -> [String] -> String -> String
+unsafeReadProcess :: String -> [String] -> String -> (String, String)
 unsafeReadProcess prog args str =
     unsafePerformIO $ safeReadProcess prog args str
 {-# NOINLINE unsafeReadProcess #-}

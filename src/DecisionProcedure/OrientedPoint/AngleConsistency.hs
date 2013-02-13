@@ -27,7 +27,7 @@ mytrace2 a b = id b
 --mytrace2 = trace
 
 -- maximal granularity for which this code should work.
-maxgran = 4
+maxgran = 10
 
 halfcircle :: Integer
 halfcircle = foldr1 lcm [1..maxgran]
@@ -817,31 +817,21 @@ translateToTriangles' cons pairsWithSameness relatedNodes =
 
 
 preamble :: String -> Formula -> String
-preamble desc f = "(benchmark " ++ desc ++ "\n\n" ++
+preamble desc f = "(benchmark " ++ desc' ++ "\n\n" ++
 --    ":logic QF_AUFLIA\n" ++
     ":logic QF_LRA\n" ++ ":extrafuns (\n" ++ Set.foldl
     (\ acc v -> acc ++ "  (" ++ showSMT v ++ " Real)\n"
     ) "" (getVarsFo f) ++ ")\n"
-
-parseOutputFromYices :: String
-                     -> Maybe Bool
-parseOutputFromYices str =
-  let
-    sat   = or $ map (\x -> "sat"   `isPrefixOf` x) $ lines str
-    unsat = or $ map (\x -> "unsat" `isPrefixOf` x) $ lines str
-  in
-    mytrace ("Yices answered:" ++ str) $ case (sat, unsat) of
-        (True, False) -> Nothing
-        (False, True) -> Just False
-        (_, _)        -> error $ "Help! Yices answered:\n" ++ str
+  where
+    desc' = if null desc then "OPointTriangleConsistency" else desc
 
 angleConsistency' :: (Network [String] (ARel Otop) -> Maybe Formula)
                   -> Network [String] (ARel Otop)
                   -> Maybe Bool
 angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
---          (\f -> parseOutputFromYices $ traceTime (readYices $ traceTime $ str f))  --DEBUGGING
-          (\f -> parseOutputFromYices $ readYices $ str f)
+--          (\f -> if traceTime (yicesSat $ traceTime (str f)) then Nothing else Just False)   --DEBUGGING
+          (\f -> if yicesSat (str f) then Nothing else Just False)
           formula
   where
     formula = fun net
