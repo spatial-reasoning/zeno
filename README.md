@@ -1,7 +1,7 @@
-QSTRLib - The Library for Qualitative Spatio-Temporal Reasoning
+Zeno - The Library for Qualitative Spatio-Temporal Reasoning
 ===============================================================
 
-QSTRLib is a library for qualitative spatio-temporal reasoning written in
+Zeno is a library for qualitative spatio-temporal reasoning written in
 Haskell. It also contains a suite of benchmarks for qualitative spatio-temporal
 calculi.
 
@@ -17,14 +17,13 @@ the tested procedures.
 
 ## Procedures implemented or integrated so far are:
 
-- __Algebraic Closure__ (binary and ternary) (via SparQ and Gqr)
-- __Gröbner Reasoning__ (via SparQ)
-- __Triangle Consistency__ (cf Lücke et al.)
-- __Oriented Matroids__ (sloppy and exact)
-- __Biquadratic Final Polynomials__
+- __Algebraic Closure__ (binary and ternary) (via Gqr and SparQ)
+- __Algebraic Geometric Reasoning__ (via SparQ)
+- __Triangle Consistency for the LR Calculus__ (cf Lücke et al.)
+- __Oriented Matroids__ (including Biquadratic Final Polynomials)
 - __Angle Consistency for Oriented Points (and thus for OPRA-m)__
 
-There will be a manual some time soon.
+There will be a manual soon.
 
 ## Collaboration welcome!
 
@@ -33,10 +32,10 @@ you have any wishes or ideas please let us know.
 
 ## Discuss
 
-- Questions and Discussion: There is a (very vacant) IRC channel #qstrlib on
-  freenode. A mailing list will be available soon. So long please feel free to
-  ask [André Scholz](mailto:andre.scholz@uni-bremen.de) personally.
-- Bug reports: [Issue tracker](https://github.com/weltensegler/qstrlib/issues)
+- Questions and Discussion: A mailing list might be available sometime. So long
+  please feel free to
+  ask [André van Delden](mailto:andre.van.delden@uni-bremen.de) personally.
+- Bug reports: [Issue tracker](https://github.com/weltensegler/zeno/issues)
 
 ## Authors
 
@@ -45,7 +44,7 @@ you have any wishes or ideas please let us know.
 
 ## License
 
-QSTRLib is distributed under a BSD License with one important addition. See
-[LICENSE](https://github.com/weltensegler/qstrlib/blob/master/LICENSE) for
+Zeno is distributed under a BSD License with one important addition. See
+[LICENSE](https://github.com/weltensegler/zeno/blob/master/LICENSE) for
 details.
 

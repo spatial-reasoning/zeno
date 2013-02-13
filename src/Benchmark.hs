@@ -394,11 +394,12 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
     safeReadProcess "gnuplot"
         ["plotPercentageOfInconsistentNetworksPerDensity.plt"] ""
   where
-    plotData = ("# \"Density\"  \"Percentage\"" ++) $
-        Map.foldlWithKey
-            (\ acc numOfNodes (_, _, densMap) -> (acc ++) $
+    (densSet, plotData) = Map.foldlWithKey
+        (\ (acc1, acc2) numOfNodes (_, _, densMap) ->
+            ( Set.union acc1 (Map.keysSet densMap)
+            , (acc2 ++) $
                 "\n" ++ "# # = " ++ show numOfNodes ++ Map.foldlWithKey
-                    (\ acc2 dens (numN, numY, numU, numT, _) -> (acc2 ++)
+                    (\ acc3 dens (numN, numY, numU, numT, _) -> (acc3 ++)
                         "\n" ++
                         (show $ fromRational $ toRational dens) ++ " " ++
                         ( show $ 100 * fromIntegral numN /
@@ -406,25 +407,28 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
                         )
                     ) "" densMap
                 ++ "\nend\n"
-            ) "" bench
+            )
+        ) (Set.empty, "# \"Density\"  \"Percentage\"") bench
     plotScript =
         "set output 'plotPercentageOfInconsistentNetworksPerDensity.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
-        "set style line 81 lt 0              # dashed\n" ++
-        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
-        "set grid back linestyle 81\n" ++
+        "#set style line 81 lt 0              # dashed\n" ++
+        "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "#set grid back linestyle 81\n" ++
         "set border 3 back # Remove border on top and right.\n\n"   ++
         "set xtics 0,0.1,0.6 nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [0:0.6]\n" ++
+        "set xrange [" ++
+        showFFloat (Just 2) (maybe 0 fst $ Set.minView densSet) "" ++ ":" ++
+        showFFloat (Just 2) (maybe 1 fst $ Set.maxView densSet) "" ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
@@ -447,6 +451,7 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
     safeReadProcess "gnuplot"
         ["plotPercentageOfInconsistenciesPerSizeAndMethod.plt"] ""
   where
+    sizesSet = Map.keysSet bench
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -472,22 +477,24 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotPercentageOfInconsistenciesPerSizeAndMethod.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
-        "set style line 81 lt 0              # dashed\n" ++
-        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
-        "set grid back linestyle 81\n" ++
+        "#set style line 81 lt 0              # dashed\n" ++
+        "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "#set grid back linestyle 81\n" ++
         "set border 3 back # Remove border on top and right.\n\n"   ++
         "set xtics nomirror\n" ++
         "#set xtics 0,0.1,0.6 nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [4:21]\n" ++
+        "set xrange [" ++
+        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
@@ -508,6 +515,7 @@ plotSpeedPerSizeAndMethodSuccessOnly bench = do
     safeReadProcess "gnuplot"
         ["plotSpeedPerSizeAndMethodSuccessOnly.plt"] ""
   where
+    sizesSet = Map.keysSet bench
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -528,23 +536,25 @@ plotSpeedPerSizeAndMethodSuccessOnly bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotSpeedPerSizeAndMethodSuccessOnly.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
-        "set style line 81 lt 0              # dashed\n" ++
-        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
-        "set grid back linestyle 81\n" ++
+        "#set style line 81 lt 0              # dashed\n" ++
+        "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "#set grid back linestyle 81\n" ++
         "set border 3 back # Remove border on top and right.\n\n"   ++
         "set xtics nomirror\n" ++
         "#set xtics 0,0.1,0.6 nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [4:21]\n" ++
+        "set xrange [" ++
+        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
@@ -565,6 +575,7 @@ plotSpeedPerSizeAndMethod bench = do
     safeReadProcess "gnuplot"
         ["plotSpeedPerSizeAndMethod.plt"] ""
   where
+    sizesSet = Map.keysSet bench
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -585,23 +596,25 @@ plotSpeedPerSizeAndMethod bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotSpeedPerSizeAndMethod.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome dashed\n" ++
+        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
-        "set style line 81 lt 0              # dashed\n" ++
-        "set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
-        "set grid back linestyle 81\n" ++
+        "#set style line 81 lt 0              # dashed\n" ++
+        "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
+        "#set grid back linestyle 81\n" ++
         "set border 3 back # Remove border on top and right.\n\n"   ++
         "set xtics nomirror\n" ++
         "#set xtics 0,0.1,0.6 nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [4:21]\n" ++
+        "set xrange [" ++
+        show (maybe 0  fst $ Set.minView sizesSet) ++ ":" ++
+        show (maybe 47 fst $ Set.maxView sizesSet) ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
