@@ -427,8 +427,8 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
         "set xrange [" ++
-        showFFloat (Just 2) (maybe 0 fst $ Set.minView densSet) "" ++ ":" ++
-        showFFloat (Just 2) (maybe 1 fst $ Set.maxView densSet) "" ++ "]\n" ++
+        showFFloat (Just 2) (maybe 0.0 (realToFrac . fst) $ Set.minView densSet) "" ++ ":" ++
+        showFFloat (Just 2) (maybe 1.0 (realToFrac . fst) $ Set.maxView densSet) "" ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
