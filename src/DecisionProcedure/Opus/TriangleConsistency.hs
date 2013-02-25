@@ -369,31 +369,33 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
               thirdToStart [a,b] = [thirdNode [a,b], a]
               thirdToEnd   [a,b] = [thirdNode [a,b], b]
               triple [a,b] = [a, thirdNode [a,b], b]
-              equUnsameTriple tripleA tripleB tripleC = And (And (And
-                  (equUnsameTriple' tripleA)
-                  (equUnsameTriple' tripleB))
-                  (equUnsameTriple' tripleC))
+              equUnsameTriple revert tripleA tripleB tripleC = And (And (And
+                  (equUnsameTriple' revert tripleA)
+                  (equUnsameTriple' revert tripleB))
+                  (equUnsameTriple' revert tripleC))
                   (Or (Or (Or
-                      (And (And (Eq (Var tripleA) (Con 0))
-                                (Eq (Var tripleB) (Con 0)))
-                                (Eq (Var tripleC) (Con halfcircle)))
-                      (And (And (Eq (Var tripleA) (Con 0))
-                                (Eq (Var tripleB) (Con halfcircle)))
-                                (Eq (Var tripleC) (Con 0))))
-                      (And (And (Eq (Var tripleA) (Con halfcircle))
-                                (Eq (Var tripleB) (Con 0)))
-                                (Eq (Var tripleC) (Con 0))))
-                      (And (And (And (Leq (Con 0) (Var tripleA))
-                                     (Leq (Con 0) (Var tripleB)))
-                                     (Leq (Con 0) (Var tripleC)))
-                           (Eq (Add (Var tripleA) $ Add (Var tripleB) (Var tripleC))
+                      (And (And (Eq (Var $ revert tripleA) (Con 0))
+                                (Eq (Var $ revert tripleB) (Con 0)))
+                                (Eq (Var $ revert tripleC) (Con halfcircle)))
+                      (And (And (Eq (Var $ revert tripleA) (Con 0))
+                                (Eq (Var $ revert tripleB) (Con halfcircle)))
+                                (Eq (Var $ revert tripleC) (Con 0))))
+                      (And (And (Eq (Var $ revert tripleA) (Con halfcircle))
+                                (Eq (Var $ revert tripleB) (Con 0)))
+                                (Eq (Var $ revert tripleC) (Con 0))))
+                      (And (And (And (Le (Con 0) (Var $ revert tripleA))
+                                     (Le (Con 0) (Var $ revert tripleB)))
+                                     (Le (Con 0) (Var $ revert tripleC)))
+                           (Eq (Add (Var $ revert tripleA) $
+                                Add (Var $ revert tripleB)
+                                    (Var $ revert tripleC))
                                (Con halfcircle))))
-              equUnsameTriple' triple'@[triple'1, triple'2, triple'3] =
+              equUnsameTriple' revert triple'@[triple'1, triple'2, triple'3] =
                 let
                   anglepointToFirst  = [triple'2, triple'1]
                   anglepointToSecond = [triple'2, triple'3]
                 in
-                  Eq (Var triple')
+                  Eq (Var $ revert triple')
                      (Fo $ Ite (Leq (Var anglepointToFirst)
                                     (Var anglepointToSecond))
                                (Te $ Sub (Var anglepointToSecond)
@@ -414,10 +416,12 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                                      (Sub (Con circle)
                                           (Var pair)))
                                 (Con halfcircle))))
-                  (equUnsameTriple [node2, node , node3]
+                  (equUnsameTriple id
+                                   [node2, node , node3]
                                    [node3, node2, node ]
                                    [node , node3, node2])
-                  (equUnsameTriple [node3, node , node2]
+                  (equUnsameTriple reverse
+                                   [node3, node , node2]
                                    [node , node2, node3]
                                    [node2, node3, node ])
               oneSame x = And
