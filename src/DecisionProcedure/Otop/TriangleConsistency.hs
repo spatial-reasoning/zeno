@@ -1,4 +1,4 @@
-module DecisionProcedure.OrientedPoint.AngleConsistency where
+module DecisionProcedure.Otop.TriangleConsistency where
 
 import qualified Data.Foldable as Fold
 import qualified Data.Key as Key
@@ -20,14 +20,14 @@ import SpatioTemporalStructure.OrientedPoint
 
 -- this is for debugging:
 --import System.IO.Unsafe
---import Debug.Trace
+import Debug.Trace
 mytrace  a b = id b
 mytrace2 a b = id b
 --mytrace  = trace
 --mytrace2 = trace
 
 -- maximal granularity for which this code should work.
-maxgran = 10
+maxgran = 4
 
 halfcircle :: Integer
 halfcircle = foldr1 lcm [1..maxgran]
@@ -35,9 +35,7 @@ halfcircle = foldr1 lcm [1..maxgran]
 circle = halfcircle * 2
 
 angle g s = quot (halfcircle * fromIntegral (quot s 2)) (fromIntegral g)
-
 minAngle g s = if even s then angle g s else angle g (s - 1)
-
 maxAngle g s = if even s then angle g s else angle g (s + 1)
 
 data Term = Fo  Formula
@@ -503,7 +501,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons} = do
                               [(-1, _), ( 1, _)] -> newAccUnsame
                               [( 0,-1), ( 0,-1)] -> newAccSame
                               [( 0,-1), ( 0, 1)] -> newAccUnsame
-                              [( 0,-1), ( 1, _)] -> newAccSame
+                              [( 0,-1), ( 1, _)] -> newAccUnsame
                               [( 1, _), ( 1, _)] ->
                                   if anglesDontMatch then newAccUnsame else acc
                               otherwise          -> acc

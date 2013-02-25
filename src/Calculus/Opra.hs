@@ -4,13 +4,14 @@ module Calculus.Opra where
 -- standard modules
 import qualified Data.Char as Char
 import qualified Data.Map as Map
+import Data.Ratio
 import qualified Data.Set as Set
 
 -- local modules
 import Basics
 import Helpful.General
 
-import Debug.Trace
+--import Debug.Trace
 
 data Opra = Opra Int Int Int
     deriving (Read, Ord, Eq)
@@ -38,6 +39,25 @@ instance Calculus Opra where
 
 opraBaserelations m =
     [ Opra m a b | let range = [0..4*m - 1], a <- range ++ [-1], b <- range]
+
+angleModulo :: (Num a, Ord a) => a -> a -> a
+angleModulo modul ang =
+    if ang < 0 then
+        angleModulo modul $ ang + modul
+    else if ang < modul then
+        ang
+    else
+        angleModulo modul $ ang - modul
+
+angle :: (Integral a, Integral a1, Integral a2) => a -> a1 -> a2 -> Ratio a
+angle circle g s = angleModulo (fromIntegral circle) $
+    (circle * fromIntegral s) % (4 * (fromIntegral g))
+
+minAngle :: (Integral a, Integral a1, Integral a2) => a -> a1 -> a2 -> Ratio a
+minAngle hc g s = if even s then angle hc g s else angle hc g (abs s - 1)
+
+maxAngle :: (Integral a, Integral a1, Integral a2) => a -> a1 -> a2 -> Ratio a
+maxAngle hc g s = if even s then angle hc g s else angle hc g (abs s + 1)
 
 opraConvert :: (Opram a) => Int -> GRel a -> GRel a
 opraConvert n (GRel relSet) =

@@ -8,6 +8,7 @@ module DecisionProcedure.All
     , module DecisionProcedure.Opra8
     , module DecisionProcedure.Opra10
     , module DecisionProcedure.Opra16
+    , module DecisionProcedure.OrientedPoint
     ) where
 
 import DecisionProcedure.Dipole72

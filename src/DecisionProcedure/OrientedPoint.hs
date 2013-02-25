@@ -8,7 +8,7 @@ module DecisionProcedure.OrientedPoint
 -- local modules
 import Basics
 import DecisionProcedure
-import DecisionProcedure.OrientedPoint.AngleConsistency
+import DecisionProcedure.Otop.TriangleConsistency
 import SpatioTemporalStructure.OrientedPoint
 
 instance HasDecisionProcedure (ARel Otop) where
