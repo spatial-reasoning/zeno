@@ -40,18 +40,8 @@ instance Calculus Opra where
 opraBaserelations m =
     [ Opra m a b | let range = [0..4*m - 1], a <- range ++ [-1], b <- range]
 
-angleModulo :: (Num a, Ord a) => a -> a -> a
-angleModulo modul ang =
-    if ang < 0 then
-        angleModulo modul $ ang + modul
-    else if ang < modul then
-        ang
-    else
-        angleModulo modul $ ang - modul
-
 angle :: (Integral a, Integral a1, Integral a2) => a -> a1 -> a2 -> Ratio a
-angle circle g s = angleModulo (fromIntegral circle) $
-    (circle * fromIntegral s) % (4 * (fromIntegral g))
+angle circle g s = (circle * fromIntegral s) % (4 * (fromIntegral g))
 
 minAngle :: (Integral a, Integral a1, Integral a2) => a -> a1 -> a2 -> Ratio a
 minAngle hc g s = if even s then angle hc g s else angle hc g (abs s - 1)

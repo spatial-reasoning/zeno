@@ -17,6 +17,7 @@ import qualified SpatioTemporalStructure.Interval as I
 import SpatioTemporalStructure.OrientedPoint
 import Calculus.Opra (angle, minAngle, maxAngle)
 
+import Debug.Trace
 
 data Term = Fo  Formula
           | Con Integer
@@ -138,7 +139,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
     --      we have no information are left out of the map respectively the
     --      set.
     -- abbr.: pairsWithSameness_and_relatedNodes
-    let noRestriction var = And (Leq (Con 0) var) (Le (Con circle) var)
+    let noRestriction var = And (Leq (Con 0) var) (Le var (Con circle))
     let equKnownPair var ivals = foldl1 Or $ map
             (\ ival -> And
                 ((if I.infOpen ival then Le else Leq) (Con $ I.inf ival) var)
@@ -280,8 +281,8 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
           newAccsNoInfo = Just (acc, acc2)
           newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
           fewInfo nuAcc = case ( foundWitnessForUnsameness
-                                     , foundWitnessForSameness ||
-                                       foundWitnessesForSameness  ) of
+                               , foundWitnessForSameness ||
+                                 foundWitnessesForSameness  ) of
               (True , False) -> newAccsUnsame'
               (False, True ) -> newAccsSame'
               (False, False) -> nuAcc
@@ -365,13 +366,28 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
               thirdNode a = head $ [node, node2, node3]\\a
               startToThird [a,b] = [a, thirdNode [a,b]]
               endToThird   [a,b] = [b, thirdNode [a,b]]
+              thirdToStart [a,b] = [thirdNode [a,b], a]
+              thirdToEnd   [a,b] = [thirdNode [a,b], b]
               triple [a,b] = [a, thirdNode [a,b], b]
               equUnsameTriple tripleA tripleB tripleC = And (And (And
                   (equUnsameTriple' tripleA)
                   (equUnsameTriple' tripleB))
                   (equUnsameTriple' tripleC))
-                  (Eq (Add (Var tripleA) $ Add (Var tripleB) (Var tripleC))
-                      (Con halfcircle))
+                  (Or (Or (Or
+                      (And (And (Eq (Var tripleA) (Con 0))
+                                (Eq (Var tripleB) (Con 0)))
+                                (Eq (Var tripleC) (Con halfcircle)))
+                      (And (And (Eq (Var tripleA) (Con 0))
+                                (Eq (Var tripleB) (Con halfcircle)))
+                                (Eq (Var tripleC) (Con 0))))
+                      (And (And (Eq (Var tripleA) (Con halfcircle))
+                                (Eq (Var tripleB) (Con 0)))
+                                (Eq (Var tripleC) (Con 0))))
+                      (And (And (And (Leq (Con 0) (Var tripleA))
+                                     (Leq (Con 0) (Var tripleB)))
+                                     (Leq (Con 0) (Var tripleC)))
+                           (Eq (Add (Var tripleA) $ Add (Var tripleB) (Var tripleC))
+                               (Con halfcircle))))
               equUnsameTriple' triple'@[triple'1, triple'2, triple'3] =
                 let
                   anglepointToFirst  = [triple'2, triple'1]
@@ -404,13 +420,16 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                   (equUnsameTriple [node3, node , node2]
                                    [node , node2, node3]
                                    [node2, node3, node ])
-              oneSame x = Eq (Var $ startToThird x)
-                  (Fo $ Ite (Le (Add (Var x) (Var $ endToThird x))
-                                (Con circle))
-                            (Te $ Add (Var x) (Var $ endToThird x))
-                            (Te $ Sub (Add (Var x)
-                                           (Var $ endToThird x))
-                                      (Con circle)))
+              oneSame x = And
+                  (Eq (Var $ thirdToStart x) (Var $ thirdToEnd x))
+                  (Eq (Var $ startToThird x)
+                      (Fo $ Ite (Le (Add (Var x) (Var $ endToThird x))
+                                    (Con circle))
+                                (Te $ Add (Var x) (Var $ endToThird x))
+                                (Te $ Sub (Add (Var x)
+                                               (Var $ endToThird x))
+                                          (Con circle))))
+
               allSame = Eq (Var pair2)
                   (Fo $ Ite (Le (Add (Var pair) (Var pair3))
                                 (Con circle))
@@ -522,7 +541,6 @@ triangleConsistency' :: (Network [String] (Opus Rational) -> Maybe Formula)
                      -> Maybe Bool
 triangleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
---          (\f -> if traceTime (yicesSat $ traceTime (str f)) then Nothing else Just False)   --DEBUGGING
           (\f -> if yicesSat (str f) then Nothing else Just False)
           formula
   where

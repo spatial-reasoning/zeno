@@ -14,7 +14,7 @@ class ( Relation (a b) b, Calculus b
   where
     algebraicClosureGQR :: DecisionProcedure (a b)
     algebraicClosureGQR = DecisionProcedure
-        { decProName = "BAC-GQR"
+        { decProName = "BAC"
         , decProProc = (\(x,_) -> x) . G.algebraicClosure }
 
 class ( Relation (a b) b, Calculus b
@@ -23,7 +23,7 @@ class ( Relation (a b) b, Calculus b
   where
     algebraicClosure :: DecisionProcedure (a b)
     algebraicClosure = DecisionProcedure
-        { decProName = "BAC"
+        { decProName = "BAC-SparQ"
         , decProProc = (\(x,_,_) -> x) . S.algebraicClosure }
 
     --algebraicClosureSpS = DecisionProcedure
