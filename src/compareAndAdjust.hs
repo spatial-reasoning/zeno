@@ -256,17 +256,13 @@ exec rels opts@Options{..} = do
                  else
                      " (press 'q' to quit)" )
             ++ "...\n"
--- restore:
---    startBenchString <- catch
---        (readFile "BENCHMARK.COLLECTION")
---        ((\e -> do
---            putStrLn startStr
---            return "fromList []"
---         ) :: SomeException -> IO String
---        )
--- delete:
-    putStrLn startStr
-    let startBenchString = "fromList []"
+    startBenchString <- catch
+        (readFile "BENCHMARK.COLLECTION")
+        ((\e -> do
+            putStrLn startStr
+            return "fromList []"
+         ) :: SomeException -> IO String
+        )
     let startBenchRead = reads startBenchString
     startBench <- if startBenchRead == [] || (snd $ head startBenchRead) /= "" then do
                           putStrLn startStr
