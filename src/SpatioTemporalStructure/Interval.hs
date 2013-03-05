@@ -393,9 +393,8 @@ complements universe = foldr (\i (a:acc) -> (a `minus` i) ++ acc) [universe]
 -- LISTS
 
 nullOnly :: Ord a => [Interval a] -> Bool
-nullOnly [x] | null x    = True
-             | otherwise = False
-nullOnly _ = False
+nullOnly [] = False
+nullOnly xs = all null xs
 
 endsInList :: [Interval a] -> [a]
 endsInList = concatMap ends

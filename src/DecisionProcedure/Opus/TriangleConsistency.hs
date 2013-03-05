@@ -17,8 +17,6 @@ import qualified SpatioTemporalStructure.Interval as I
 import SpatioTemporalStructure.OrientedPoint
 import Calculus.Opra (angle, minAngle, maxAngle)
 
-import Debug.Trace
-
 data Term = Fo  Formula
           | Con Integer
           | Var [String]
@@ -188,9 +186,9 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                         if node /= node3 && node2 /= node3 &&
                            isJust n3n && isJust n3n2
                         -- improve: we can return a Maybe type in order to
-                        -- propusgate an inconsistency.
+                        -- propagate an inconsistency.
                         then case sort [ [I.nullOnly s1, I.nullOnly u1]
-                                       , [I.nullOnly s1, I.nullOnly u2] ] of
+                                       , [I.nullOnly s2, I.nullOnly u2] ] of
                             [[False, True ], [False, True ]] -> newAccSame
                             [[False, True ], [True , False]] -> newAccUnsame
                             [[True , False], [True , False]] ->

@@ -17,15 +17,6 @@ import Interface.Yices
 import SpatioTemporalStructure.OrientedPoint
 
 
-
--- this is for debugging:
---import System.IO.Unsafe
-import Debug.Trace
-mytrace  a b = id b
-mytrace2 a b = id b
---mytrace  = trace
---mytrace2 = trace
-
 -- maximal granularity for which this code should work.
 maxgran = 4
 
@@ -828,7 +819,6 @@ angleConsistency' :: (Network [String] (ARel Otop) -> Maybe Formula)
                   -> Maybe Bool
 angleConsistency' fun net@Network{nCons = cons, nDesc = desc} =
     maybe (Just False)
---          (\f -> if traceTime (yicesSat $ traceTime (str f)) then Nothing else Just False)   --DEBUGGING
           (\f -> if yicesSat (str f) then Nothing else Just False)
           formula
   where

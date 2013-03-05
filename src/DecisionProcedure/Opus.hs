@@ -15,7 +15,7 @@ instance HasDecisionProcedure (Opus Rational) where
     procedures _ =
         [ DecisionProcedure { decProName = "OpusTC"
                             , decProProc = triangleConsistency }
-        , DecisionProcedure { decProName = "OpusTC WitUn"
+        , DecisionProcedure { decProName = "OpusTCwu"
                             , decProProc = triangleConsistencyWithWitness }
 --        , DecisionProcedure { decProName = "TC WitSa"
 --                            , decProProc = triangleConsistencyWithWitnesses }

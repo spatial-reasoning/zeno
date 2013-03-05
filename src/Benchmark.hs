@@ -247,24 +247,40 @@ checkNetwork scenario rank relations funs tymeout size dens = do
                   return $ (desc, res)
               ) funs
     -- Delete this after the Opra testrun:
-    let (resultTC'time, resultTC'answer)   = fromJust $ lookup "TC WitUn"  results
+    let (resultTC'time, resultTC'answer) = fromJust $ lookup "OpusTC" results
+    let (resultTCwu'time, resultTCwu'answer) = fromJust $ lookup "OpusTCwu" results
     let (resultBAC'time, resultBAC'answer) = fromJust $ lookup "BAC" results
-    let mergedTcBac =
-          ( "BAC + TC-WU"
-          , case (resultTC'answer, resultBAC'answer) of
+    let mergedTCwuBac =
+          ( "BAC+OTCwu"
+          , case (resultTCwu'answer, resultBAC'answer) of
                 (Just (Just False), Just (Just False)) ->
-                    (min resultTC'time resultBAC'time, Just (Just False))
-                (Just (Just False), _) -> (resultTC'time, Just (Just False))
+                    (min resultTCwu'time resultBAC'time, Just (Just False))
+                (Just (Just False), _) -> (resultTCwu'time, Just (Just False))
                 (_, Just (Just False)) -> (resultBAC'time, Just (Just False))
                 (Just (Just True), Just (Just True)) ->
-                    (min resultTC'time resultBAC'time, Just (Just True))
-                (Just (Just True), _) -> (resultTC'time, Just (Just True))
+                    (min resultTCwu'time resultBAC'time, Just (Just True))
+                (Just (Just True), _) -> (resultTCwu'time, Just (Just True))
                 (_, Just (Just True)) -> (resultBAC'time, Just (Just True))
-                (Nothing, _) -> (max resultTC'time resultBAC'time, Nothing)
-                (_, Nothing) -> (max resultTC'time resultBAC'time, Nothing)
-                otherwise -> (max resultTC'time resultBAC'time, Just Nothing)
+                (Nothing, _) -> (max resultTCwu'time resultBAC'time, Nothing)
+                (_, Nothing) -> (max resultTCwu'time resultBAC'time, Nothing)
+                otherwise -> (max resultTCwu'time resultBAC'time, Just Nothing)
           )
-    let results' = results ++ [mergedTcBac]
+    let mergedTCTCwu =
+          ( "OTC+OTCwu"
+          , case (resultTC'answer, resultTCwu'answer) of
+                (Just (Just False), Just (Just False)) ->
+                    (min resultTC'time resultTCwu'time, Just (Just False))
+                (Just (Just False), _) -> (resultTC'time  , Just (Just False))
+                (_, Just (Just False)) -> (resultTCwu'time, Just (Just False))
+                (Just (Just True), Just (Just True)) ->
+                    (min resultTC'time resultTCwu'time, Just (Just True))
+                (Just (Just True), _) -> (resultTC'time  , Just (Just True))
+                (_, Just (Just True)) -> (resultTCwu'time, Just (Just True))
+                (Nothing, _) -> (max resultTC'time resultTCwu'time, Nothing)
+                (_, Nothing) -> (max resultTC'time resultTCwu'time, Nothing)
+                otherwise -> (max resultTC'time resultTCwu'time, Just Nothing)
+          )
+    let results' = results ++ [mergedTCwuBac, mergedTCTCwu]
     return (net, results')     -- delete
 --    return (net, results)   -- restore
 
