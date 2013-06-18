@@ -33,7 +33,7 @@ remove x y = Map.map (Set.delete x) y
 -- parallel computing
 --mapP = parBuffer 4 rwhnf $ map a b
 --mapP = parBuffer 4 rwhnf
-mapP = parMap rwhnf
+mapP = parMap rseq
 -- end helper functions -------------------------------------------------------
 
 trivialHom :: NonAssociativeAlgebra
