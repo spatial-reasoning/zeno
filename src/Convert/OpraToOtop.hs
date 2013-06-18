@@ -1,7 +1,6 @@
 module Convert.OpraToOtop where
 
 -- standard modules
-import Data.List
 import qualified Data.Map as Map
 
 -- local modules

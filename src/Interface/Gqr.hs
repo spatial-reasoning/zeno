@@ -2,7 +2,6 @@
 module Interface.Gqr where
 
 -- standard modules
-import qualified Data.Set as Set
 import System.IO
 import System.IO.Unsafe
 import Text.Parsec

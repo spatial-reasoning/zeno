@@ -6,7 +6,6 @@ module DecisionProcedure.FlipFlop
     ) where
 
 -- standard modules
-import qualified Data.Set as Set
 
 -- local modules
 import Basics

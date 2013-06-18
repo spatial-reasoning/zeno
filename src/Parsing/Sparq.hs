@@ -2,18 +2,14 @@
 module Parsing.Sparq where
 
 -- standard modules
---import Control.Applicative ((<*))
 import qualified Data.Char as Char
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
-import Text.Parsec.Perm
 import Text.ParserCombinators.Parsec
 
 -- local modules
 import Basics
-
---import Debug.Trace
 
 
 eol :: Parser String

@@ -1,6 +1,5 @@
 module SpatioTemporalStructure.OrientedPoint where
 
-import Data.Ratio
 import qualified SpatioTemporalStructure.Interval as I
 
 data Otop = Otop

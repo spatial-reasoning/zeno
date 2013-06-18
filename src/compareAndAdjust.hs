@@ -5,29 +5,21 @@ module Main where
 import Prelude hiding (catch)
 import Control.Exception
 import Control.Monad
-import Control.Parallel.Strategies
 import qualified Data.Char as Char
 import Data.List
-import Data.Maybe
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Ratio
 import System.Console.CmdArgs
 import System.Environment
 import System.IO
-import System.IO.Unsafe
-import Text.Printf
 
 -- local modules
 import Basics
 import Benchmark
 import Calculus.All
 import DecisionProcedure
-import DecisionProcedure.All
+import DecisionProcedure.All ()
 import Helpful.String
-
-import Debug.Trace
---import Helpful.General
 
 
 -- begin commandline option handling ------------------------------------------
@@ -44,7 +36,7 @@ data Options = Options { optMinRange   :: Int
                        , optAreal      :: Int
                        , optSame       :: Int
                        , optBatch      :: Bool
-                       , optScenario   :: Bool
+                       , optScenario   :: Int
                        } deriving (Show, Data, Typeable)
 
 defaultOptions = Options
@@ -123,11 +115,13 @@ defaultOptions = Options
         &= name "b"
         &= name "batch"
         &= help "Start in batch mode and don't wait for input."
-    , optScenario = def
+    -- rename this properly: There is a technical term for this in CSP.
+    , optScenario = 0
+        &= opt (0 :: Int)
         &= explicit
         &= name "S"
         &= name "scenario"
-        &= help "Generate scenarios and don't search for a phase transition."
+        &= help "1 = Only generate atomic networks.     2 = Only generate scenarios.          Any other number = Generate general networks. (Default = 0)"
     } &=
 --    verbosity &=
 --    help "Compares the results of semi-decision procedures for consistency of\
@@ -137,7 +131,7 @@ defaultOptions = Options
 --    versionArg [ignore] &=
     versionArg [help "Show version information."] &=
     program "compareAndAdjust" &=
-    summary "compare version 13.02.13, (K) André Scholz" &=
+    summary "compare version 13.02.13, (K) André van Delden" &=
     details [ ""
 --              "This progam compares several semi-decision procedures for the consistency of constraint networks using the given relations."
 --            , "To compare the procedures on 13 networks of density 0.3 with 5 nodes type:"
@@ -147,7 +141,7 @@ defaultOptions = Options
 
 -- end commandline option handling --------------------------------------------
 
-data Calc = forall b . (Calculus b, HasDecisionProcedure (ARel b)) => Calc b
+data Calc = forall b . (Calculus b, HasDecisionProcedure (ARel b), HasDecisionProcedure (GRel b)) => Calc b
 
 instance Show Calc where
 --    show (Calc a) = "Calc " ++ show a
@@ -249,7 +243,6 @@ useWholeCalculusAndExec (Calc typeHelper) opts@Options{..} = do
 exec rels opts@Options{..} = do
     let head' = head rels
     let rank' = rank head'
-    let procedures' = procedures $ ARel head'
     let startStr = "Starting a new Benchmarking"
             ++ ( if optBatch then
                      " (running in batch mode)"
@@ -269,10 +262,10 @@ exec rels opts@Options{..} = do
                           return Map.empty
                       else
                           return $ fst $ head startBenchRead
-    bench <- markTheBench optScenario optBatch optMinRange optMaxRange optNumOfNets procedures' optTimeout rank' rels optDensity startBench
+    bench <- markTheBench optScenario optBatch optMinRange optMaxRange optNumOfNets optTimeout rank' rels optDensity startBench
     analyze bench
     plotInconsistenciesPerSizeAndMethodInPercent bench
     plotPercentageOfInconsistentNetworksPerDensity bench
-    plotSpeedPerSizeAndMethodSuccessOnly bench
-    plotSpeedPerSizeAndMethod bench
+    plotSpeedPerSizeAndMethodSuccessOnly bench optTimeout
+    plotSpeedPerSizeAndMethod bench optTimeout
 

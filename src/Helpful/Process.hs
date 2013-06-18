@@ -2,9 +2,7 @@ module Helpful.Process where
 
 import Control.Concurrent
 import Control.Exception
-import System.Exit
 import System.IO
-import System.IO.Error
 import System.IO.Unsafe
 import System.Posix.Signals
 import System.Process

@@ -26,4 +26,8 @@ instance HasDecisionProcedure (ARel Opra) where
                (procedures (undefined :: Opus Rational))
 
 instance HasDecisionProcedure (GRel Opra) where
-    procedures _ = []
+    procedures _ =
+        [
+        ]
+        ++ map (firstApply opraNetToOpusNet)
+               (procedures (undefined :: Opus Rational))

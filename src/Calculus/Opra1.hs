@@ -1,9 +1,6 @@
 module Calculus.Opra1 where
 
 -- standard modules
-import qualified Data.Char as Char
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 -- local modules
 import Basics

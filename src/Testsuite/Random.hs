@@ -6,23 +6,18 @@ import Data.List
 import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Random hiding (shuffle)
---import Data.Random.Distribution.Binomial
+import Data.Random ()
 import qualified Data.Random.Extras as R
 import Data.Ratio
 import Data.RVar
-import qualified Data.Set as Set
 import System.Random
 
 -- local modules
 import Basics
 import Interface.Sparq
-
 import Helpful.General
 import Helpful.Math
 import Helpful.Random
-
-import Debug.Trace
 
 
 randomScenario :: (Calculus a)
@@ -135,6 +130,53 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
             (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
     fleshCombis <- sampleRVar $ R.shuffle combisLeft
     fleshRels <- randomsOfIO atomicDomain
+    let denom = choose syze rank
+    let (factor, rest) = divMod denom (denominator density)
+    let numer = (numerator density) * factor
+    let flesh = take (numer - syze + rank - 1) $ zip fleshCombis fleshRels
+    let cons = fromJust $ Fold.foldrM (uncurry insertCon)
+                                      Map.empty
+                                      (skel ++ flesh)
+    if rest /= 0 || numer < (syze - rank + 1) then
+        error $ "Cannot create a connected atomic network of size "
+             ++ show syze ++ " and density " ++ show density
+    else
+        return $ eNetwork { nDesc = "Random_Network", nCons = cons }
+
+randomConnectedNetworkWithDensity :: (Calculus a)
+                                  => Int
+                                  -> [a]
+                                  -> Int
+                                  -> Ratio Int
+                                  -> IO (Network [String] (GRel a))
+randomConnectedNetworkWithDensity rank domain syze density = do
+    let combis = [ kCombinations (rank - 1) $ map show [1..n]
+                 | n <- [rank - 1..] ]
+    skel <- foldM (\consAcc intNode -> do
+                      let node = show intNode
+                      combi <- oneOfIO $ combis!!(intNode - rank)
+                      rel <- oneGeneralOfIO domain
+                                     --     v--------- the order of these two
+                                     --                is very important
+                                     --                because the nodes of the
+                                     --                networks are assumed to
+                                     --                be sorted throughout the
+                                     --                code.
+                                     --                Fixme: this should
+                                     --                be handled better by
+                                     --                internal generating
+                                     --                functions. We could need
+                                     --                a function that
+                                     --                generalises bcInsert and
+                                     --                tcInsert.
+                                     --v--------v--
+                      let newCon = [(combi ++ [node], GRel rel)]
+                      return $ consAcc ++ newCon
+                  ) [] [rank..syze]
+    let combisLeft =
+            (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
+    fleshCombis <- sampleRVar $ R.shuffle combisLeft
+    fleshRels <- liftM (map GRel) $ randomGeneralsOfIO domain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)
     let numer = (numerator density) * factor

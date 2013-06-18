@@ -1,9 +1,6 @@
 module DecisionProcedure.FlipFlop.OrientedMatroid where
 
 -- standard modules
-import Data.List
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Data.Maybe
 
 -- local modules
@@ -12,7 +9,6 @@ import Calculus.FlipFlop
 import SpatioTemporalStructure.OrientedMatroid
 import Convert.LRChirotope
 
-import Helpful
 
 isAcyclicChirotopeFlipFlop :: Network [String] (ARel FlipFlop) -> Maybe Bool
 isAcyclicChirotopeFlipFlop net

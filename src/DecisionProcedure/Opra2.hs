@@ -4,8 +4,6 @@ module DecisionProcedure.Opra2
     ) where
 
 -- standard modules
-import Data.Maybe
-import qualified Data.Set as Set
 
 -- local modules
 import Basics
@@ -33,5 +31,7 @@ instance HasDecisionProcedure (ARel Opra2) where
 instance HasDecisionProcedure (GRel Opra2) where
     procedures _ =
         [ algebraicClosureGQR
-        , algebraicClosure
-        ]
+--        , algebraicClosure
+        ] ++ map (firstApply opramNetToOpraNet)
+                 (procedures (undefined :: GRel Opra))
+

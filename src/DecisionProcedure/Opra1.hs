@@ -2,14 +2,14 @@
 module DecisionProcedure.Opra1 where
 
 -- standard modules
-import Data.Maybe
-import qualified Data.Set as Set
 
 -- local modules
 import Basics
+import Calculus.Opra
 import Calculus.Opra1
 import Calculus.Opra1.ToFlipFlop
 import DecisionProcedure
+import DecisionProcedure.Opra
 import DecisionProcedure.FlipFlop
 import DecisionProcedure.AlgebraicClosure
 import DecisionProcedure.AlgebraicGeometric
@@ -32,15 +32,18 @@ instance HasAReasoning       GRel Opra1
 instance HasDecisionProcedure (ARel Opra1) where
     procedures _ =
         [ algebraicClosureGQR
-        , algebraicClosure
+--        , algebraicClosure
         , toFlipFlopsNonAtomic algebraicReasoning
         , toFlipFlopsAtomic triangleConsistency
         , toFlipFlopsAtomic chirotope
         , toFlipFlopsAtomic biquadraticFinalPolynomials
-        ]
+        ] ++ map (firstApply opramNetToOpraNetAtomic)
+                 (procedures (undefined :: ARel Opra))
 
 instance HasDecisionProcedure (GRel Opra1) where
     procedures _ =
         [ algebraicClosureGQR
-        , algebraicClosure
-        ]
+--        , algebraicClosure
+        ] ++ map (firstApply opramNetToOpraNet)
+                 (procedures (undefined :: GRel Opra))
+

@@ -1,11 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, ExistentialQuantification #-}
 module Benchmark where
 
 -- standard modules
 import Prelude hiding (catch)
 import Control.Exception
 import Control.Monad
-import qualified Data.Foldable as Fold
 import Data.List
 import Data.Maybe
 import qualified Data.Map as Map
@@ -20,11 +19,9 @@ import Text.Printf
 import Basics
 import DecisionProcedure
 import Export
-import Parsing.Qstrlib
 import Testsuite.Random
-
 import Helpful
-import Debug.Trace
+
 
 -- improve: we should use records instead of tuples!
 type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
@@ -57,7 +54,7 @@ type Benchmark = Map.Map Int   -- maps number of nodes to following attributes
 
 
 markTheBench scenario batch minsize maxsize testThisManyNets
-             funs tymeout rank relations dens bench = do
+             tymeout rank relations dens bench = do
     let numOfNodes' = filter
             (\a -> maybe
                 True
@@ -99,12 +96,12 @@ markTheBench scenario batch minsize maxsize testThisManyNets
                     ) $ (Map.!) c b
                 ) $ Map.lookup numOfNodes bench
         let targetDens =
-                if scenario then
+                if scenario == 2 then
                     (1%1)
                 else
                     targetNumer%denomin
         (net, results) <-
-            checkNetwork scenario rank relations funs tymeout numOfNodes targetDens
+            checkNetwork scenario rank relations tymeout numOfNodes targetDens
         let actualDens = targetDens
         saveSpecialNet
             net results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer
@@ -116,13 +113,12 @@ markTheBench scenario batch minsize maxsize testThisManyNets
         writeFile "BENCHMARK.COLLECTION" $ show newBench
         appendFile "BENCHMARK.ANSWERS" $ show (results, numOfNodes, actualDens) ++ "\n"
         markTheBench scenario batch minsize maxsize testThisManyNets
-                     funs tymeout rank relations dens newBench
+                     tymeout rank relations dens newBench
 
 
-addToBench :: (Relation (a b) b, Calculus b)
-           => Benchmark
+addToBench :: Benchmark
            -> Int -> (Ratio Int) -> (Ratio Int)
-           -> (Network [String] (a b))
+           -> GNet
            -> [(String, (Double, Maybe (Maybe Bool)))]
            -> Benchmark
 addToBench bench numOfNodes targetDens actualDens net results =
@@ -235,54 +231,23 @@ addToBench bench numOfNodes targetDens actualDens net results =
             ) results
         )
 
-checkNetwork scenario rank relations funs tymeout size dens = do
-    net <- if scenario then
-               randomScenario rank relations size
-           else
-               randomConnectedAtomicNetworkWithDensity rank relations size dens
+-- This is an ad-hoc solution to allow for a parameter in compareAndAdjust to
+-- choose between general networks, atomic networks and scenarios.
+-- Please improve on this.
+data GNet = forall a b. (Relation (a b) b, Calculus b, HasDecisionProcedure (a b), Show (a b)) => GNet (Network [String] (a b))
+
+checkNetwork scenario rank relations tymeout size dens = do
+    GNet net <- case scenario of
+               1 -> liftM GNet $ randomConnectedAtomicNetworkWithDensity rank relations size dens
+               2 -> liftM GNet $ randomScenario rank relations size
+               _ -> liftM GNet $ randomConnectedNetworkWithDensity rank relations size dens
     appendFile "BENCHMARK.NETS" $ show net ++ "\n"
     results <- sequence $ map
               (\DecisionProcedure{ decProName = desc, decProProc = fun } -> do
                   res <- timeIt $ timeoutP (tymeout * 1000000) $ fun net
                   return $ (desc, res)
-              ) funs
-    -- Delete this after the Opra testrun:
-    let (resultTC'time, resultTC'answer) = fromJust $ lookup "OpusTC" results
-    let (resultTCwu'time, resultTCwu'answer) = fromJust $ lookup "OpusTCwu" results
-    let (resultBAC'time, resultBAC'answer) = fromJust $ lookup "BAC" results
-    let mergedTCwuBac =
-          ( "BAC+OTCwu"
-          , case (resultTCwu'answer, resultBAC'answer) of
-                (Just (Just False), Just (Just False)) ->
-                    (min resultTCwu'time resultBAC'time, Just (Just False))
-                (Just (Just False), _) -> (resultTCwu'time, Just (Just False))
-                (_, Just (Just False)) -> (resultBAC'time, Just (Just False))
-                (Just (Just True), Just (Just True)) ->
-                    (min resultTCwu'time resultBAC'time, Just (Just True))
-                (Just (Just True), _) -> (resultTCwu'time, Just (Just True))
-                (_, Just (Just True)) -> (resultBAC'time, Just (Just True))
-                (Nothing, _) -> (max resultTCwu'time resultBAC'time, Nothing)
-                (_, Nothing) -> (max resultTCwu'time resultBAC'time, Nothing)
-                otherwise -> (max resultTCwu'time resultBAC'time, Just Nothing)
-          )
-    let mergedTCTCwu =
-          ( "OTC+OTCwu"
-          , case (resultTC'answer, resultTCwu'answer) of
-                (Just (Just False), Just (Just False)) ->
-                    (min resultTC'time resultTCwu'time, Just (Just False))
-                (Just (Just False), _) -> (resultTC'time  , Just (Just False))
-                (_, Just (Just False)) -> (resultTCwu'time, Just (Just False))
-                (Just (Just True), Just (Just True)) ->
-                    (min resultTC'time resultTCwu'time, Just (Just True))
-                (Just (Just True), _) -> (resultTC'time  , Just (Just True))
-                (_, Just (Just True)) -> (resultTCwu'time, Just (Just True))
-                (Nothing, _) -> (max resultTC'time resultTCwu'time, Nothing)
-                (_, Nothing) -> (max resultTC'time resultTCwu'time, Nothing)
-                otherwise -> (max resultTC'time resultTCwu'time, Just Nothing)
-          )
-    let results' = results ++ [mergedTCwuBac, mergedTCTCwu]
-    return (net, results')     -- delete
---    return (net, results)   -- restore
+              ) $ procedures $ snd $ Map.findMin $ nCons net 
+    return (GNet net, results)
 
 
 -- find phase transition ------------------------------------------------------
@@ -342,7 +307,7 @@ loadBench fileName = do
         )
     return bench
 
-saveContradictingResults numOfNodes dens net results = unsafePerformIO $ do
+saveContradictingResults numOfNodes dens (GNet net) results = unsafePerformIO $ do
     appendFile "BENCHMARK.ERROR" $
         " Number of Nodes: " ++ show numOfNodes ++
         " | Density: " ++ show dens ++ "\n\n" ++
@@ -352,7 +317,17 @@ saveContradictingResults numOfNodes dens net results = unsafePerformIO $ do
     error $ "Results contradict each other. Results saved to " ++
             "BENCHMARK.ERROR"
 
-saveSpecialNet net results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer = do
+saveSpecialNet :: (RealFrac a1)
+               => GNet
+               -> [([Char], (a1, Maybe (Maybe Bool)))]
+               -> Int
+               -> Int
+               -> Ratio Int
+               -> t
+               -> Int
+               -> Int
+               -> IO ()
+saveSpecialNet (GNet net) results numOfNodes nOfTestedNet targetDens actualDens denomin minNumer = do
     if    ( elem (length $ filter
                                (\(_, (_, answer)) ->
                                    answer == Just (Just False)
@@ -445,38 +420,55 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
                 ++ "\nend\n"
             )
         ) (Set.empty, "# \"Density\"  \"Percentage\"") bench
+    [xmin,xmax] = [ maybe 0.0 (realToFrac . fst) $ Set.minView densSet
+                  , maybe 1.0 (realToFrac . fst) $ Set.maxView densSet ]
+    [showXmin,showXmax] = [ showFFloat (Just 2) xmin ""
+                          , showFFloat (Just 2) xmax "" ]
     plotScript =
         "set output 'plotPercentageOfInconsistentNetworksPerDensity.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
+        "#set terminal pdf font \"Times, 10\" monochrome dashed size 5,3\n" ++
+        "set terminal pdf font \"Times, 10\" monochrome dashed size 2.5,1.5\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
+        "set style line 81 lt -1 lw 2        # solid black\n" ++
         "#set style line 81 lt 0              # dashed\n" ++
         "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
         "#set grid back linestyle 81\n" ++
-        "set border 3 back # Remove border on top and right.\n\n"   ++
-        "set xtics 0,0.1,0.6 nomirror\n" ++
+        "set border 3 back linestyle 81 # Remove border on top and right.\n\n" ++
+        "# Line styles: try to pick pleasing colors, rather\n" ++
+        "# than strictly primary colors or hard-to-see colors\n" ++
+        "# like gnuplot's default yellow.  Make the lines thick\n" ++
+        "# so they're easy to see in small plots in papers.\n" ++
+        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "#set style line 1 linetype 2 lw 4\n" ++
+        "#set style line 2 linetype 3 lw 4\n" ++
+        "#set style line 3 linetype 5 lw 4\n" ++
+        "#set style line 4 linetype 1 lw 4\n\n" ++
+        "set xtics " ++ showXmin ++ "," ++
+        show ((xmax - xmin) / 10.0) ++
+        "," ++ showXmax ++ " nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [" ++
-        showFFloat (Just 2) (maybe 0.0 (realToFrac . fst) $ Set.minView densSet) "" ++ ":" ++
-        showFFloat (Just 2) (maybe 1.0 (realToFrac . fst) $ Set.maxView densSet) "" ++ "]\n" ++
+        "set xrange [" ++ showXmin ++ ":" ++ showXmax ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
         "#set log x\n" ++
         "#set mxtics 10    # Makes logscale look good.\n\n" ++
         "#set key font \",8\"\n" ++
-        "set key bottom center outside horizontal\n\n" ++
+        "#set key width -1.8 height -1 vertical maxrows 2 bmargin\n" ++
+        "set key horizontal bmargin\n\n" ++
+        "#plot '-' using 1:2:(1.0) title column with line ls 1 smooth bezier\n" ++
         "plot " ++
         ( drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
                 "     '-' using 1:2 title \"# = " ++
-                (show $ fst $ Map.elemAt n bench) ++ "\" with linespoints"
+                (show $ fst $ Map.elemAt n bench) ++ "\" with line"
             ) [0..Map.size bench - 1]
         ) ++ "\n\n"
 
@@ -488,6 +480,8 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
         ["plotPercentageOfInconsistenciesPerSizeAndMethod.plt"] ""
   where
     sizesSet = Map.keysSet bench
+    [xmin,xmax] = [ maybe  0 ((+ (-1)) . fst) $ Set.minView sizesSet
+                  , maybe 47 ((+   1)  . fst) $ Set.maxView sizesSet ]
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -513,45 +507,61 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotPercentageOfInconsistenciesPerSizeAndMethod.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
+        "#set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
+        "set terminal pdf font \"Times, 10\" monochrome dashed size 2.5,1.5\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
+        "set style line 81 lt -1 lw 2        # solid black\n" ++
         "#set style line 81 lt 0              # dashed\n" ++
         "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
         "#set grid back linestyle 81\n" ++
-        "set border 3 back # Remove border on top and right.\n\n"   ++
-        "set xtics nomirror\n" ++
-        "#set xtics 0,0.1,0.6 nomirror\n" ++
+        "set border 3 back linestyle 81 # Remove border on top and right.\n\n" ++
+        "# Line styles: try to pick pleasing colors, rather\n" ++
+        "# than strictly primary colors or hard-to-see colors\n" ++
+        "# like gnuplot's default yellow.  Make the lines thick\n" ++
+        "# so they're easy to see in small plots in papers.\n" ++
+        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "#set style line 1 linetype 2 lw 4\n" ++
+        "#set style line 2 linetype 3 lw 4\n" ++
+        "#set style line 3 linetype 5 lw 4\n" ++
+        "#set style line 4 linetype 1 lw 4\n\n" ++
+        "#set xtics nomirror\n" ++
+        "set xtics " ++ show xmin ++ "," ++
+        show (max 1 $ div (xmax - xmin) 20) ++
+        "," ++ show xmax ++ " nomirror\n" ++
         "set ytics 0,20,100  nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [" ++
-        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
+        "set xrange [" ++ show xmin ++ ":" ++ show xmax ++ "]\n" ++
         "set yrange [0:100]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
         "#set log x\n" ++
         "#set mxtics 10    # Makes logscale look good.\n\n" ++
-        "set key bottom center outside horizontal\n\n" ++
+        "#set key width -1.8 height -1 vertical maxrows 2 bmargin\n" ++
+        "set key horizontal bmargin\n\n" ++
+        "#plot 'plotPercentageOfInconsistenciesPerSizeAndMethod.dat' using 1:2:(1.0) title column with line ls 1 smooth bezier\n" ++
         "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
                 "     'plotPercentageOfInconsistenciesPerSizeAndMethod.dat' using 1:" ++ show n ++
-                " title column with linespoints"
+                " title column with line"
             ) [2..Set.size allMethods + 1]
         ) ++ "\n\n"
 
-plotSpeedPerSizeAndMethodSuccessOnly :: Benchmark -> IO ((String, String))
-plotSpeedPerSizeAndMethodSuccessOnly bench = do
+plotSpeedPerSizeAndMethodSuccessOnly :: Benchmark
+                                     -> Int -> IO ((String, String))
+plotSpeedPerSizeAndMethodSuccessOnly bench timeout = do
     writeFile "plotSpeedPerSizeAndMethodSuccessOnly.dat" plotData
     writeFile "plotSpeedPerSizeAndMethodSuccessOnly.plt" plotScript
     safeReadProcess "gnuplot"
         ["plotSpeedPerSizeAndMethodSuccessOnly.plt"] ""
   where
     sizesSet = Map.keysSet bench
+    [xmin,xmax] = [ maybe  0 ((+ (-1)) . fst) $ Set.minView sizesSet
+                  , maybe 47 ((+   1)  . fst) $ Set.maxView sizesSet ]
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -572,46 +582,61 @@ plotSpeedPerSizeAndMethodSuccessOnly bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotSpeedPerSizeAndMethodSuccessOnly.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
+        "#set terminal pdf font \"Times, 10\" monochrome dashed size 5,3\n" ++
+        "set terminal pdf font \"Times, 10\" monochrome dashed size 2.5,1.5\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
         "#set rmargin at screen 0.2\n" ++
         "#set tmargin at screen 0.2\n\n" ++
         "# Line style for grid\n" ++
+        "set style line 81 lt -1 lw 2        # solid black\n" ++
         "#set style line 81 lt 0              # dashed\n" ++
         "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
         "#set grid back linestyle 81\n" ++
-        "set border 3 back # Remove border on top and right.\n\n"   ++
-        "set xtics nomirror\n" ++
-        "#set xtics 0,0.1,0.6 nomirror\n" ++
-        "set ytics 0,20,100  nomirror\n" ++
+        "set border 3 back linestyle 81 # Remove border on top and right.\n\n" ++
+        "# Line styles: try to pick pleasing colors, rather\n" ++
+        "# than strictly primary colors or hard-to-see colors\n" ++
+        "# like gnuplot's default yellow.  Make the lines thick\n" ++
+        "# so they're easy to see in small plots in papers.\n" ++
+        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "#set style line 1 linetype 2 lw 4\n" ++
+        "#set style line 2 linetype 3 lw 4\n" ++
+        "#set style line 3 linetype 5 lw 4\n" ++
+        "#set style line 4 linetype 1 lw 4\n\n" ++
+        "#set xtics nomirror\n" ++
+        "set xtics " ++ show xmin ++ "," ++
+        show (max 1 $ div (xmax - xmin) 20) ++
+        "," ++ show xmax ++ " nomirror\n" ++
+        "set ytics 0," ++ show (div timeout 4) ++ "," ++ show timeout ++ " nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [" ++
-        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
-        "set yrange [0:100]\n\n" ++
+        "set xrange [" ++ show xmin ++ ":" ++ show xmax ++ "]\n" ++
+        "set yrange [0:" ++ show timeout ++ "]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
         "#set log x\n" ++
         "#set mxtics 10    # Makes logscale look good.\n\n" ++
-        "set key bottom center outside horizontal\n\n" ++
+        "#set key width -1.8 height -1 vertical maxrows 2 bmargin\n" ++
+        "set key horizontal bmargin\n\n" ++
+        "#plot 'plotSpeedPerSizeAndMethodSuccessOnly.dat' using 1:2:(1.0) title column with line ls 1 smooth bezier\n" ++
         "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
                 "     'plotSpeedPerSizeAndMethodSuccessOnly.dat' using 1:" ++ show n ++
-                " title column with linespoints"
+                " title column with line"
             ) [2..Set.size allMethods + 1]
         ) ++ "\n\n"
 
-plotSpeedPerSizeAndMethod :: Benchmark -> IO ((String, String))
-plotSpeedPerSizeAndMethod bench = do
+plotSpeedPerSizeAndMethod :: Benchmark -> Int -> IO ((String, String))
+plotSpeedPerSizeAndMethod bench timeout = do
     writeFile "plotSpeedPerSizeAndMethod.dat" plotData
     writeFile "plotSpeedPerSizeAndMethod.plt" plotScript
     safeReadProcess "gnuplot"
         ["plotSpeedPerSizeAndMethod.plt"] ""
   where
     sizesSet = Map.keysSet bench
+    [xmin,xmax] = [ maybe  0 ((+ (-1)) . fst) $ Set.minView sizesSet
+                  , maybe 47 ((+   1)  . fst) $ Set.maxView sizesSet ]
     refinedBench = answersPerSizeAndMethod bench
     allMethods = Map.foldr
         (\ (_, _, _, _, v) acc ->
@@ -632,7 +657,8 @@ plotSpeedPerSizeAndMethod bench = do
             ) "" refinedBench
     plotScript =
         "set output 'plotSpeedPerSizeAndMethod.pdf'\n" ++
-        "set terminal pdf font \"Times, 20\" monochrome size 5,3\n" ++
+        "#set terminal pdf font \"Times, 10\" monochrome dashed size 5,3\n" ++
+        "set terminal pdf font \"Times, 10\" monochrome dashed size 2.5,1.5\n" ++
         "set lmargin at screen 0.09\n" ++
         "#set bmargin at screen 0.32\n" ++
         "#set bmargin at screen 0.1\n" ++
@@ -642,25 +668,36 @@ plotSpeedPerSizeAndMethod bench = do
         "#set style line 81 lt 0              # dashed\n" ++
         "#set style line 81 lt rgb \"#e0e0e0\"  # grey\n\n" ++
         "#set grid back linestyle 81\n" ++
-        "set border 3 back # Remove border on top and right.\n\n"   ++
-        "set xtics nomirror\n" ++
-        "#set xtics 0,0.1,0.6 nomirror\n" ++
-        "set ytics 0,20,100  nomirror\n" ++
+        "set border 3 back linestyle 81 # Remove border on top and right.\n\n"   ++
+        "# Line styles: try to pick pleasing colors, rather\n" ++
+        "# than strictly primary colors or hard-to-see colors\n" ++
+        "# like gnuplot's default yellow.  Make the lines thick\n" ++
+        "# so they're easy to see in small plots in papers.\n" ++
+        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "#set style line 1 linetype 2 lw 4\n" ++
+        "#set style line 2 linetype 3 lw 4\n" ++
+        "#set style line 3 linetype 5 lw 4\n" ++
+        "#set style line 4 linetype 1 lw 4\n\n" ++
+        "#set xtics nomirror\n" ++
+        "set xtics " ++ show xmin ++ "," ++
+        show (max 1 $ div (xmax - xmin) 20) ++
+        "," ++ show xmax ++ " nomirror\n" ++
+        "set ytics 0," ++ show (div timeout 4) ++ "," ++ show timeout ++ " nomirror\n" ++
         "#set xtics 0,0.1,0.6\n" ++
         "#set ytics 0,0.1,0.6\n\n" ++
-        "set xrange [" ++
-        show (maybe 0  ((+ (-1)) . fst) $ Set.minView sizesSet) ++ ":" ++
-        show (maybe 47 ((+1) . fst) $ Set.maxView sizesSet) ++ "]\n" ++
-        "set yrange [0:100]\n\n" ++
+        "set xrange [" ++ show xmin ++ ":" ++ show xmax ++ "]\n" ++
+        "set yrange [0:" ++ show timeout ++ "]\n\n" ++
         "#set xlabel \"x axis label\"\n" ++
         "#set ylabel \"y axis label\"\n\n" ++
         "#set log x\n" ++
         "#set mxtics 10    # Makes logscale look good.\n\n" ++
-        "set key bottom center outside horizontal\n\n" ++
+        "#set key width -1.8 height -1 vertical maxrows 2 bmargin\n" ++
+        "set key horizontal bmargin\n\n" ++
+        "#plot 'plotSpeedPerSizeAndMethod.dat' using 1:2:(1.0) title column with line ls 1 smooth bezier\n" ++
         "plot " ++ (drop 5 $ intercalate ",\\\n" $ map
             (\ n ->
                 "     'plotSpeedPerSizeAndMethod.dat' using 1:" ++ show n ++
-                " title column with linespoints"
+                " title column with line"
             ) [2..Set.size allMethods + 1]
         ) ++ "\n\n"
 

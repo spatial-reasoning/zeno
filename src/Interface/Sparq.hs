@@ -3,11 +3,7 @@ module Interface.Sparq where
 
 -- standard modules
 import Control.Exception
-import Control.Monad
-import qualified Data.Maybe as Maybe
-import Data.List
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import System.IO
 import System.IO.Unsafe
 import System.Process
@@ -19,12 +15,6 @@ import Basics
 import Parsing.Sparq
 import Export
 import Helpful.Process
-
--- Debugging and Timing
---import Data.Time.Clock (diffUTCTime, getCurrentTime)
---import Debug.Trace
-import Helpful.General
-
 
 
 {------------------------------------------------------------------------------

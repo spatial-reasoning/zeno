@@ -13,10 +13,14 @@ import SpatioTemporalStructure.OrientedPoint
 
 instance HasDecisionProcedure (Opus Rational) where
     procedures _ =
-        [ DecisionProcedure { decProName = "OpusTC"
-                            , decProProc = triangleConsistency }
-        , DecisionProcedure { decProName = "OpusTCwu"
+--        [ DecisionProcedure { decProName = "OpusTC"
+--                            , decProProc = triangleConsistency }
+        [ DecisionProcedure { decProName = "OpusTCwu"
                             , decProProc = triangleConsistencyWithWitness }
+--        , DecisionProcedure { decProName = "OpusAC"
+--                            , decProProc = triangleConsistencyRevised }
+--        , DecisionProcedure { decProName = "OpusACog"
+--                            , decProProc = triangleConsistencyRevisedOnlyGivenPairs }
 --        , DecisionProcedure { decProName = "TC WitSa"
 --                            , decProProc = triangleConsistencyWithWitnesses }
 --        , DecisionProcedure { decProName = "TC WitUS"

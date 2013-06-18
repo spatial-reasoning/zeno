@@ -4,13 +4,12 @@ module Convert.LRChirotope where
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as Set
+
 -- local modules
 import Basics
 import Calculus.FlipFlop
 import Helpful.General
 
---import Debug.Trace
 
 {------------------------------------------------------------------------------
  - FlipFlop to Chirotope

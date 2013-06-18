@@ -1,0 +1,9 @@
+e :: w
+eq :: eq
+n :: s
+ne :: sw
+nw :: se
+s :: n
+se :: nw
+sw :: ne
+w :: e

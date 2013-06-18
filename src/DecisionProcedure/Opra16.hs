@@ -31,4 +31,7 @@ instance HasDecisionProcedure (ARel Opra16) where
                  (procedures (undefined :: ARel Opra))
 
 instance HasDecisionProcedure (GRel Opra16) where
-    procedures _ = []
+    procedures _ = [
+        ] ++ map (firstApply opramNetToOpraNet)
+                 (procedures (undefined :: GRel Opra))
+

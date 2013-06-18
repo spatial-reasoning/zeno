@@ -7,15 +7,19 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Ratio
 import qualified Data.Set as Set
+import Data.Tuple
 
 -- local modules
 import Basics
 import Helpful.General
 import Helpful.TimeIt
 import Interface.Yices
+import SpatioTemporalStructure.Interval (Interval, ClosedOpen, (...), (..|), (|..), (|.|))
 import qualified SpatioTemporalStructure.Interval as I
 import SpatioTemporalStructure.OrientedPoint
 import Calculus.Opra (angle, minAngle, maxAngle)
+
+import Debug.Trace
 
 data Term = Fo  Formula
           | Con Integer
@@ -38,6 +42,7 @@ data Formula = Te  Term
              | Eq  Term Term
              | Le  Term Term
              | Leq Term Term
+             | Not Formula
              | And Formula Formula
              | Or  Formula Formula
              | Iff Formula Formula
@@ -52,6 +57,7 @@ instance Show Formula where
         Eq  t1 t2    -> "(" ++ show t1 ++ " = "  ++ show t2 ++ ")"
         Le  t1 t2    -> "(" ++ show t1 ++ " < "  ++ show t2 ++ ")"
         Leq t1 t2    -> "(" ++ show t1 ++ " <= " ++ show t2 ++ ")"
+        Not f        -> "(not (" ++ show f ++ "))"
         And f1 f2    -> "(" ++ show f1 ++ " && " ++ show f2 ++ ")"
         Or  f1 f2    -> "(" ++ show f1 ++ " || " ++ show f2 ++ ")"
         Iff f1 f2    -> "(" ++ show f1 ++ " <=> " ++ show f2 ++ ")"
@@ -79,6 +85,7 @@ instance ShowSMT Formula where
         Eq  t1 t2    -> "(= "    ++ showSMT t1 ++ " "  ++ showSMT t2 ++ ")"
         Le  t1 t2    -> "(< "    ++ showSMT t1 ++ " "  ++ showSMT t2 ++ ")"
         Leq t1 t2    -> "(<= "   ++ showSMT t1 ++ " "  ++ showSMT t2 ++ ")"
+        Not f        -> "(not (" ++ showSMT f  ++ "))"
         And f1 f2    -> "(and\n" ++ showSMT f1 ++ "\n" ++ showSMT f2 ++ ")"
         Or  f1 f2    -> "(or\n"  ++ showSMT f1 ++ "\n" ++ showSMT f2 ++ ")"
         Iff f1 f2    -> "(iff\n" ++ showSMT f1 ++ "\n" ++ showSMT f2 ++ ")"
@@ -101,6 +108,7 @@ getVarsFo (Te  t)        = getVarsTe t
 getVarsFo (Eq  t1 t2)    = Set.union (getVarsTe t1) (getVarsTe t2)
 getVarsFo (Le  t1 t2)    = Set.union (getVarsTe t1) (getVarsTe t2)
 getVarsFo (Leq t1 t2)    = Set.union (getVarsTe t1) (getVarsTe t2)
+getVarsFo (Not f)        = getVarsFo f
 getVarsFo (And f1 f2)    = Set.union (getVarsFo f1) (getVarsFo f2)
 getVarsFo (Or  f1 f2)    = Set.union (getVarsFo f1) (getVarsFo f2)
 getVarsFo (Iff f1 f2)    = Set.union (getVarsFo f1) (getVarsFo f2)
@@ -164,6 +172,41 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                  (equKnownPair (Var pair) $ I.intersections
                       ivalSame1 $ I.invertModuloList circle ivalSame2)
             )
+    let equUnsameTriple' idOrSwap triple'@[triple'1, triple'2, triple'3] =
+          let
+            (anglepointToFirst, anglepointToSecond) = idOrSwap
+                ( [triple'2, triple'1]
+                , [triple'2, triple'3] )
+          in
+            Eq (Var triple')
+               (Fo $ Ite (Leq (Var anglepointToFirst)
+                              (Var anglepointToSecond))
+                         (Te $ Sub (Var anglepointToSecond)
+                                   (Var anglepointToFirst))
+                         (Te $ Add (Var anglepointToSecond)
+                                   (Sub (Con circle)
+                                        (Var anglepointToFirst))))
+    let equUnsameTriple idOrSwap tripleA tripleB tripleC = And (And (And
+          (equUnsameTriple' idOrSwap tripleA)
+          (equUnsameTriple' idOrSwap tripleB))
+          (equUnsameTriple' idOrSwap tripleC))
+          (Or (Or (Or
+              (And (And (Eq (Var tripleA) (Con 0))
+                        (Eq (Var tripleB) (Con 0)))
+                        (Eq (Var tripleC) (Con halfcircle)))
+              (And (And (Eq (Var tripleA) (Con 0))
+                        (Eq (Var tripleB) (Con halfcircle)))
+                        (Eq (Var tripleC) (Con 0))))
+              (And (And (Eq (Var tripleA) (Con halfcircle))
+                        (Eq (Var tripleB) (Con 0)))
+                        (Eq (Var tripleC) (Con 0))))
+              (And (And (And (Le (Con 0) (Var tripleA))
+                             (Le (Con 0) (Var tripleB)))
+                             (Le (Con 0) (Var tripleC)))
+                   (Eq (Add (Var tripleA) $
+                        Add (Var tripleB)
+                            (Var tripleC))
+                       (Con halfcircle))))
 
     ps_rn <- Fold.foldlM
       (\ (acc, acc2) pair@[node, node2] ->
@@ -277,6 +320,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
           newAccsUnsame' = Just (Map.insert pair (Just False) acc, newAcc2)
           newAccsSomeInfo = Just (Map.insert pair Nothing acc, newAcc2)
           newAccsNoInfo = Just (acc, acc2)
+--          newAccsNoInfo = Just (Map.insert pair Nothing acc, newAcc2)
           newAcc2 = Map.insertWith Set.union node (Set.singleton node2) acc2
           fewInfo nuAcc = case ( foundWitnessForUnsameness
                                , foundWitnessForSameness ||
@@ -350,8 +394,10 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
               (Nothing, Nothing, Just False) -> And (noRestriction varPair)
                                                     (noRestriction varRevPair)
               (Nothing, Nothing, Just True ) -> noRestriction varPair
-              (Nothing, Nothing, Nothing   ) -> error $
-                  "DecisionProcedure.Opra.TriangleConsistency.equPair"
+--              (Nothing, Nothing, Nothing   ) -> error $
+--                  "DecisionProcedure.Opra.TriangleConsistency.equPair"
+              (Nothing, Nothing, Nothing   ) -> And (noRestriction varPair)
+                                                    (noRestriction varRevPair)
 
       -- improve: try to make a foldrM1
         equTriples <- Fold.foldrM
@@ -367,40 +413,6 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
               thirdToStart [a,b] = [thirdNode [a,b], a]
               thirdToEnd   [a,b] = [thirdNode [a,b], b]
               triple [a,b] = [a, thirdNode [a,b], b]
-              equUnsameTriple revert tripleA tripleB tripleC = And (And (And
-                  (equUnsameTriple' revert tripleA)
-                  (equUnsameTriple' revert tripleB))
-                  (equUnsameTriple' revert tripleC))
-                  (Or (Or (Or
-                      (And (And (Eq (Var $ revert tripleA) (Con 0))
-                                (Eq (Var $ revert tripleB) (Con 0)))
-                                (Eq (Var $ revert tripleC) (Con halfcircle)))
-                      (And (And (Eq (Var $ revert tripleA) (Con 0))
-                                (Eq (Var $ revert tripleB) (Con halfcircle)))
-                                (Eq (Var $ revert tripleC) (Con 0))))
-                      (And (And (Eq (Var $ revert tripleA) (Con halfcircle))
-                                (Eq (Var $ revert tripleB) (Con 0)))
-                                (Eq (Var $ revert tripleC) (Con 0))))
-                      (And (And (And (Le (Con 0) (Var $ revert tripleA))
-                                     (Le (Con 0) (Var $ revert tripleB)))
-                                     (Le (Con 0) (Var $ revert tripleC)))
-                           (Eq (Add (Var $ revert tripleA) $
-                                Add (Var $ revert tripleB)
-                                    (Var $ revert tripleC))
-                               (Con halfcircle))))
-              equUnsameTriple' revert triple'@[triple'1, triple'2, triple'3] =
-                let
-                  anglepointToFirst  = [triple'2, triple'1]
-                  anglepointToSecond = [triple'2, triple'3]
-                in
-                  Eq (Var $ revert triple')
-                     (Fo $ Ite (Leq (Var anglepointToFirst)
-                                    (Var anglepointToSecond))
-                               (Te $ Sub (Var anglepointToSecond)
-                                         (Var anglepointToFirst))
-                               (Te $ Add (Var anglepointToSecond)
-                                         (Sub (Con circle)
-                                              (Var anglepointToFirst))))
               allNonSame = Ite
                   (Or (And (Leq (Con 0)
                                 (Sub (Var pair2) (Var pair)))
@@ -418,10 +430,10 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                                    [node2, node , node3]
                                    [node3, node2, node ]
                                    [node , node3, node2])
-                  (equUnsameTriple reverse
-                                   [node3, node , node2]
-                                   [node , node2, node3]
-                                   [node2, node3, node ])
+                  (equUnsameTriple swap
+                                   [node2, node , node3]
+                                   [node3, node2, node ]
+                                   [node , node3, node2])
               oneSame x = And
                   (Eq (Var $ thirdToStart x) (Var $ thirdToEnd x))
                   (Eq (Var $ startToThird x)
@@ -440,8 +452,8 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                                       (Con circle)) )
 
             equTriple <- case sort [ (same, pair)
-                                   , (pairsWithSameness Map.! pair2, pair2)
-                                   , (pairsWithSameness Map.! pair3, pair3)
+                                   , (maybe Nothing id $ Map.lookup pair2 pairsWithSameness, pair2)
+                                   , (maybe Nothing id $ Map.lookup pair3 pairsWithSameness, pair3)
                                    ] of
                   [(Just False, _),
                    (Just False, _),
@@ -471,9 +483,9 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                   -- nonsame(a,c) /\ same(b,c) => nonsame(a,b)
                   [(Nothing   , x),
                    (Just False, _),
-                   (Just True , _)] -> Just $ And
-                      (Eq (Var $ x ++ ["Same"]) (Con 1))
-                      (oneSame x)
+                   (Just True , y)] -> Just $ And
+                      (Eq (Var $ x ++ ["Same"]) (Con 0))
+                      (oneSame y)
 
                   -- Here "[a,b]" has to be same:
                   -- same(a,c) /\ same(b,c) => same(a,b)
@@ -523,11 +535,12 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
                                     (And (Eq (Var $ z ++ ["Same"]) (Con 1))
                                          (allSame)))))
             Just $ And acc2 equTriple
-          ) Tru $ Set.intersection
+          ) Tru $ Set.filter (> node2) $ Set.union
                       (maybe Set.empty id $ Map.lookup node  relatedNodes)
                       (maybe Set.empty id $ Map.lookup node2 relatedNodes)
         Just $ And acc $ And equPair equTriples
       ) Tru pairsWithSameness
+
 
 preamble :: String -> Formula -> String
 preamble desc f = "(benchmark " ++ desc' ++ "\n\n" ++
@@ -557,4 +570,201 @@ triangleConsistencyWithWitnessAndWitnesses =
     triangleConsistency' (translateToTriangles True True)
 triangleConsistencyWithWitnesses =
     triangleConsistency' (translateToTriangles False True)
+
+
+
+
+translateToTrianglesRevised :: Bool
+                            -> Network [String] (Opus Rational)
+                            -> Maybe (Formula, String, String)
+translateToTrianglesRevised useOnlyGivenPairs net@Network{nCons = cons'} = do
+    let allNodes = Set.toAscList $ nodesIn $ nCons net
+    let allIntervalEnds = Map.foldr
+            (\Opus{ opusSame = os, opusNonSame = on } acc ->
+                concatMap I.ends os ++ concatMap I.ends on ++ acc
+            ) [] cons'
+    let halfcircle = (foldr1 lcm . map denominator) allIntervalEnds
+    let circle     = 2 * halfcircle
+    -- make all angles Integral.
+    let cons = Map.map
+            (\Opus{ opusSame = os, opusNonSame = on } -> Opus
+                { opusSame    = map
+                      (I.onEnds (numerator . ((toRational halfcircle) *))) os
+                , opusNonSame = map
+                      (I.onEnds (numerator . ((toRational halfcircle) *))) on }
+            ) cons'
+    let pairs   = kCombinations 2 allNodes
+    let triples = kCombinations 3 allNodes
+    let conIfNotGiven = Opus{ opusSame    = [0 |.. circle]
+                            , opusNonSame = [0 |.. circle] }
+    let equKnownPair var ivals = foldl1 Or $ map
+            (\ ival -> And
+                ((if I.infOpen ival then Le else Leq) (Con $ I.inf ival) var)
+                ((if I.supOpen ival then Le else Leq) var (Con $ I.sup ival))
+            ) ivals
+    let equNonSameOrSame pair revPair ivalNonSame1 ivalSame1 ivalNonSame2 ivalSame2 = Or
+            (And (Not $ Te $ Var $ pair ++ ["Same"])
+                 (And (equKnownPair (Var pair)      ivalNonSame1)
+                      (equKnownPair (Var $ revPair) ivalNonSame2))
+            )
+            (And (Te $ Var $ pair ++ ["Same"])
+                 (equKnownPair (Var pair) $ I.intersections
+                      ivalSame1 $ I.invertModuloList circle ivalSame2)
+            )
+    let ang [b, a, c] = Ite
+            (Leq (Var [a, b]) $ Var [a, c])
+            (Eq (Var [b, a, c]) $ Sub (Var [a, c]) $ Var [a, b])
+            (Eq (Var [b, a, c]) $ Add (Var [a, c]) $ Sub (Con circle) $ Var [a, b])
+    let triProp [a, b, c] = And (Le (Con 0) $ Var [b, a, c]) $
+                            And (Le (Con 0) $ Var [c, b, a]) $
+                            And (Le (Con 0) $ Var [a, c, b]) $
+                                Eq (Con halfcircle) $
+                                   Add (Var [b, a, c]) $
+                                   Add (Var [c, b, a])
+                                       (Var [a, c, b])
+    let triDeg [b, a, c] = And (Eq (Con halfcircle) $ Var [b, a, c]) $
+                           And (Eq (Con 0) $ Var [c, b, a])
+                               (Eq (Con 0) $ Var [a, c, b])
+    let tri [a, b, c] = And (ang [b, a, c]) $
+                        And (ang [c, b, a]) $
+                        And (ang [a, c, b]) $
+                            Or (triProp [a, b, c]) $
+                            Or (triDeg  [b, a, c]) $
+                            Or (triDeg  [c, b, a])
+                               (triDeg  [a, c, b])
+    let equAllNonSame [a, b, c] = Ite
+            (Or (And (Leq (Con 0) (Sub (Var [a, c]) (Var [a, b])))
+                     (Leq (Sub (Var [a, c]) (Var [a, b])) (Con halfcircle)))
+                (And (Leq (Con 0) (Add (Var [a, c]) (Sub (Con circle) (Var [a, b]))))
+                     (Leq (Add (Var [a, c]) (Sub (Con circle) (Var [a, b]))) (Con halfcircle))))
+            (tri [a, b, c])
+            (tri [c, b, a])
+    let equAllSame [a, b, c] = Ite
+            (Le (Add (Var [a, b]) $ Var [b, c]) (Con circle))
+            (Eq (Var [a, c]) $ Add (Var [a, b]) $ Var [b, c])
+            (Eq (Var [a, c]) $ Add (Var [a, b]) $ Sub (Var [b, c]) (Con circle))
+    let equTwoSame [a, b, c] = And (equAllSame [a, b, c]) $
+                                   Eq (Var [c, a]) $ Var [c, b]
+    let witNonSame [a, b, c] = Iff
+          (Or (And (Not $ Te $ Var [a, b, "Same"]) (Te $ Var [a, c, "Same"])) $
+           Or (And (Te $ Var [a, b, "Same"]) (Not $ Te $ Var [a, c, "Same"])) $
+              (And (Not $ Te $ Var [a, b, "Same"]) $
+               And (Not $ Te $ Var [a, c, "Same"])
+                   (Not $ Eq (Var [a, b]) $ Var [a, c])))
+          (Not $ Te $ Var [b, c, "Same"])
+    let witSame [a, b, c] = Iff
+            (And (Te $ Var [a, b, "Same"])
+                 (Te $ Var [a, c, "Same"]))
+            (Te $ Var [b, c, "Same"])
+    let whichAreSame [a, b, c] =
+          Or (And (Not $ Te $ Var [a, b, "Same"])
+                  (Or (And (Not $ Te $ Var [a, c, "Same"])
+                           (Or (And (Not $ Te $ Var [b, c, "Same"])
+                                    (equAllNonSame [a, b, c]))
+                               (And (Te $ Var [b, c, "Same"])
+                                    (equTwoSame [b, c, a]))))
+                      (And (Te $ Var [a, c, "Same"])
+                           (Or (And (Not $ Te $ Var [b, c, "Same"])
+                                    (equTwoSame [a, c, b]))
+                               (And (Te $ Var [b, c, "Same"])
+                                    Fals)))))
+             (And (Te $ Var [a, b, "Same"])
+                  (Or (And (Not $ Te $ Var [a, c, "Same"])
+                           (Or (And (Not $ Te $ Var [b, c, "Same"])
+                                    (equTwoSame [a, b, c]))
+                               (And (Te $ Var [b, c, "Same"])
+                                    Fals)))
+                      (And (Te $ Var [a, c, "Same"])
+                           (Or (And (Not $ Te $ Var [b, c, "Same"])
+                                    Fals)
+                               (And (Te $ Var [b, c, "Same"])
+                                    (equAllSame [a, b, c]))))))
+
+    equPairsAndVars <- Fold.foldrM
+      (\ pair@[node, node2] (acc1, acc2, acc3) -> do
+        let
+          revPair = [node2, node]
+          varPair = Var pair
+          varRevPair = Var revPair
+          varPairSame = Var $ pair ++ ["Same"]
+          maybePairCons = Map.lookup pair cons
+          pairCons = maybe conIfNotGiven id maybePairCons
+          maybeRevPairCons = Map.lookup revPair cons
+          revPairCons = maybe conIfNotGiven id maybeRevPairCons
+          equNonSame = And
+              (Not $ Te varPairSame)
+              (And (equKnownPair varPair    $ opusNonSame pairCons)
+                   (equKnownPair varRevPair $ opusNonSame revPairCons))
+          equSame = And
+              (Te varPairSame)
+              (equKnownPair varPair $ I.intersections (opusSame pairCons) $
+                  I.invertModuloList circle $ opusSame revPairCons)
+        equPair <- case (I.nullOnly $ opusNonSame pairCons,
+                         I.nullOnly $ opusSame    pairCons,
+                         I.nullOnly $ opusNonSame revPairCons,
+                         I.nullOnly $ opusSame    revPairCons) of
+              (True, True, _   , _   ) -> Nothing
+              (True, _   , _   , True) -> Nothing
+              (_   , True, True, _   ) -> Nothing
+              (_   , _   , True, True) -> Nothing
+              (True, _   , _   , _   ) -> Just $ equSame
+              (_   , _   , True, _   ) -> Just $ equSame
+              (_   , True, _   , _   ) -> Just $ equNonSame
+              (_   , _   , _   , True) -> Just $ equNonSame
+              (_   , _   , _   , _   ) -> Just $ equNonSameOrSame pair revPair
+                  (opusNonSame pairCons)    (opusSame pairCons)
+                  (opusNonSame revPairCons) (opusSame revPairCons)
+        let newAcc2 = "  (" ++ showSMT varPair    ++ " Real)\n" ++
+                      "  (" ++ showSMT varRevPair ++ " Real)\n" ++ acc2
+        let newAcc3 = "  (" ++ showSMT varPairSame ++ ")\n" ++ acc3
+        Just $
+          if useOnlyGivenPairs then
+              if isNothing maybePairCons && isNothing maybeRevPairCons then
+                  ( acc1, newAcc2, newAcc3 )
+              else
+                  ( And equPair acc1, newAcc2, newAcc3 )
+          else
+              ( And equPair acc1, newAcc2, newAcc3 )
+      ) (Tru, "", "") pairs
+    let (equPairs, varsSMT', samesSMT) = equPairsAndVars
+    let (equTriples, varsSMT) = foldr
+          (\ [a, b, c] (acc1, acc2) ->
+              ( And (whichAreSame [a, b, c]) acc1
+              , "  (" ++ showSMT (Var [a, b, c]) ++ " Real)\n" ++
+                "  (" ++ showSMT (Var [a, c, b]) ++ " Real)\n" ++
+                "  (" ++ showSMT (Var [b, a, c]) ++ " Real)\n" ++
+                "  (" ++ showSMT (Var [b, c, a]) ++ " Real)\n" ++
+                "  (" ++ showSMT (Var [c, a, b]) ++ " Real)\n" ++
+                "  (" ++ showSMT (Var [c, b, a]) ++ " Real)\n" ++ acc2
+              )
+          ) (equPairs, varsSMT') triples
+    Just (equTriples, varsSMT, samesSMT)
+
+triangleConsistency'' :: (Network [String] (Opus Rational) -> Maybe (Formula, String, String))
+                     -> Network [String] (Opus Rational)
+                     -> Maybe Bool
+triangleConsistency'' fun net@Network{nCons = cons, nDesc = desc} =
+    maybe (Just False)
+          (\ _ -> if yicesSat formulaStr then Nothing else Just False)
+          formulaVarsAndSames
+  where
+    formulaVarsAndSames = fun net
+    (formula, varsSMT, samesSMT) = fromJust formulaVarsAndSames
+    formulaStr = preamble'' desc varsSMT samesSMT ++ ":formula\n" ++
+                 showSMT formula ++ "\n)"
+
+preamble'' :: String -> String -> String -> String
+preamble'' desc varsSMT samesSMT = "(benchmark " ++ desc' ++ "\n\n" ++
+--    ":logic QF_AUFLIA\n" ++
+    ":logic QF_LRA\n" ++
+    ":extrapreds (\n" ++ samesSMT ++ ")\n" ++ 
+    ":extrafuns (\n" ++ varsSMT ++ ")\n"
+  where
+    desc' = if null desc then "OpusTriangleConsistency" else desc
+
+triangleConsistencyRevisedOnlyGivenPairs =
+    triangleConsistency'' (translateToTrianglesRevised True)
+
+triangleConsistencyRevised =
+    triangleConsistency'' (translateToTrianglesRevised False)
 

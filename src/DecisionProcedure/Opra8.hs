@@ -23,7 +23,7 @@ instance HasBinAClosureSparq GRel Opra8
 instance HasDecisionProcedure (ARel Opra8) where
     procedures _ =
         [ algebraicClosureGQR
-        , algebraicClosure
+--        , algebraicClosure
 --        , algebraicClosureSpS
 --        , algebraicReasoning
         ] ++ map (firstApply opramNetToOpraNetAtomic)
@@ -31,6 +31,7 @@ instance HasDecisionProcedure (ARel Opra8) where
 
 instance HasDecisionProcedure (GRel Opra8) where
     procedures _ =
-        [
---          algebraicClosure
-        ]
+        [ algebraicClosureGQR
+        ] ++ map (firstApply opramNetToOpraNet)
+                 (procedures (undefined :: GRel Opra))
+

@@ -2,13 +2,14 @@ module Interface.Yices where
 
 -- standard modules
 import Data.List
-import Debug.Trace
 
 -- local modules
 import Helpful.Process
 
+import Debug.Trace
+
 readYices :: String -> (String, String)
-readYices str = unsafeReadProcess "yices" ["-smt"] str
+readYices str = unsafeReadProcess "yices" ["-e", "-smt"] str
 --readYices str = readSafeProcess "opensmt" ["-smt"] str
 --readYices str = do
 --    putStrLn str

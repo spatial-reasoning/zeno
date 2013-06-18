@@ -11,10 +11,8 @@ import qualified Data.Set as Set
 
 -- local modules
 import Basics
-import Interface.Sparq
 import Helpful
 
-import Debug.Trace
 
 data FlipFlop = L | R | B | S | I | E | F | D | T
     deriving (Eq, Ord, Read, Show, Enum, Bounded)

@@ -5,8 +5,6 @@ module Parsing.Qstrlib where
 import Control.Monad
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as Set
-import Data.String
 import qualified Text.Parsec.Language as L
 import Text.Parsec.Perm
 import Text.ParserCombinators.Parsec
@@ -14,9 +12,7 @@ import Text.ParserCombinators.Parsec.Token as P
 
 -- local modules
 import Basics
-import Helpful
 
---import Debug.Trace
 
 
 qstrLibLang = L.emptyDef

@@ -1,17 +1,14 @@
 module Convert.LRDipole where
 
 -- standard modules
-import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as Set
+
 -- local modules
 import Basics
 import Calculus.Dipole72
 import Calculus.FlipFlop
---import Helpful
 
---import Debug.Trace
 
 {------------------------------------------------------------------------------
     Dipoles to LR

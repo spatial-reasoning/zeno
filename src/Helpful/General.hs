@@ -9,14 +9,10 @@ import Data.List
 import Data.Maybe
 import qualified Data.Set as Set
 
-import Debug.Trace
-
 -- a purely functional implementation of if-then-else
 ite :: Bool -> a -> a -> a
 ite True  x _ = x
 ite False _ y = y
-
-traceThis a = trace (show a) a
 
 maybeRead :: Read a => String -> Maybe a
 maybeRead =

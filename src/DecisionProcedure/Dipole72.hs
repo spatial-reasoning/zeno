@@ -1,9 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
-module DecisionProcedure.Dipole72 () where
+module DecisionProcedure.Dipole72 where
 
 -- standard modules
-import Data.Maybe
-import qualified Data.Set as Set
 
 -- local modules
 import Basics
@@ -25,7 +23,8 @@ instance HasDecisionProcedure (ARel Dipole72) where
     procedures _ =
         [ algebraicClosureGQR
         , algebraicClosure
-        , algebraicReasoning
+--        , algebraicReasoning
+        , firstApply dipolesToFlipFlops $ algebraicClosure
         , firstApply dipolesToFlipFlops $ triangleConsistency
         , firstApply dipolesToFlipFlops $ chirotope
         , firstApply dipolesToFlipFlops $ biquadraticFinalPolynomials

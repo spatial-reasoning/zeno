@@ -1,6 +1,6 @@
 module Helpful.Random where
 
-import Control.Monad
+import qualified Data.Set as Set
 import System.Random
 
 randomRsIO :: (Random a) => (a, a) -> IO [a]
@@ -48,6 +48,30 @@ randomsOfIO :: [a] -> IO [a]
 randomsOfIO domain = do
     gen <- newStdGen
     return $ randomsOf domain gen
+
+oneGeneralOf :: (Eq a, Ord a, RandomGen g) => [a] -> g -> (Set.Set a, g)
+oneGeneralOf domain gen = (\(x,y) -> (Set.fromList x, y)) $ foldr
+    (\ x (acc, g) ->
+      let
+        (weWantItIn, g') = randomR (0.0 :: Float, 1.0) g
+      in
+        if weWantItIn < 0.2 then (x:acc, g') else (acc, g')
+    ) ([rel1], gen') domain
+  where
+    (rel1, gen') = oneOf domain gen
+
+oneGeneralOfIO :: (Eq a, Ord a) => [a] -> IO (Set.Set a)
+oneGeneralOfIO = getStdRandom . oneGeneralOf
+
+randomGeneralsOf :: (Eq a, Ord a, RandomGen g) => [a] -> g -> [Set.Set a]
+randomGeneralsOf domain gen = x : randomGeneralsOf domain g
+  where
+    (x, g) = oneGeneralOf domain gen
+
+randomGeneralsOfIO :: (Eq a, Ord a) => [a] -> IO [Set.Set a]
+randomGeneralsOfIO domain = do
+    gen <- newStdGen
+    return $ randomGeneralsOf domain gen
 
 shuffle :: (RandomGen g) => [a] -> g -> ([a], g)
 shuffle [] gen = ([], gen)

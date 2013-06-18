@@ -5,14 +5,11 @@ import qualified Data.Key as Key
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Ratio
 import qualified Data.Set as Set
-import System.IO.Unsafe
 
 -- local modules
 import Basics
 import Helpful.General
-import Helpful.TimeIt
 import Interface.Yices
 import SpatioTemporalStructure.OrientedPoint
 

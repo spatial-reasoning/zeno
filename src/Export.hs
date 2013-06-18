@@ -5,12 +5,10 @@ module Export where
 import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Maybe
 
 -- local modules
 import Basics
 
---import Debug.Trace
 
 --qstrify :: (Calculus a) => Network [String] (Set.Set a) -> String
 --qstrify net = 

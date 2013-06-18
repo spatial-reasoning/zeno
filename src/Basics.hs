@@ -2,7 +2,6 @@
 module Basics where
 
 -- standard modules
-import Control.Monad
 import Data.Char
 import qualified Data.Foldable as Fold
 import Data.List
@@ -10,15 +9,9 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Ratio
 import qualified Data.Set as Set
-import Data.String
 
 -- local modules
 import qualified Helpful.Math as H
-import Helpful.String
-
--- Debugging and Timing
-import Debug.Trace
---import Data.Time.Clock (diffUTCTime, getCurrentTime)
 
 data Network a b = Network
     { nCons       :: Map.Map a b        -- Constraints

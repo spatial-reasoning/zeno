@@ -33,4 +33,6 @@ instance HasDecisionProcedure (GRel Opra10) where
     procedures _ =
         [
 --          algebraicClosure
-        ]
+        ] ++ map (firstApply opramNetToOpraNet)
+                 (procedures (undefined :: GRel Opra))
+
