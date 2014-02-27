@@ -1,0 +1,11 @@
+calculus = "dipole-24"
+description = "Consistent 02."
+network =
+    a b (ells)
+    a c (slsr)
+    a d (slsr)
+    b c (llrr)
+    # that's the (good (llrr) / bad (lrrl)) one:
+    b d (llrr)
+    c d (slsr)
+

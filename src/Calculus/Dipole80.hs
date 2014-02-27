@@ -30,7 +30,7 @@ instance Calculus Dipole80 where
     rank _ = 2
     cName _ = "dipole-80"
     cNameGqr _ = "dra-80"
-    readRel x = case y of
+    cReadRel x = case y of
         Just z  -> z
         Nothing -> error $ show x ++ " is not a Dipole-80 relation."
       where
@@ -41,7 +41,7 @@ instance Calculus Dipole80 where
             "-"       -> "M"
             otherwise -> map Char.toUpper b'
 
-    showRel rel = lowerA ++ case b of
+    cShowRel rel = lowerA ++ case b of
                                 "P"       -> "+"
                                 "M"       -> "-"
                                 otherwise -> b

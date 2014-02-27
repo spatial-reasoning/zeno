@@ -1,5 +1,5 @@
 Zeno - The Library for Qualitative Spatio-Temporal Reasoning
-===============================================================
+============================================================
 
 Zeno is a library for qualitative spatio-temporal reasoning written in
 Haskell. It also contains a suite of benchmarks for qualitative spatio-temporal
@@ -13,11 +13,12 @@ implementations it interfaces the common reasoning tools »SparQ«, »Gqr»,
 It also contains a testsuite of benchmarks and an automated benchmarking tool
 comparing the given decision procedures regarding several parameters of
 interest like the density of atomic networks and the common phase transition of
-the tested procedures.
+the tested procedures. For evaluation the results are presented in a nice
+graphical output.
 
 ## Procedures implemented or integrated so far are:
 
-- __Algebraic Closure__ (binary and ternary) (via Gqr and SparQ)
+- __Algebraic Closure__ (binary and ternary) (via GQR and SparQ)
 - __Algebraic Geometric Reasoning__ (via SparQ)
 - __Triangle Consistency for the LR Calculus__ (cf Lücke et al.)
 - __Oriented Matroids__ (including Biquadratic Final Polynomials)
@@ -40,7 +41,6 @@ you have any wishes or ideas please let us know.
 ## Authors
 
 - [André Scholz] (http://www.math.uni-bremen.de/~schola/)
-- [Till Mossakowski] (http://www.math.uni-bremen.de/~till/)
 
 ## License
 

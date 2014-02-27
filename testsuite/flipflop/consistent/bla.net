@@ -1,0 +1,9 @@
+calculus = "flipflop-7"
+description = "consistent, forming a Pappus configuration."
+number of nodes = 9
+network =
+    1 2 3 (l)
+    3 4 5 (l)
+    5 6 7 (l)
+    7 8 9 (l)
+

@@ -212,7 +212,7 @@ translateToTriangles useWitness useWitnesses net@Network{nCons = cons'} = do
       (\ (acc, acc2) pair@[node, node2] ->
         let
           -- Can we find a third node for which node and node2 lie in
-          -- different relations - or both in the same relation?
+          -- different relations -- or both in a "same" relation?
           [foundWitnessForUnsameness, foundWitnessForSameness] =
               if useWitness then
                   foldr

@@ -1,0 +1,9 @@
+;; 3 # This example is consistent.
+(
+ (a slsr  b)
+ (a llll+ c)
+ (a llll+ d)
+ (b ells  c)
+ (b lllr  d)
+ (c llrr+ d)
+)

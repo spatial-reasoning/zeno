@@ -1,0 +1,7 @@
+calculus = "dipole-24"
+description = "Four nodes, all equal."
+number of nodes = 4
+network =
+    a b (sese)
+    b c (sese)
+    c d (sese)

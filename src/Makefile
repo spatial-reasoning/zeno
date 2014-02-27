@@ -2,6 +2,7 @@
 compareAndAdjust:
 	mkdir -p ../bin
 	ghc --make -O2 -fspec-constr-count=16 -threaded compareAndAdjust.hs -o ../bin/compareAndAdjust
+#	ghc --make -O2 -fspec-constr-count=16 -threaded -fforce-recomp compareAndAdjust.hs -o ../bin/compareAndAdjust
 #	ghc --make -O2 -fspec-constr-count=16 -threaded -split-objs compareAndAdjust.hs -o ../bin/compareAndAdjust
 #	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all -fforce-recomp compareAndAdjust.hs -o ../bin/compareAndAdjust
 #	ghc --make -O2 -fspec-constr-count=16 -rtsopts -prof -auto-all -caf-all compareAndAdjust.hs -o ../bin/compareAndAdjust

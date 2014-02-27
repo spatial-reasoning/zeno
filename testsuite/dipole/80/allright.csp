@@ -1,0 +1,5 @@
+2 # 3 arrows, each one right to its predecessor
+ 0  1 ( rrrr- )
+ 1  2 ( rrrr- )
+ 2  0 ( rrrr- )
+.

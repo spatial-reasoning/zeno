@@ -82,7 +82,7 @@ instance (Calculus a) => Gqrifiable (Network [String] (GRel a)) where
         ( concat . intersperse " " . Set.toList . Set.map cGqrifyRel . gRel )
 
 gqrify' relFun net =
-    ( show ((Set.size $ nodesIn $ nCons net) - 1)
+    ( (show $ max 0 ((Set.size $ nodesIn $ nCons net) - 1))
         ++ " # description = " ++ nDesc net ++ "\n"
         ++ unlines [" " ++ (concat $ intersperse " " $ map show x) ++ " ( "
                         ++ relFun y

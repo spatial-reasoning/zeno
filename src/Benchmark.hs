@@ -443,7 +443,7 @@ plotPercentageOfInconsistentNetworksPerDensity bench = do
         "# than strictly primary colors or hard-to-see colors\n" ++
         "# like gnuplot's default yellow.  Make the lines thick\n" ++
         "# so they're easy to see in small plots in papers.\n" ++
-        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "##set style line 1 lt rgb \"#A00000\" lw 3 pt 1\n" ++
         "#set style line 1 linetype 2 lw 4\n" ++
         "#set style line 2 linetype 3 lw 4\n" ++
         "#set style line 3 linetype 5 lw 4\n" ++
@@ -523,7 +523,7 @@ plotInconsistenciesPerSizeAndMethodInPercent bench = do
         "# than strictly primary colors or hard-to-see colors\n" ++
         "# like gnuplot's default yellow.  Make the lines thick\n" ++
         "# so they're easy to see in small plots in papers.\n" ++
-        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "##set style line 1 lt rgb \"#A00000\" lw 3 pt 1\n" ++
         "#set style line 1 linetype 2 lw 4\n" ++
         "#set style line 2 linetype 3 lw 4\n" ++
         "#set style line 3 linetype 5 lw 4\n" ++
@@ -599,7 +599,7 @@ plotSpeedPerSizeAndMethodSuccessOnly bench timeout = do
         "# than strictly primary colors or hard-to-see colors\n" ++
         "# like gnuplot's default yellow.  Make the lines thick\n" ++
         "# so they're easy to see in small plots in papers.\n" ++
-        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "##set style line 1 lt rgb \"#A00000\" lw 3 pt 1\n" ++
         "#set style line 1 linetype 2 lw 4\n" ++
         "#set style line 2 linetype 3 lw 4\n" ++
         "#set style line 3 linetype 5 lw 4\n" ++
@@ -673,7 +673,7 @@ plotSpeedPerSizeAndMethod bench timeout = do
         "# than strictly primary colors or hard-to-see colors\n" ++
         "# like gnuplot's default yellow.  Make the lines thick\n" ++
         "# so they're easy to see in small plots in papers.\n" ++
-        "##set style line 1 lt rgb "#A00000" lw 3 pt 1\n" ++
+        "##set style line 1 lt rgb \"#A00000\" lw 3 pt 1\n" ++
         "#set style line 1 linetype 2 lw 4\n" ++
         "#set style line 2 linetype 3 lw 4\n" ++
         "#set style line 3 linetype 5 lw 4\n" ++

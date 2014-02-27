@@ -1,0 +1,11 @@
+calculus = "dipole-24"
+description = "Inconsistent 02."
+network =
+    a b (ells)
+    a c (slsr)
+    a d (slsr)
+    b c (llrr)
+    # that's the (good (llrr) / bad (lrrl)) one:
+    b d (lrrl)
+    c d (slsr)
+

@@ -16,7 +16,8 @@ import Calculus.FlipFlop
 import Export
 import qualified Interface.Gqr as G
 import qualified Interface.Sparq as S
-import qualified Interface.Triangle as T
+import qualified DecisionProcedure.FlipFlop.TriangleConsistency as T
+import qualified DecisionProcedure.Dipole72.TriangleConsistency as DpT
 import DecisionProcedure.FlipFlop.OrientedMatroid
 import DecisionProcedure.Dipole72.OrientedMatroid
 import Parsing.Qstrlib
@@ -85,41 +86,41 @@ checkNetworks = do
     let dpNets = []
 
     let ffNet1 = allLeft 8
-    ffNet2 <- loadNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet2 <- loadNetwork ("../testsuite/flipflop/inconsistent/inconsistent_01.net") :: IO (Network [String] (ARel FlipFlop))
     let ffNet3 = indianTent 8
-    ffNet4 <- loadNetwork ("../testsuite/flipflop/inconsistent/nomatroid.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet5 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet6 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde_less.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet7 <- loadNetwork ("../testsuite/flipflop/inconsistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet8 <- loadNetwork ("../testsuite/flipflop/inconsistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet9 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet10 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet11 <- loadNetwork ("../testsuite/flipflop/inconsistent/tenA.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet12 <- loadNetwork ("../testsuite/flipflop/consistent/triskilde.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet13 <- loadNetwork ("../testsuite/flipflop/consistent/desargues.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet14 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (Set.Set FlipFlop))
-    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (Set.Set FlipFlop))
---    ffNet16 <- loadNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (Set.Set FlipFlop))
+    ffNet4 <- loadNetwork ("../testsuite/flipflop/inconsistent/nomatroid.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet5 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet6 <- loadNetwork ("../testsuite/flipflop/inconsistent/triskilde_less.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet7 <- loadNetwork ("../testsuite/flipflop/inconsistent/desargues.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet8 <- loadNetwork ("../testsuite/flipflop/inconsistent/minimalStar.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet9 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet10 <- loadNetwork ("../testsuite/flipflop/inconsistent/pappos_uniform.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet11 <- loadNetwork ("../testsuite/flipflop/inconsistent/tenA.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet12 <- loadNetwork ("../testsuite/flipflop/consistent/triskilde.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet13 <- loadNetwork ("../testsuite/flipflop/consistent/desargues.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet14 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/minimalStar.net") :: IO (Network [String] (ARel FlipFlop))
+    ffNet15 <- loadNetwork ("../testsuite/flipflop/consistent/pappos.net") :: IO (Network [String] (ARel FlipFlop))
+--    ffNet16 <- loadNetwork ("../testsuite/flipflop/consistent/pappos_uniform.net") :: IO (Network [String] (ARel FlipFlop))
 
---    ffNet1 <- loadNetwork ("./test.net") :: IO (Network [String] (Set.Set FlipFlop))
+--    ffNet1 <- loadNetwork ("./test.net") :: IO (Network [String] (ARel FlipFlop))
 --    let ffNets = [ffNet1]
 
     let ffNets = [ ffNet1
-                 , ffNet2
-                 , ffNet3
-                 , ffNet4
-                 , ffNet5
-                 , ffNet6
+--                 , ffNet2
+--                 , ffNet3
+--                 , ffNet4
+--                 , ffNet5
+--                 , ffNet6
                  , ffNet7
                  , ffNet8
-                 , ffNet9
+--                 , ffNet9
                  , ffNet10
-                 , ffNet11
-                 , ffNet12
-                 , ffNet13
-                 , ffNet14
-                 , ffNet15
+--                 , ffNet11
+--                 , ffNet12
+--                 , ffNet13
+--                 , ffNet14
+--                 , ffNet15
                  ]
 
     let dpAnswers = makeReadable 0 $ dpCheckConsistency dpNets
@@ -127,7 +128,7 @@ checkNetworks = do
 
     let showNetworks nets startNumber = foldl
             (\acc (net, k) -> acc ++ " === NETWORK No. " ++ show k ++
-                              " ===\n\n" ++ showNonAtomicNet net ++ "\n\n"
+                              " ===\n\n" ++ showNetwork net ++ "\n\n"
             ) "" $ zip nets [startNumber..]
 
     putStrLn $ "\n                               === NEW TEST ===\n\n" ++
@@ -138,18 +139,18 @@ checkNetworks = do
         (intercalate "  " $ map show [1..length dpNets + length ffNets]) ++
         "\n"
 
-    start <- getCurrentTime
-    putStrLn $ "Algebraic Closure:             " ++ dpAnswers!!0 ++ ffAnswers!!0
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
-    start <- getCurrentTime
-    putStrLn $ "Algebraic Reasoning:           " ++ dpAnswers!!1 ++ ffAnswers!!1
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
-    start <- getCurrentTime
-    putStrLn $ "Triangle Consistency:          " ++ dpAnswers!!2 ++ ffAnswers!!2
-    end <- getCurrentTime
-    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+--    start <- getCurrentTime
+--    putStrLn $ "Algebraic Closure:             " ++ dpAnswers!!0 ++ ffAnswers!!0
+--    end <- getCurrentTime
+--    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+--    start <- getCurrentTime
+--    putStrLn $ "Algebraic Reasoning:           " ++ dpAnswers!!1 ++ ffAnswers!!1
+--    end <- getCurrentTime
+--    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
+--    start <- getCurrentTime
+--    putStrLn $ "Triangle Consistency:          " ++ dpAnswers!!2 ++ ffAnswers!!2
+--    end <- getCurrentTime
+--    putStrLn $ show (end `diffUTCTime` start) ++ " elapsed.\n"
     start <- getCurrentTime
     putStrLn $ "Oriented Matroid:              " ++ dpAnswers!!3 ++ ffAnswers!!3
     end <- getCurrentTime
@@ -185,7 +186,7 @@ checkNetworks = do
     return ()
 
 
-dpCheckConsistency :: [Network [String] (Set.Set Dipole72)]
+dpCheckConsistency :: [Network [String] (ARel Dipole72)]
                    -> [[Maybe Bool]]
 dpCheckConsistency nets = answers
   where
@@ -199,24 +200,24 @@ dpCheckConsistency nets = answers
               , chirotopeAnswers
               , biquadraticPolynomialAnswers
               ]
-    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure "dra-72") nets
-    aReasoningAnswers = map (S.algebraicReasoning "dra-72") nets
-    triangleAnswers = map (T.checkConsistencyDipole72 . makeAtomic) nets
-    chirotopeAnswers = map (isAcyclicChirotopeDipole72 . makeAtomic) nets
-    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPDipole72 . makeAtomic) nets
+    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure) nets
+    aReasoningAnswers = map (S.algebraicReasoning) nets
+    triangleAnswers = map (DpT.checkConsistency) nets
+    chirotopeAnswers = map (isAcyclicChirotopeDipole72) nets
+    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPDipole72) nets
 --    chirotopeAndBiquadraticPolynomialAnswers = map (isAcyclicChirotopePlainAndWithoutBPDipole72 . makeAtomic) nets
 --    [chirotopeAnswers, biquadraticPolynomialAnswers] = transpose chirotopeAndBiquadraticPolynomialAnswers
 
 
---    aClosureAnswers = parMap rseq ((\(x,_,_) -> x) . S.algebraicClosure "dra-72") nets
---    aReasoningAnswers = parMap rseq (S.algebraicReasoning "dra-72") nets
---    triangleAnswers = parMap rseq (T.checkConsistencyDipole72 . makeAtomic) nets
+--    aClosureAnswers = parMap rseq ((\(x,_,_) -> x) . S.algebraicClosure) nets
+--    aReasoningAnswers = parMap rseq (S.algebraicReasoning) nets
+--    triangleAnswers = parMap rseq (T.checkConsistency . makeAtomic) nets
 --    chirotopeAnswers = parMap rseq (isAcyclicChirotopeDipole72 . makeAtomic) nets
 --    biquadraticPolynomialAnswers = parMap rseq (isAcyclicChirotopeWithoutBPDipole72 . makeAtomic) nets
 
 
 
-ffCheckConsistency :: [Network [String] (Set.Set FlipFlop)]
+ffCheckConsistency :: [Network [String] (ARel FlipFlop)]
                    -> [[Maybe Bool]]
 ffCheckConsistency nets = answers
   where
@@ -230,19 +231,19 @@ ffCheckConsistency nets = answers
               , chirotopeAnswers
               , biquadraticPolynomialAnswers
               ]
-    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure "ff") nets
-    aReasoningAnswers = map (S.algebraicReasoning "ff") nets
-    triangleAnswers = map (T.checkConsistency . makeAtomic) nets
-    chirotopeAnswers = map (isAcyclicChirotopeFlipFlop . makeAtomic) nets
-    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPFlipFlop . makeAtomic) nets
---    chirotopeAndBiquadraticPolynomialAnswers = map (isAcyclicChirotopePlainAndWithoutBPFlipFlop . makeAtomic) nets
+    aClosureAnswers = map ((\(x,_,_) -> x) . S.algebraicClosure) nets
+    aReasoningAnswers = map (S.algebraicReasoning) nets
+    triangleAnswers = map (T.checkConsistency) nets
+    chirotopeAnswers = map (isAcyclicChirotopeFlipFlop) nets
+    biquadraticPolynomialAnswers = map (isAcyclicChirotopeWithoutBPFlipFlop) nets
+--    chirotopeAndBiquadraticPolynomialAnswers = map (isAcyclicChirotopePlainAndWithoutBPFlipFlop) nets
 --    [chirotopeAnswers, biquadraticPolynomialAnswers] = transpose chirotopeAndBiquadraticPolynomialAnswers
 
 
---    aClosureAnswers = parMap rseq ((\(x,_,_) -> x) . S.algebraicClosure "ff") nets
---    aReasoningAnswers = map (S.algebraicReasoning "ff") nets
-----    aReasoningAnswers = parMap rseq (S.algebraicReasoning "ff") nets
-----    aReasoningAnswers = mapP 4 (S.algebraicReasoning "ff") nets
+--    aClosureAnswers = parMap rseq ((\(x,_,_) -> x) . S.algebraicClosure) nets
+--    aReasoningAnswers = map (S.algebraicReasoning) nets
+----    aReasoningAnswers = parMap rseq (S.algebraicReasoning) nets
+----    aReasoningAnswers = mapP 4 (S.algebraicReasoning) nets
 --    triangleAnswers = parMap rseq (T.checkConsistency . makeAtomic) nets
 --    chirotopeAnswers = parMap rseq (isAcyclicChirotopeFlipFlop . makeAtomic) nets
 --    biquadraticPolynomialAnswers = parMap rseq (isAcyclicChirotopeWithoutBPFlipFlop . makeAtomic) nets

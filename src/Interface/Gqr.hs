@@ -2,6 +2,7 @@
 module Interface.Gqr where
 
 -- standard modules
+import qualified Data.Map as Map
 import System.IO
 import System.IO.Unsafe
 import Text.Parsec
@@ -21,15 +22,22 @@ algebraicClosure :: ( Relation (a b) b
                     , Calculus b )
                  => Network [String] (a b)
                  -> (Maybe Bool, Network [String] (GRel b))
-algebraicClosure net = unsafePerformIO $
-  withTempDir "Qstrlib_qgr" (\tmpDir -> do
+algebraicClosure net =
+ if Map.null $ nCons net then
+     (Just True, makeNonAtomic net)
+ else
+  unsafePerformIO $
+   withTempDir "Qstrlib_qgr" (\tmpDir -> do
     gqrTempFile <- openTempFile tmpDir "gqrTempFile.csp"
     let (gqrNet, enumeration) = gqrify net
     hPutStr (snd gqrTempFile) gqrNet
     hClose $ snd gqrTempFile
     (gqrOut, gqrErr) <- safeReadProcess
-        "gqr" (["c -C", cNameGqr ((undefined :: Network [String] (a b) -> b) net), "-S", fst gqrTempFile]) ""
-    let (fstline, _:gqrNewNet) = break (== '\n') $ dropWhile (/= '#') gqrOut
+        "gqr" (["c", "-C", cNameGqr ((undefined :: Network [String] (a b) -> b) net), "-S", fst gqrTempFile]) ""
+    let (fstline:gqrNewNetLines) = init $ dropWhile
+            (\x -> (not $ null x) && head x /= '#') $
+            lines (gqrOut ++ gqrErr)
+    let gqrNewNet = unlines gqrNewNetLines
     let consistent = zeroOne $ last fstline
           where
             zeroOne x
@@ -60,16 +68,20 @@ algebraicClosures :: ( Relation (a b) b
                   -> [Maybe Bool]
 algebraicClosures nets = unsafePerformIO $
   withTempDir "Qstrlib-" (\tmpDir -> do
-    gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile-.csp") nets
+    gqrTempFiles <- mapM (\x -> openTempFile tmpDir "gqrTempFile.csp") nets
     mapM_ (\ (x,y) -> hPutStr (snd x) (fst $ gqrify y)) (zip gqrTempFiles nets)
     mapM_ (hClose . snd) gqrTempFiles
     (gqrOut, gqrErr) <- safeReadProcess
         "gqr" (["c -C", cNameGqr((undefined :: [Network [String] (a b)] -> b) nets)] ++ (map fst gqrTempFiles)) ""
-    let answer = map zeroOne [ last x | x <- lines gqrOut, head x == '#' ]
+    let answersAndNets = zip [ last x | x <- lines gqrOut, head x == '#' ] nets
+    let answer = map zeroOne answersAndNets
           where
-            zeroOne x
+            zeroOne (x,y)
                 | x == '0'  = Just False
-                | x == '1'  = Nothing
+                | x == '1'  = if Map.null $ nCons y then
+                                  Just True
+                              else
+                                  Nothing
                 | otherwise = error ("GQR answered in an unexpected way.\n\
                                      \Expected answer: Gqr information on \
                                      \consistency of a network.\n\

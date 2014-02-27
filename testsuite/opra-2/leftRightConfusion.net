@@ -1,0 +1,7 @@
+calculus = "opra-2"
+description = "LeftRightConfusionProblem"
+network =
+    a b (2<1_1)
+    a c (2<7_7)
+    b d (2<7_7)
+    c d (2<1_1)

@@ -6,11 +6,9 @@ import Data.List
 import qualified Data.Foldable as Fold
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Random ()
-import qualified Data.Random.Extras as R
 import Data.Ratio
-import Data.RVar
 import System.Random
+import System.Random.Shuffle
 
 -- local modules
 import Basics
@@ -55,9 +53,6 @@ randomAClosureConsistentScenario rank domain syze = do
         return net
   where
     atomicDomain = map ARel domain
-    aClosureInconsistent cons = (Just False ==) $ ( \(x,_,_) -> x) $
-        algebraicClosure $ makeNonAtomic $
-        eNetwork{ nCons = fromJust $ consFromList cons }
     buildScenario gen cons tuples =
         if aClosureInconsistent cons then
             Nothing
@@ -66,13 +61,16 @@ randomAClosureConsistentScenario rank domain syze = do
         else
             listToMaybe $ catMaybes scenarios
       where
-        (rels, gen') = shuffle atomicDomain gen
+        (rels, gen') = shuffle'' atomicDomain gen
         (tuple:tuples') = tuples
         scenarios = map
             (\ rel -> buildScenario gen'
                 ((tuple, rel):cons)
                 tuples'
             ) rels
+    aClosureInconsistent cons = (Just False ==) $ ( \(x,_,_) -> x) $
+        algebraicClosure $ makeNonAtomic $
+        eNetwork{ nCons = fromJust $ consFromList cons }
 
 randomAtomicNetworkWithDensity :: (Calculus a)
                                => Int
@@ -81,7 +79,7 @@ randomAtomicNetworkWithDensity :: (Calculus a)
                                -> Ratio Int
                                -> IO (Network [String] (ARel a))
 randomAtomicNetworkWithDensity rank domain syze density = do
-    combis <- sampleRVar $ R.shuffle $ kCombinations rank $ map show [1..syze]
+    combis <- shuffleM $ kCombinations rank $ map show [1..syze]
     rels <- randomsOfIO $ map ARel domain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)
@@ -128,7 +126,7 @@ randomConnectedAtomicNetworkWithDensity rank domain syze density = do
                   ) [] [rank..syze]
     let combisLeft =
             (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
-    fleshCombis <- sampleRVar $ R.shuffle combisLeft
+    fleshCombis <- shuffleM combisLeft
     fleshRels <- randomsOfIO atomicDomain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)
@@ -175,7 +173,7 @@ randomConnectedNetworkWithDensity rank domain syze density = do
                   ) [] [rank..syze]
     let combisLeft =
             (kCombinations rank $ map show [1..syze]) \\ (fst $ unzip skel)
-    fleshCombis <- sampleRVar $ R.shuffle combisLeft
+    fleshCombis <- shuffleM combisLeft
     fleshRels <- liftM (map GRel) $ randomGeneralsOfIO domain
     let denom = choose syze rank
     let (factor, rest) = divMod denom (denominator density)

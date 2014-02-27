@@ -8,25 +8,21 @@ import Basics
 import Calculus.Dipole72
 import DecisionProcedure.FlipFlop.OrientedMatroid
 import SpatioTemporalStructure.OrientedMatroid
-import Convert.LRDipoles
+import Convert.LRDipole
 
 --import Debug.Trace
 
 
-isAcyclicChirotopeDipole72 :: Network [String] Dipole72 -> Maybe Bool
-isAcyclicChirotopeDipole72 net
-    | isNothing ffNet  = Nothing
-    | otherwise  = isAcyclicChirotopeFlipFlop $ fromJust ffNet
-  where
-    ffNet = dipolesToFlipFlops net
+isAcyclicChirotopeDipole72 :: Network [String] (ARel Dipole72)
+                           -> Maybe Bool
+isAcyclicChirotopeDipole72 net =
+    isAcyclicChirotopeFlipFlop $ dipolesToFlipFlops net
 
 
-isAcyclicChirotopeWithoutBPDipole72 :: Network [String] Dipole72 -> Maybe Bool
-isAcyclicChirotopeWithoutBPDipole72 net
-    | isNothing ffNet  = Nothing
-    | otherwise  = isAcyclicChirotopeWithoutBPFlipFlop $ fromJust ffNet
-  where
-    ffNet = dipolesToFlipFlops net
+isAcyclicChirotopeWithoutBPDipole72 :: Network [String] (ARel Dipole72)
+                                    -> Maybe Bool
+isAcyclicChirotopeWithoutBPDipole72 net =
+    isAcyclicChirotopeWithoutBPFlipFlop $ dipolesToFlipFlops net
 
 {-       TWOINONE
 isAcyclicChirotopePlainAndWithoutBPFlipFlop :: Network [String] FlipFlop -> [Maybe Bool]

@@ -12,7 +12,7 @@ import Debug.Trace
 
 -- | consistent networks
 
-stupidAllLeft :: Int -> Network [String] (Set.Set FlipFlop)
+stupidAllLeft :: Int -> Network [String] (ARel FlipFlop)
 stupidAllLeft n
     | n < 3      = eNetwork
     | otherwise  = Network
@@ -20,12 +20,12 @@ stupidAllLeft n
         , nCalc = "flipflop-3"
         , nNumOfNodes = Just n
         , nCons = Map.fromList $ foldl
-            (\acc i -> [([show i, show (i+1), show (i+2)], Set.singleton L)] ++ acc
+            (\acc i -> [([show i, show (i+1), show (i+2)], ARel L)] ++ acc
             ) [] [0..n - 3]
         }
 
 
-allLeft :: Int -> Network [String] (Set.Set FlipFlop)
+allLeft :: Int -> Network [String] (ARel FlipFlop)
 allLeft n
     | n < 3      = eNetwork
     | otherwise  = Network
@@ -37,7 +37,7 @@ allLeft n
         , nCons = Map.fromList $ foldl
             (\acc i -> (++ acc) $ foldl
                 (\acc2 j -> (++ acc2) $ map
-                    (\k -> ([show i, show j, show k], Set.singleton L)
+                    (\k -> ([show i, show j, show k], ARel L)
                     ) [j + 1..n - 1]
                 ) [] [i + 1..n - 2]
             ) [] [0..n - 3]
@@ -46,7 +46,7 @@ allLeft n
 
 -- | inconsistent networks
 
-indianTent :: Int -> Network [String] (Set.Set FlipFlop)
+indianTent :: Int -> Network [String] (ARel FlipFlop)
 indianTent n
     | n < 3      = eNetwork
     | otherwise  = Network
@@ -56,11 +56,11 @@ indianTent n
             \ p_2 p_3 p_" ++ show n ++ " (r)."
         , nCalc = "flipflop-3"
         , nNumOfNodes = Just n
-        , nCons = Map.insert ["0", "1", show $ n - 1] (Set.singleton R) $
-            Map.insert ["1", "2", show $ n - 1] (Set.singleton R) $ Map.fromList $ foldl
+        , nCons = Map.insert ["0", "1", show $ n - 1] (ARel R) $
+            Map.insert ["1", "2", show $ n - 1] (ARel R) $ Map.fromList $ foldl
                 (\acc i -> (++ acc) $ foldl
                     (\acc2 j -> (++ acc2) $ map
-                        (\k -> ([show i, show j, show k], Set.singleton L)
+                        (\k -> ([show i, show j, show k], ARel L)
                         ) [j + 1..n - 1]
                     ) [] [i + 1..n - 2]
                 ) [] [0..n - 3]

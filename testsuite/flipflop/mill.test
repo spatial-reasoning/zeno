@@ -1,0 +1,10 @@
+(
+  (A0 slsr A1)
+  (A1 slsr A2)
+  (A2 slsr A3)
+  (A3 slsr A4)
+  (A4 slsr A5)
+  (A5 slsr A0)
+  (A0 errs B)
+  (A3 errs B)
+)

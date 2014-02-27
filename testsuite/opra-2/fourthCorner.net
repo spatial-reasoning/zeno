@@ -1,0 +1,7 @@
+calculus = "opra-2"
+description = "FourthCornerProblem"
+network =
+    1 2 (2<0_4)
+    1 4 (2<2_5)
+    2 3 (2<2_6)
+    3 4 (2<4_0)

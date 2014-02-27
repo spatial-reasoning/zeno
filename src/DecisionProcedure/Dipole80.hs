@@ -9,6 +9,8 @@ import qualified Data.Set as Set
 import Basics
 import Calculus.Dipole80
 import DecisionProcedure
+import DecisionProcedure.AlgebraicClosure
+import DecisionProcedure.AlgebraicGeometric
 
 instance HasBinAClosureGqr   ARel Dipole80
 instance HasBinAClosureGqr   GRel Dipole80
