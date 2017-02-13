@@ -1,0 +1,20 @@
+
+layout(location = 0) in vec3 vertexPos;
+layout(location = 1) in vec3 vertexNormal;
+layout(location = 2) in vec4 vertexDiffuseColor;
+
+out vec4 position;  // position of the vertex (and fragment) in camera space
+out vec3 normalDirection;  // surface normal vector in camera space
+out vec4 diffuseColor;  // surface normal vector in camera space
+
+uniform mat4 cam;
+uniform mat4 projcam;
+ 
+void main()
+{
+  position = cam * vec4(vertexPos, 1);
+  normalDirection = vec3(cam * vec4(vertexNormal, 0));
+  diffuseColor = vertexDiffuseColor;
+ 
+  gl_Position = projcam * vec4(vertexPos, 1);
+}
